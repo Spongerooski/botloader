@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "module": "ES2020",
+        "noImplicitAny": true,
+        "removeComments": false,
+        "preserveConstEnums": true,
+        "sourceMap": false,
+        "target": "ES2020",
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "declarationDir": "../../../../scripts/bot",
+    }
+}

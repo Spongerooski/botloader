@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "module": "ES2020",
+        "noImplicitAny": true,
+        "removeComments": true,
+        "preserveConstEnums": true,
+        "sourceMap": false,
+        "target": "ES2020",
+        // "typeRoots": [
+        //     "../typedecls"
+        // ],
+        // "rootDirs": [
+        //     "../typedecls"
+        // ],
+        // "paths": {
+        //     "jack": [
+        //         "../typedecls/jack"
+        //     ]
+        // }
+    }
+}

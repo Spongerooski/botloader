@@ -1,0 +1,37 @@
+[package]
+name = "jack-runtime"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+jack-sandbox = {path="../../components/jack-sandbox"}
+
+twilight-cache-inmemory = "0.6"
+twilight-http = "0.6"
+twilight-model = "0.6"
+
+tracing = "0.1"
+tracing-futures= "0.2"
+
+deno_core = "0.91"
+rusty_v8 = "0.22"
+
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.5.0", features = ["full"] }
+futures = "0.3"
+anyhow = "1.0"
+url = "2.2"
+serde_json = "1.0"
+async-trait = "0.1"
+
+configstore = {path="../../components/configstore"}
+tscompiler = {path="../../components/tscompiler"}
+scriptscheduler = {path="../../components/scriptscheduler"}
+
+[build-dependencies]
+tscompiler = {path="../../components/tscompiler"}
+
+# swc = "0.24"
+# swc_common = "0.10"
