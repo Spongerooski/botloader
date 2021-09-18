@@ -353,6 +353,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "bot"
+version = "0.1.0"
+dependencies = [
+ "configstore",
+ "dashmap",
+ "dotenv",
+ "futures",
+ "futures-core",
+ "jack-runtime",
+ "jack-sandbox",
+ "redis",
+ "rusty_v8",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tracing-log",
+ "tracing-subscriber",
+ "tscompiler",
+ "twilight-cache-inmemory",
+ "twilight-gateway",
+ "twilight-http",
+ "twilight-model",
+ "twilight-util",
+]
+
+[[package]]
 name = "build_const"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1207,32 +1233,6 @@ name = "itoa"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
-
-[[package]]
-name = "jack-bot"
-version = "0.1.0"
-dependencies = [
- "configstore",
- "dashmap",
- "dotenv",
- "futures",
- "futures-core",
- "jack-runtime",
- "jack-sandbox",
- "redis",
- "rusty_v8",
- "tokio",
- "tracing",
- "tracing-futures",
- "tracing-log",
- "tracing-subscriber",
- "tscompiler",
- "twilight-cache-inmemory",
- "twilight-gateway",
- "twilight-http",
- "twilight-model",
- "twilight-util",
-]
 
 [[package]]
 name = "jack-runtime"

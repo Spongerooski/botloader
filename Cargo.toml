@@ -2,6 +2,6 @@
 members = [
     "components/jack-sandbox",
     "cmd/rs2ts-cli",
-    "cmd/jack-bot",
+    "cmd/bot",
     "cmd/webapi",
 ]
