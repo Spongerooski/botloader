@@ -3484,8 +3484,12 @@ name = "webapi"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "axum",
+ "base64 0.13.0",
+ "dashmap",
  "oauth2",
+ "rand 0.8.4",
  "serde",
  "serde_json",
  "structopt",
