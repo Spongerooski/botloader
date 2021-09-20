@@ -682,6 +682,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "db"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "dotenv",
+ "serde",
+ "sqlx",
+ "tokio",
+ "twilight-model",
+]
+
+[[package]]
 name = "deno_core"
 version = "0.91.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
