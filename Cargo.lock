@@ -365,6 +365,7 @@ dependencies = [
  "jack-sandbox",
  "redis",
  "rusty_v8",
+ "structopt",
  "tokio",
  "tracing",
  "tracing-futures",
