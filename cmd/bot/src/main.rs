@@ -9,19 +9,31 @@ use tracing::info;
 use twilight_cache_inmemory::{InMemoryCache, InMemoryCacheBuilder};
 use twilight_gateway::{Cluster, Event, Intents};
 use twilight_model::oauth::CurrentApplicationInfo;
+use structopt::StructOpt;
 
 mod commands;
 // mod scriptmanager;
 mod vm_manager;
 
+#[derive(Clone, StructOpt)]
+pub struct RunConfig {
+    #[structopt(long, env = "DISCORD_TOKEN")]
+    pub discord_token: String,
+
+    #[structopt(long, env = "DATABASE_URL")]
+    pub database_url: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
     // tracing_log::LogTracer::init().unwrap();
-
+    
     dotenv::dotenv().ok();
+    let config = RunConfig::from_args();
 
-    let token = std::env::var("DISCORD_TOKEN")?;
+    let token = config.discord_token;
+    let database_url = config.database_url;
 
     let http = twilight_http::client::ClientBuilder::new()
         .token(token.clone())
@@ -40,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let state = InMemoryCacheBuilder::new().build();
 
-    let config_store = Postgres::new_with_url("postgres://postgres@localhost/jack").await?;
+    let config_store = Postgres::new_with_url(&database_url).await?;
 
     let application_info = http
         .current_user_application()

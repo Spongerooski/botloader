@@ -30,6 +30,7 @@ redis = { version= "0.20.1", features = ["tokio-comp"]}
 dashmap = "4.0"
 dotenv = "0.15"
 rusty_v8 = "0.22"
+structopt = "0.3"
 
 
 [build]
