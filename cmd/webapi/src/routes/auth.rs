@@ -6,6 +6,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use oauth2::{reqwest::async_http_client, AuthorizationCode, Scope, TokenResponse};
+use tracing::{error, instrument};
 
 use crate::{
     errors::ApiError,
@@ -33,11 +34,19 @@ impl<CT, ST> AuthHandlers<CT, ST> {
 }
 
 impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
+    #[instrument(skip(auth_handler, conf))]
     pub async fn handle_login(
         auth_handler: extract::Extension<Arc<AuthHandlers<CT, ST>>>,
         conf: extract::Extension<ConfigData>,
     ) -> ApiResult<impl IntoResponse> {
-        let token = auth_handler.csrf_store.generate_csrf_token().await?;
+        let token = auth_handler
+            .csrf_store
+            .generate_csrf_token()
+            .await
+            .map_err(|err| {
+                error!(%err, "failed creating csrf token");
+                err
+            })?;
 
         // Generate the full authorization URL.
         let (auth_url, _) = conf
@@ -59,6 +68,7 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
         Ok((StatusCode::SEE_OTHER, headers))
     }
 
+    #[instrument(skip(auth_handler, conf, data))]
     pub async fn handle_confirm_login(
         auth_handler: extract::Extension<Arc<AuthHandlers<CT, ST>>>,
         conf: extract::Extension<ConfigData>,
@@ -78,16 +88,32 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
             // Set the PKCE code verifier.
             .request_async(async_http_client)
             .await
-            .map_err(|err| ApiError::Other(err.into()))?;
+            .map_err(|err| {
+                error!(%err, "failed exchanging oauth2 code");
+                ApiError::Other(err.into())
+            })?;
 
         let access_token = token_result.access_token();
         let client = twilight_http::Client::new(format!("Bearer {}", access_token.secret()));
-        let user = client.current_user().exec().await?.model().await?;
+        let user = client
+            .current_user()
+            .exec()
+            .await
+            .map_err(|err| {
+                error!(%err, "discord api request failed, failed getting current user");
+                err
+            })?
+            .model()
+            .await?;
 
         let session = auth_handler
             .session_store
             .create_session(user, token_result)
-            .await?;
+            .await
+            .map_err(|err| {
+                error!(%err, "failed creating user sessionø");
+                err
+            })?;
 
         Ok(Html(format!(
             "

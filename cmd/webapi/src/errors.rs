@@ -7,10 +7,10 @@ use serde_json::json;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
-    #[error("Discord api deserialize error occured: {0}")]
+    #[error(transparent)]
     DiscordDeserializeBodyError(#[from] twilight_http::response::DeserializeBodyError),
 
-    #[error("Discord api error occured: {0}")]
+    #[error(transparent)]
     DiscordAPIError(#[from] twilight_http::Error),
 
     #[error("csrf token expired")]
@@ -19,27 +19,29 @@ pub enum ApiError {
     #[error("Session expired")]
     SessionExpired,
 
-    #[error("unknown error occured: {0}")]
+    #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 
 impl ApiError {
     pub fn public_desc(&self) -> (StatusCode, u32, String) {
         match &self {
-            ApiError::Other(e) => (StatusCode::INTERNAL_SERVER_ERROR, 0, format!("{}", e)),
-            ApiError::SessionExpired => (StatusCode::BAD_REQUEST, 1, "session expired".to_string()),
-            ApiError::BadCsrfToken => {
-                (StatusCode::BAD_REQUEST, 1, "csrf token expired".to_string())
-            }
-            ApiError::DiscordDeserializeBodyError(_) => (
+            Self::Other(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                2,
-                "failed deserializing discord response".to_string(),
+                0,
+                "an unknown error occured".to_string(),
             ),
-            ApiError::DiscordAPIError(_) => (
+            Self::SessionExpired => (StatusCode::BAD_REQUEST, 1, "session expired".to_string()),
+            Self::BadCsrfToken => (StatusCode::BAD_REQUEST, 2, "csrf token expired".to_string()),
+            Self::DiscordDeserializeBodyError(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 3,
-                "failed interacting with the discord API: ".to_string(),
+                "failed deserializing discord response".to_string(),
+            ),
+            Self::DiscordAPIError(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                4,
+                "failed interacting with the discord API".to_string(),
             ),
         }
     }

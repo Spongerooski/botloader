@@ -3052,6 +3052,7 @@ dependencies = [
  "pin-project",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -3489,6 +3490,7 @@ dependencies = [
  "axum",
  "base64 0.13.0",
  "dashmap",
+ "dotenv",
  "oauth2",
  "rand 0.8.4",
  "serde",
@@ -3496,6 +3498,11 @@ dependencies = [
  "structopt",
  "thiserror",
  "tokio",
+ "tower-http",
+ "tracing",
+ "tracing-futures",
+ "tracing-log",
+ "tracing-subscriber",
  "twilight-http",
  "twilight-model",
 ]
