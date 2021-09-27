@@ -9,7 +9,7 @@ use oauth2::{reqwest::async_http_client, AuthorizationCode, Scope, TokenResponse
 use tracing::{error, instrument};
 
 use crate::{
-    errors::ApiError,
+    errors::ApiErrorResponse,
     stores::{CsrfStore, SessionStore},
     ApiResult, ConfigData,
 };
@@ -45,7 +45,7 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
             .await
             .map_err(|err| {
                 error!(%err, "failed creating csrf token");
-                err
+                ApiErrorResponse::InternalError
             })?;
 
         // Generate the full authorization URL.
@@ -74,12 +74,17 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
         conf: extract::Extension<ConfigData>,
         Query(data): Query<ConfirmLoginQuery>,
     ) -> ApiResult<impl IntoResponse> {
-        if !auth_handler
+        let valid_csrf_token = auth_handler
             .csrf_store
             .check_csrf_token(&data.state)
-            .await?
-        {
-            return Err(ApiError::BadCsrfToken);
+            .await
+            .map_err(|err| {
+                error!(%err, "failed checking csrf token");
+                ApiErrorResponse::InternalError
+            })?;
+
+        if !valid_csrf_token {
+            return Err(ApiErrorResponse::BadCsrfToken);
         }
 
         let token_result = conf
@@ -90,7 +95,7 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
             .await
             .map_err(|err| {
                 error!(%err, "failed exchanging oauth2 code");
-                ApiError::Other(err.into())
+                ApiErrorResponse::InternalError
             })?;
 
         let access_token = token_result.access_token();
@@ -101,10 +106,14 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
             .await
             .map_err(|err| {
                 error!(%err, "discord api request failed, failed getting current user");
-                err
+                ApiErrorResponse::InternalError
             })?
             .model()
-            .await?;
+            .await
+            .map_err(|err| {
+                error!(%err, "failed reading/decoding discord response body");
+                ApiErrorResponse::InternalError
+            })?;
 
         let session = auth_handler
             .session_store
@@ -112,7 +121,7 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
             .await
             .map_err(|err| {
                 error!(%err, "failed creating user sessionø");
-                err
+                ApiErrorResponse::InternalError
             })?;
 
         Ok(Html(format!(

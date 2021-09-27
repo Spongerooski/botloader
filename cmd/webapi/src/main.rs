@@ -13,7 +13,7 @@ mod errors;
 mod routes;
 mod stores;
 
-use errors::ApiError;
+use errors::ApiErrorResponse;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
 
@@ -24,7 +24,7 @@ pub struct ConfigData {
 }
 
 type AuthHandlerData = AuthHandlers<InMemoryCsrfStore, InMemorySessionStore>;
-type ApiResult<T> = Result<T, ApiError>;
+type ApiResult<T> = Result<T, ApiErrorResponse>;
 
 #[tokio::main]
 async fn main() {
