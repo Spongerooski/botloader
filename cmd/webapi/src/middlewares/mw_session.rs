@@ -8,10 +8,11 @@ use axum::{
 use core::fmt;
 use futures::future::BoxFuture;
 use std::task::{Context, Poll};
-use tower::Service;
+use tower::{Layer, Service};
 
 use crate::stores::{Session, SessionStore};
 
+#[derive(Clone)]
 pub struct LoggedInSession {
     pub raw: Session,
     pub discord_client: Client,
@@ -27,6 +28,22 @@ impl LoggedInSession {
         Self {
             discord_client: client,
             raw,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct SessionLayer<ST> {
+    pub session_store: ST,
+}
+
+impl<ST: Clone, S> Layer<S> for SessionLayer<ST> {
+    type Service = SessionMiddleware<S, ST>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        SessionMiddleware {
+            session_store: self.session_store.clone(),
+            inner,
         }
     }
 }

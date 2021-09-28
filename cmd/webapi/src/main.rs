@@ -1,12 +1,17 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
-use axum::{handler::get, AddExtensionLayer, Router};
+use axum::{
+    body::BoxBody,
+    handler::get,
+    http::{Request, Response},
+    AddExtensionLayer, Router,
+};
 use config::RunConfig;
 use oauth2::basic::BasicClient;
 use routes::auth::AuthHandlers;
 use stores::{InMemoryCsrfStore, InMemorySessionStore};
 use structopt::StructOpt;
-use tower::layer::layer_fn;
+use tower::{layer::layer_fn, Service, ServiceBuilder};
 use tracing::info;
 
 mod config;
@@ -19,7 +24,7 @@ use errors::ApiErrorResponse;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
 
-use crate::middlewares::SessionMiddleware;
+use crate::middlewares::{SessionLayer, SessionMiddleware};
 
 #[derive(Clone)]
 pub struct ConfigData {
@@ -43,26 +48,38 @@ async fn main() {
     let auth_handler: AuthHandlerData =
         routes::auth::AuthHandlers::new(session_store.clone(), InMemoryCsrfStore::default());
 
-    // build our application with a single route
-    let app = Router::new()
-        .route("/", get(|| async { "Hello, World!" }))
-        .route("/error", get(routes::errortest::handle_errortest))
-        .route("/login", get(AuthHandlerData::handle_login))
-        .route("/confirm_login", get(AuthHandlerData::handle_confirm_login))
+    let common_middleware_stack = ServiceBuilder::new() // Process at most 100 requests concurrently
         .layer(AddExtensionLayer::new(ConfigData {
             oauth_client: oatuh_client,
             run_config: conf,
         }))
-        .layer(AddExtensionLayer::new(Arc::new(auth_handler)))
         .layer(TraceLayer::new_for_http())
-        .layer(layer_fn(|inner| SessionMiddleware {
-            session_store: session_store.clone(),
-            inner,
-        }));
+        .layer(AddExtensionLayer::new(Arc::new(auth_handler)))
+        .layer(SessionLayer { session_store })
+        .into_inner();
+
+    // TODO: See about the removal of the boxed method
+
+    let authorized_routes = Router::new()
+        .route("/logout", get(AuthHandlerData::handle_logout))
+        .layer(common_middleware_stack.clone())
+        .boxed();
+
+    let public_routes = Router::new()
+        .route("/", get(|| async { "Hello, World!" }))
+        .route("/error", get(routes::errortest::handle_errortest))
+        .route("/login", get(AuthHandlerData::handle_login))
+        .route("/logout", get(AuthHandlerData::handle_logout))
+        .route("/confirm_login", get(AuthHandlerData::handle_confirm_login))
+        .layer(common_middleware_stack.clone())
+        .boxed();
+
+    let app = public_routes.or(authorized_routes);
+    let make_service = app.into_make_service();
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-        .serve(app.into_make_service())
+        .serve(make_service)
         .await
         .unwrap();
 }

@@ -10,6 +10,7 @@ use tracing::{error, instrument};
 
 use crate::{
     errors::ApiErrorResponse,
+    middlewares::LoggedInSession,
     stores::{CsrfStore, SessionStore},
     ApiResult, ConfigData,
 };
@@ -129,7 +130,30 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
         <html>
         <body>Login successfull! Token: {}</body>
         </html>",
-            session.token
+            session.token,
+        )))
+    }
+
+    #[instrument(skip(auth_handler, session))]
+    pub async fn handle_logout(
+        auth_handler: extract::Extension<Arc<AuthHandlers<CT, ST>>>,
+        session: extract::Extension<LoggedInSession>,
+    ) -> ApiResult<impl IntoResponse> {
+        auth_handler
+            .session_store
+            .del_session(&session.raw.token)
+            .await
+            .map_err(|err| {
+                error!(%err, "failed deleting sesison");
+                ApiErrorResponse::InternalError
+            })?;
+
+        Ok(Html(format!(
+            "
+        <html>
+        <body>Logout successfull! {}</body>
+        </html>",
+            session.raw.user.name
         )))
     }
 }
