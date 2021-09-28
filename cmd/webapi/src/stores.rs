@@ -1,4 +1,4 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, sync::Arc};
 
 use async_trait::async_trait;
 use dashmap::{mapref::entry::Entry, DashMap};
@@ -18,7 +18,7 @@ pub struct Session {
 
 #[async_trait]
 pub trait SessionStore {
-    type Error: std::error::Error;
+    type Error: std::error::Error + Send + Sync;
 
     async fn create_session(
         &self,
@@ -42,9 +42,9 @@ fn gen_token() -> String {
     base64::encode_config(&random_bytes, base64::URL_SAFE_NO_PAD)
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct InMemorySessionStore {
-    sessions: DashMap<String, Session>,
+    sessions: Arc<DashMap<String, Session>>,
 }
 
 #[async_trait]

@@ -6,16 +6,20 @@ use oauth2::basic::BasicClient;
 use routes::auth::AuthHandlers;
 use stores::{InMemoryCsrfStore, InMemorySessionStore};
 use structopt::StructOpt;
+use tower::layer::layer_fn;
 use tracing::info;
 
 mod config;
 mod errors;
+mod middlewares;
 mod routes;
 mod stores;
 
 use errors::ApiErrorResponse;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
+
+use crate::middlewares::SessionMiddleware;
 
 #[derive(Clone)]
 pub struct ConfigData {
@@ -35,10 +39,9 @@ async fn main() {
     let conf = RunConfig::from_args();
     let oatuh_client = conf.get_discord_oauth2_client();
 
-    let auth_handler: AuthHandlerData = routes::auth::AuthHandlers::new(
-        InMemorySessionStore::default(),
-        InMemoryCsrfStore::default(),
-    );
+    let session_store = InMemorySessionStore::default();
+    let auth_handler: AuthHandlerData =
+        routes::auth::AuthHandlers::new(session_store.clone(), InMemoryCsrfStore::default());
 
     // build our application with a single route
     let app = Router::new()
@@ -51,7 +54,11 @@ async fn main() {
             run_config: conf,
         }))
         .layer(AddExtensionLayer::new(Arc::new(auth_handler)))
-        .layer(TraceLayer::new_for_http());
+        .layer(TraceLayer::new_for_http())
+        .layer(layer_fn(|inner| SessionMiddleware {
+            session_store: session_store.clone(),
+            inner,
+        }));
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
