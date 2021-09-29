@@ -9,6 +9,7 @@ use core::fmt;
 use futures::future::BoxFuture;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
+use tracing::info;
 
 use crate::stores::{Session, SessionStore};
 
@@ -82,10 +83,18 @@ where
         Box::pin(async move {
             let auth_header = req.headers().get("Authorization");
 
+            let mut _span = None;
+            let mut _span_guard = None;
+
             match auth_header.map(|e| e.to_str()) {
                 Some(Ok(t)) => {
                     if let Some(session) = store.get_session(t).await? {
+                        info!("we are logged in!");
                         let extensions = req.extensions_mut();
+
+                        _span = Some(tracing::debug_span!("session", user_id=%session.user.id));
+                        _span_guard = Some(_span.as_ref().unwrap().enter());
+
                         let logged_in_session = LoggedInSession::new(session);
                         extensions.insert(logged_in_session);
                     }
@@ -96,6 +105,17 @@ where
 
             inner.call(req).await.map_err(|e| e.into())
         })
+    }
+}
+
+#[derive(Clone)]
+pub struct RequireAuthLayer;
+
+impl<S> Layer<S> for RequireAuthLayer {
+    type Service = RequireAuthMiddleware<S>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        RequireAuthMiddleware { inner }
     }
 }
 
@@ -125,6 +145,8 @@ where
         // see https://github.com/tower-rs/tower/issues/547 for details
         let clone = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);
+
+        info!("Running");
 
         Box::pin(async move {
             let extensions = req.extensions();

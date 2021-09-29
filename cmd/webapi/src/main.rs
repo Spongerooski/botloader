@@ -19,7 +19,7 @@ use errors::ApiErrorResponse;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
 
-use crate::middlewares::SessionLayer;
+use crate::middlewares::{RequireAuthLayer, SessionLayer};
 
 #[derive(Clone)]
 pub struct ConfigData {
@@ -58,6 +58,7 @@ async fn main() {
     let authorized_routes = Router::new()
         .boxed()
         .route("/logout", get(AuthHandlerData::handle_logout))
+        .layer(RequireAuthLayer)
         .layer(common_middleware_stack.clone())
         .boxed();
 
@@ -67,8 +68,6 @@ async fn main() {
         .route("/error", get(routes::errortest::handle_errortest))
         .boxed()
         .route("/login", get(AuthHandlerData::handle_login))
-        .boxed()
-        .route("/logout", get(AuthHandlerData::handle_logout))
         .boxed()
         .route("/confirm_login", get(AuthHandlerData::handle_confirm_login))
         .boxed()

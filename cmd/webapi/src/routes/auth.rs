@@ -6,7 +6,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use oauth2::{reqwest::async_http_client, AuthorizationCode, Scope, TokenResponse};
-use tracing::{error, instrument};
+use tracing::{error, info, instrument};
 
 use crate::{
     errors::ApiErrorResponse,
@@ -147,6 +147,8 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
                 error!(%err, "failed deleting sesison");
                 ApiErrorResponse::InternalError
             })?;
+
+        info!("Logged out a user");
 
         Ok(Html(format!(
             "
