@@ -1,17 +1,12 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-use axum::{
-    body::BoxBody,
-    handler::get,
-    http::{Request, Response},
-    AddExtensionLayer, Router,
-};
+use axum::{handler::get, AddExtensionLayer, Router};
 use config::RunConfig;
 use oauth2::basic::BasicClient;
 use routes::auth::AuthHandlers;
 use stores::{InMemoryCsrfStore, InMemorySessionStore};
 use structopt::StructOpt;
-use tower::{layer::layer_fn, Service, ServiceBuilder};
+use tower::ServiceBuilder;
 use tracing::info;
 
 mod config;
@@ -24,7 +19,7 @@ use errors::ApiErrorResponse;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
 
-use crate::middlewares::{SessionLayer, SessionMiddleware};
+use crate::middlewares::SessionLayer;
 
 #[derive(Clone)]
 pub struct ConfigData {
@@ -61,16 +56,22 @@ async fn main() {
     // TODO: See about the removal of the boxed method
 
     let authorized_routes = Router::new()
+        .boxed()
         .route("/logout", get(AuthHandlerData::handle_logout))
         .layer(common_middleware_stack.clone())
         .boxed();
 
     let public_routes = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
+        .boxed()
         .route("/error", get(routes::errortest::handle_errortest))
+        .boxed()
         .route("/login", get(AuthHandlerData::handle_login))
+        .boxed()
         .route("/logout", get(AuthHandlerData::handle_logout))
+        .boxed()
         .route("/confirm_login", get(AuthHandlerData::handle_confirm_login))
+        .boxed()
         .layer(common_middleware_stack.clone())
         .boxed();
 
