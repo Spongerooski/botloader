@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "components/jack-sandbox",
+    "components/sandbox",
     "cmd/rs2ts-cli",
     "cmd/bot",
     "cmd/webapi",

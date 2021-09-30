@@ -7,8 +7,8 @@ edition = "2018"
 
 [dependencies]
 configstore = {path="../../components/configstore"}
-jack-runtime = {path="../../components/jack-runtime"}
-jack-sandbox = {path="../../components/jack-sandbox"}
+runtime = {path="../../components/runtime"}
+sandbox = {path="../../components/sandbox"}
 tscompiler = {path="../../components/tscompiler"}
 
 twilight-cache-inmemory = "0.6"

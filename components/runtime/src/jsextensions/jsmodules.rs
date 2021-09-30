@@ -14,7 +14,7 @@ pub const CORE_MODULES: &[(&str, &str)] = &[
     ("index", include_js!("index.js")),
 ];
 
-pub async fn load_core_modules(sbox: &mut jack_sandbox::Sandbox) {
+pub async fn load_core_modules(sbox: &mut sandbox::Sandbox) {
     for (name, source) in CORE_MODULES {
         sbox.add_eval_module(name.to_string(), source.to_string())
             .await

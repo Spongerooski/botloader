@@ -361,10 +361,10 @@ dependencies = [
  "dotenv",
  "futures",
  "futures-core",
- "jack-runtime",
- "jack-sandbox",
  "redis",
+ "runtime",
  "rusty_v8",
+ "sandbox",
  "structopt",
  "tokio",
  "tracing",
@@ -1236,43 +1236,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
 
 [[package]]
-name = "jack-runtime"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "configstore",
- "deno_core",
- "futures",
- "jack-sandbox",
- "rusty_v8",
- "scriptscheduler",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-futures",
- "tscompiler",
- "twilight-cache-inmemory",
- "twilight-http",
- "twilight-model",
- "url",
-]
-
-[[package]]
-name = "jack-sandbox"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "deno_core",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "url",
-]
-
-[[package]]
 name = "js-sys"
 version = "0.3.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2012,6 +1975,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "configstore",
+ "deno_core",
+ "futures",
+ "rusty_v8",
+ "sandbox",
+ "scriptscheduler",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tscompiler",
+ "twilight-cache-inmemory",
+ "twilight-http",
+ "twilight-model",
+ "url",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2063,6 +2050,19 @@ name = "ryu"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
+
+[[package]]
+name = "sandbox"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "deno_core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "url",
+]
 
 [[package]]
 name = "schannel"

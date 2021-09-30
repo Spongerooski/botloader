@@ -243,7 +243,7 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
 
             println!("Compiled: {}", compiled);
 
-            let header = match jack_runtime::validate_script(&compiled).await {
+            let header = match runtime::validate_script(&compiled).await {
                 Ok(h) => h,
                 Err(e) => {
                     return Ok(Some(format!("failed validating script: {}", e)));

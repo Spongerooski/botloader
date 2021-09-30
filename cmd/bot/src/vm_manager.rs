@@ -5,7 +5,7 @@ use std::{
 };
 
 use configstore::{ConfigStore, Script, ScriptContext};
-use jack_runtime::{
+use runtime::{
     error_reporter::ErrorReporter,
     runtime::{
         GuildRuntimeEvent, Runtime, RuntimeCommand, RuntimeContext, RuntimeEvent, ShutdownReason,

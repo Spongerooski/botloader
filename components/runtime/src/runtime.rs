@@ -1,8 +1,8 @@
 use configstore::Script;
 use configstore::ScriptContext;
-use jack_sandbox::AnyError;
-use jack_sandbox::Sandbox;
 use rusty_v8::IsolateHandle;
+use sandbox::AnyError;
+use sandbox::Sandbox;
 use serde::Serialize;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;

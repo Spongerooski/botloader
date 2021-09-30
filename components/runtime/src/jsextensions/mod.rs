@@ -1,5 +1,5 @@
 use deno_core::{op_async, op_sync, Extension, OpState};
-use jack_sandbox::{AnyError, JsValue};
+use sandbox::{AnyError, JsValue};
 
 pub mod jackcore;
 pub mod jsmodules;

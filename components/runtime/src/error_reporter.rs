@@ -11,8 +11,8 @@ pub trait ErrorReporter: Sync {
     async fn report_script_error(
         &self,
         guild_id: GuildId,
-        error: jack_sandbox::AnyError,
-    ) -> Result<(), jack_sandbox::AnyError> {
+        error: sandbox::AnyError,
+    ) -> Result<(), sandbox::AnyError> {
         self.report_error(
             guild_id,
             format!(
@@ -23,11 +23,8 @@ pub trait ErrorReporter: Sync {
         .await
     }
 
-    async fn report_error(
-        &self,
-        guild_id: GuildId,
-        error: String,
-    ) -> Result<(), jack_sandbox::AnyError>;
+    async fn report_error(&self, guild_id: GuildId, error: String)
+        -> Result<(), sandbox::AnyError>;
 }
 
 pub struct DiscordErrorReporter<CT> {
@@ -50,7 +47,7 @@ impl<CT: configstore::ConfigStore + Sync + Send> ErrorReporter for DiscordErrorR
         &self,
         guild_id: GuildId,
         error: String,
-    ) -> Result<(), jack_sandbox::AnyError> {
+    ) -> Result<(), sandbox::AnyError> {
         let conf = self
             .config_storage
             .get_guild_meta_config_or_default(guild_id)
@@ -72,7 +69,7 @@ pub struct NoOpErrorReporter;
 
 #[async_trait]
 impl ErrorReporter for NoOpErrorReporter {
-    async fn report_error(&self, _: GuildId, _: String) -> Result<(), jack_sandbox::AnyError> {
+    async fn report_error(&self, _: GuildId, _: String) -> Result<(), sandbox::AnyError> {
         Ok(())
     }
 }

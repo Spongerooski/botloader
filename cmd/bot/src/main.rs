@@ -4,12 +4,12 @@ use configstore::postgres::Postgres;
 use configstore::ConfigStore;
 use futures::StreamExt;
 use futures_core::Stream;
-use jack_runtime::error_reporter::DiscordErrorReporter;
+use runtime::error_reporter::DiscordErrorReporter;
+use structopt::StructOpt;
 use tracing::info;
 use twilight_cache_inmemory::{InMemoryCache, InMemoryCacheBuilder};
 use twilight_gateway::{Cluster, Event, Intents};
 use twilight_model::oauth::CurrentApplicationInfo;
-use structopt::StructOpt;
 
 mod commands;
 // mod scriptmanager;
@@ -28,7 +28,7 @@ pub struct RunConfig {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
     // tracing_log::LogTracer::init().unwrap();
-    
+
     dotenv::dotenv().ok();
     let config = RunConfig::from_args();
 

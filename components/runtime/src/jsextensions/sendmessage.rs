@@ -1,6 +1,6 @@
 use crate::runtime::RuntimeContext;
 use deno_core::OpState;
-use jack_sandbox::AnyError;
+use sandbox::AnyError;
 use serde::Deserialize;
 use std::{cell::RefCell, rc::Rc};
 use twilight_model::{channel::Message, id::ChannelId};

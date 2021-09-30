@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use configstore::ScriptContext;
 use deno_core::{op_sync, Extension, OpState};
-use jack_sandbox::{AnyError, JsValue, Sandbox};
+use sandbox::{AnyError, JsValue, Sandbox};
 use serde::Deserialize;
 use tokio::sync::oneshot;
 use tracing::info;
