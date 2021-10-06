@@ -1,3 +1,9 @@
+# Status
+
+This project is currently VERY EARLY WORK IN PROGRESS.
+
+Contact me on discord for more details: Jonas747#0001 (105487308693757952)
+
 # BotLoader (or loader)
 
 What is BotLoader? 
@@ -19,8 +25,10 @@ At the core it uses deno, which is a layer above v8 that's secure by default, me
    - webapi: the frontend API
  - components
    - configstore: the core configuration store for BotLoader, currently this only handles storing scripts and link themselves, there will probably be something else for custom user storage through scripts.
-   - sandbox: the javascript sandboxing portion, this is essentially just a thin wrapper around deno-core which does some of the heavy lifting, the sandbox does not have any capabilities in and of itself, that's provided by the runtime
    - runtime: the bot runtime, essentially this is what provides all the functions to interact with the outside world
+   - vm: manages a single v8 isolate
+   - vmthread: manages a thread, running vm's on it
+   - isolatecell: provides a safe way to manage enter and exit states of v8 isolates
    - rs2ts: Generates typescript types from rust structs
    - scriptscheduler: Provides various timers for triggering scripts
 
