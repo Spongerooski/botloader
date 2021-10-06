@@ -8,8 +8,9 @@ edition = "2018"
 [dependencies]
 configstore = {path="../../components/configstore"}
 runtime = {path="../../components/runtime"}
-sandbox = {path="../../components/sandbox"}
 tscompiler = {path="../../components/tscompiler"}
+vmthread = {path="../../components/vmthread"}
+vm = {path="../../components/vm"}
 
 twilight-cache-inmemory = "0.6"
 twilight-gateway = "0.6"
@@ -18,7 +19,7 @@ twilight-model = "0.6"
 twilight-util = {version = "0.6", features=["permission-calculator"]}
  
 tracing = "0.1"
-tracing-futures= "0.2"
+tracing-futures= "0.2" 
 tracing-subscriber = "0.2"
 tracing-log = "0.1"
 

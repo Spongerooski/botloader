@@ -1,19 +1,8 @@
-use std::{
-    collections::HashMap,
-    sync::{atomic::AtomicBool, Arc, RwLock as StdRwLock},
-    time::Duration,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use configstore::{ConfigStore, Script, ScriptContext};
-use runtime::{
-    error_reporter::ErrorReporter,
-    runtime::{
-        GuildRuntimeEvent, Runtime, RuntimeCommand, RuntimeContext, RuntimeEvent, ShutdownReason,
-        VmRole,
-    },
-    ContextScript, ContextScriptId,
-};
-use rusty_v8::IsolateHandle;
+
+use runtime::RuntimeContext;
 use tokio::sync::{
     mpsc::{self, UnboundedReceiver, UnboundedSender},
     RwLock,
@@ -21,12 +10,18 @@ use tokio::sync::{
 use tracing::info;
 use twilight_gateway::Event;
 use twilight_model::id::GuildId;
+use vm::{
+    error_reporter::ErrorReporter,
+    vm::{CreateRt, GuildVmEvent, Vm, VmCommand, VmContext, VmEvent, VmRole},
+    ContextScriptId,
+};
+use vmthread::{VmThreadCommand, VmThreadFuture, VmThreadHandle};
 
 use crate::BotContext;
 
 pub struct SharedState<CT> {
     bot_context: BotContext<CT>,
-    rt_evt_tx: UnboundedSender<GuildRuntimeEvent>,
+    rt_evt_tx: UnboundedSender<GuildVmEvent>,
     error_reporter: Arc<dyn ErrorReporter + Send + Sync>,
 }
 
@@ -34,6 +29,7 @@ type GuildMap = HashMap<GuildId, GuildState>;
 pub struct InnerManager<CT> {
     shared_state: SharedState<CT>,
     guilds: RwLock<GuildMap>,
+    worker_thread: VmThreadHandle<Vm>,
 }
 
 #[derive(Clone)]
@@ -62,6 +58,7 @@ where
             inner: Arc::new(InnerManager {
                 guilds: RwLock::new(Default::default()),
                 shared_state: shared,
+                worker_thread: VmThreadFuture::create(),
             }),
         };
 
@@ -86,7 +83,7 @@ where
                 main_vm: VmState::Running(ref rs),
                 ..
             }) => {
-                rs.tx.send(RuntimeCommand::Restart).unwrap();
+                rs.tx.send(VmCommand::Restart).unwrap();
                 Ok(())
             }
 
@@ -146,44 +143,50 @@ where
         }
 
         let (tx, rx) = mpsc::unbounded_channel();
-        let self_cloned = self.clone();
-        std::thread::spawn(move || {
-            // TODO: run multiple guilds per thread?
-            // It might be very expensive a thread per guild but its the simplest method
-            // we have to figure out a better way to share and measure cpu time then
-            // probably implementing our own async abstraction layer instead of using the dyno one
 
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
+        let rt_ctx = RuntimeContext {
+            bot_state: self.inner.shared_state.bot_context.state.clone(),
+            dapi: self.inner.shared_state.bot_context.http.clone(),
+            guild_id,
+            role: VmRole::Main,
+        };
 
-            let local = tokio::task::LocalSet::new();
-            rt.block_on(local.run_until(self_cloned.run_vm(to_load, rx, guild_id)));
-        });
+        info!("spawning guild vm for {}", guild_id);
+        self.inner
+            .worker_thread
+            .send_cmd
+            .send(VmThreadCommand::StartVM(CreateRt {
+                error_reporter: self.inner.shared_state.error_reporter.clone(),
+                rx,
+                tx: self.inner.shared_state.rt_evt_tx.clone(),
+                ctx: VmContext {
+                    // bot_state: self.inner.shared_state.bot_context.state.clone(),
+                    // dapi: self.inner.shared_state.bot_context.http.clone(),
+                    guild_id,
+                    role: VmRole::Main,
+                },
+                load_scripts: to_load,
+                extension_factory: Box::new(move || {
+                    vec![runtime::create_extension(rt_ctx.clone())]
+                }),
+                extension_modules: runtime::jsmodules::create_module_map(),
+            }))
+            .map_err(|_| panic!("failed creating vm"))
+            .unwrap();
 
         guilds.insert(
             guild_id,
             GuildState {
                 id: guild_id,
-                main_vm: VmState::Running(VmRunningState {
-                    tx,
-                    ping_rcvd: true,
-                    control: None,
-                }),
+                main_vm: VmState::Running(VmRunningState { tx }),
                 pack_vms: vec![],
             },
         );
 
-        let self_cloned = self.clone();
-        tokio::spawn(async move {
-            self_cloned.loop_ping_guild_vm(guild_id, VmRole::Main).await;
-        });
-
         Ok(())
     }
 
-    async fn vm_events_rcv(&self, mut rx: UnboundedReceiver<GuildRuntimeEvent>) {
+    async fn vm_events_rcv(&self, mut rx: UnboundedReceiver<GuildVmEvent>) {
         loop {
             if let Some((guild_id, r, evt)) = rx.recv().await {
                 self.handle_vm_evt(guild_id, r, evt).await;
@@ -191,9 +194,9 @@ where
         }
     }
 
-    async fn handle_vm_evt(&self, guild_id: GuildId, vr: VmRole, evt: RuntimeEvent) {
+    async fn handle_vm_evt(&self, guild_id: GuildId, _vr: VmRole, evt: VmEvent) {
         match evt {
-            RuntimeEvent::Shutdown(reason) => {
+            VmEvent::Shutdown(reason) => {
                 self.with_guild_mut(guild_id, |g| {
                     g.main_vm = VmState::Stopped;
                     Ok(())
@@ -217,27 +220,6 @@ where
                         .ok();
                 });
             }
-            RuntimeEvent::SetIsolate(h, t, l) => {
-                self.with_running_vm_mut(guild_id, vr, |rs| {
-                    rs.control = Some(VmControl {
-                        isolate_handle: h,
-                        terminated: t,
-                        shutdown_reason: l,
-                    });
-
-                    Ok(())
-                })
-                .await
-                .ok();
-            }
-            RuntimeEvent::Pong => {
-                self.with_running_vm_mut(guild_id, vr, |rs| {
-                    rs.ping_rcvd = true;
-                    Ok(())
-                })
-                .await
-                .ok();
-            }
         }
     }
 
@@ -245,13 +227,13 @@ where
         self.send_vm_command(
             guild_id,
             VmRole::Main,
-            RuntimeCommand::UnloadAllScript(script_id),
+            VmCommand::UnloadAllScript(script_id),
         )
         .await
     }
 
     pub async fn update_script(&self, guild_id: GuildId, script: Script) -> Result<(), String> {
-        self.send_vm_command(guild_id, VmRole::Main, RuntimeCommand::UpdateScript(script))
+        self.send_vm_command(guild_id, VmRole::Main, VmCommand::UpdateScript(script))
             .await
     }
 
@@ -260,12 +242,8 @@ where
         guild_id: GuildId,
         scripts: Vec<ContextScriptId>,
     ) -> Result<(), String> {
-        self.send_vm_command(
-            guild_id,
-            VmRole::Main,
-            RuntimeCommand::UnloadScripts(scripts),
-        )
-        .await
+        self.send_vm_command(guild_id, VmRole::Main, VmCommand::UnloadScripts(scripts))
+            .await
     }
 
     pub async fn attach_script(
@@ -277,16 +255,20 @@ where
         self.send_vm_command(
             guild_id,
             VmRole::Main,
-            RuntimeCommand::LoadScriptContext((script, script_context)),
+            VmCommand::LoadScriptContext((script, script_context)),
         )
         .await
     }
 
     pub async fn handle_discord_event(&self, evt: Event) {
-        if let Some(guild_id) = get_evt_guild_id(&evt) {
-            self.broadcast_vm_command(guild_id, RuntimeCommand::HandleEvent(Box::new(evt)))
-                .await
-                .ok();
+        let dispatch = runtime::dispatchevents::discord_event_to_dispatch(evt);
+        if let Some(inner) = dispatch {
+            self.broadcast_vm_command(
+                inner.guild_id,
+                VmCommand::DispatchEvent(inner.name, inner.data),
+            )
+            .await
+            .ok();
         }
     }
 
@@ -294,7 +276,7 @@ where
         &self,
         guild_id: GuildId,
         vmt: VmRole,
-        cmd: RuntimeCommand,
+        cmd: VmCommand,
     ) -> Result<(), String> {
         self.with_running_vm(guild_id, vmt, |rs| {
             rs.tx.send(cmd).unwrap();
@@ -303,11 +285,7 @@ where
         .await
     }
 
-    async fn broadcast_vm_command(
-        &self,
-        guild_id: GuildId,
-        cmd: RuntimeCommand,
-    ) -> Result<(), String> {
+    async fn broadcast_vm_command(&self, guild_id: GuildId, cmd: VmCommand) -> Result<(), String> {
         self.with_guild(guild_id, |g| {
             for vm in g.iter() {
                 if let VmState::Running(rs) = vm {
@@ -317,71 +295,6 @@ where
             Ok(())
         })
         .await
-    }
-
-    /// Pings a guilds vm on a interval ensuring that there's no runaway scripts, shutting down the vm if there was no pong within a interval window
-    async fn loop_ping_guild_vm(&self, guild_id: GuildId, vmt: VmRole) {
-        let mut ticker = tokio::time::interval(Duration::from_secs(10));
-        loop {
-            ticker.tick().await;
-            if !self.ping_guild_vm(guild_id, vmt).await {
-                return;
-            }
-        }
-    }
-
-    async fn ping_guild_vm(&self, guild_id: GuildId, vmt: VmRole) -> bool {
-        matches!(
-            self.with_running_vm_mut(guild_id, vmt, |rs| {
-                if !rs.ping_rcvd {
-                    // shut down this runtime...
-                    if let Some(ctrl) = &rs.control {
-                        {
-                            let mut reason = ctrl.shutdown_reason.write().unwrap();
-                            *reason = Some(ShutdownReason::RunawayScript);
-                        }
-
-                        if !ctrl
-                            .terminated
-                            .swap(true, std::sync::atomic::Ordering::SeqCst)
-                        {
-                            info!("shutting down the vm for {}, reason: timed out", guild_id);
-                            ctrl.isolate_handle.terminate_execution();
-                        }
-                    }
-                } else {
-                    rs.ping_rcvd = false;
-                    rs.tx.send(RuntimeCommand::Ping).unwrap();
-                }
-
-                Ok(())
-            })
-            .await,
-            Ok(_)
-        )
-    }
-
-    async fn run_vm(
-        &self,
-        loaded_scripts: Vec<ContextScript>,
-        rx: UnboundedReceiver<RuntimeCommand>,
-        guild_id: GuildId,
-    ) {
-        let mut rt = Runtime::new(
-            self.inner.shared_state.error_reporter.clone(),
-            rx,
-            self.inner.shared_state.rt_evt_tx.clone(),
-            RuntimeContext {
-                bot_state: self.inner.shared_state.bot_context.state.clone(),
-                dapi: self.inner.shared_state.bot_context.http.clone(),
-                guild_id,
-                role: VmRole::Main,
-            },
-            loaded_scripts,
-        )
-        .await;
-
-        rt.run().await
     }
 
     // async fn with_guild<F>(&self, guild_id: GuildId, f: F) -> Result<(), String>
@@ -511,27 +424,5 @@ enum VmState {
 
 /// The state of a vm, the details are set by an event from the runtime so it's set after the fact
 struct VmRunningState {
-    tx: UnboundedSender<RuntimeCommand>,
-    ping_rcvd: bool,
-    control: Option<VmControl>,
-}
-
-struct VmControl {
-    /// The handle to the v8 isolate
-    isolate_handle: IsolateHandle,
-
-    // Set to true when the v8 js has been terminated for some reason
-    terminated: Arc<AtomicBool>,
-
-    // Reason for the shutdown
-    shutdown_reason: Arc<StdRwLock<Option<ShutdownReason>>>,
-}
-
-fn get_evt_guild_id(evt: &Event) -> Option<GuildId> {
-    match evt {
-        Event::MessageCreate(m) => m.guild_id,
-        Event::MessageUpdate(mu) => mu.guild_id,
-        Event::MessageDelete(md) => md.guild_id,
-        _ => None,
-    }
+    tx: UnboundedSender<VmCommand>,
 }

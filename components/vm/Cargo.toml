@@ -1,5 +1,5 @@
 [package]
-name = "runtime"
+name = "vm"
 version = "0.1.0"
 edition = "2018"
 
@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 vmthread = {path="../../components/vmthread"}
-vm = {path="../../components/vm"}
+isolatecell = {path="../../components/isolatecell"}
 
 twilight-cache-inmemory = "0.6"
 twilight-http = "0.6"

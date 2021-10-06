@@ -1,6 +1,8 @@
 [workspace]
 members = [
-    "components/sandbox",
+    "components/vmthread",
+    "components/vm",
+    "components/isolatecell",
     "cmd/rs2ts-cli",
     "cmd/bot",
     "cmd/webapi",

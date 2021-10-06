@@ -26,10 +26,10 @@ pub struct RunConfig {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenv::dotenv().expect("failed loading dotenv files");
     tracing_subscriber::fmt::init();
     // tracing_log::LogTracer::init().unwrap();
 
-    dotenv::dotenv().ok();
     let config = RunConfig::from_args();
 
     let token = config.discord_token;

@@ -364,7 +364,6 @@ dependencies = [
  "redis",
  "runtime",
  "rusty_v8",
- "sandbox",
  "structopt",
  "tokio",
  "tracing",
@@ -377,6 +376,8 @@ dependencies = [
  "twilight-http",
  "twilight-model",
  "twilight-util",
+ "vm",
+ "vmthread",
 ]
 
 [[package]]
@@ -1230,6 +1231,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "isolatecell"
+version = "0.1.0"
+dependencies = [
+ "deno_core",
+ "rusty_v8",
+]
+
+[[package]]
 name = "itoa"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1984,7 +1993,6 @@ dependencies = [
  "deno_core",
  "futures",
  "rusty_v8",
- "sandbox",
  "scriptscheduler",
  "serde",
  "serde_json",
@@ -1996,6 +2004,8 @@ dependencies = [
  "twilight-http",
  "twilight-model",
  "url",
+ "vm",
+ "vmthread",
 ]
 
 [[package]]
@@ -2050,19 +2060,6 @@ name = "ryu"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
-
-[[package]]
-name = "sandbox"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "deno_core",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "url",
-]
 
 [[package]]
 name = "schannel"
@@ -3374,6 +3371,41 @@ name = "version_check"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
+
+[[package]]
+name = "vm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "configstore",
+ "deno_core",
+ "futures",
+ "isolatecell",
+ "rusty_v8",
+ "scriptscheduler",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tscompiler",
+ "twilight-cache-inmemory",
+ "twilight-http",
+ "twilight-model",
+ "url",
+ "vmthread",
+]
+
+[[package]]
+name = "vmthread"
+version = "0.1.0"
+dependencies = [
+ "isolatecell",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+]
 
 [[package]]
 name = "waker-fn"

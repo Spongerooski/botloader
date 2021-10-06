@@ -243,7 +243,12 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
 
             println!("Compiled: {}", compiled);
 
-            let header = match runtime::validate_script(&compiled).await {
+            let header = match vm::validate_script(
+                compiled.clone(),
+                runtime::jsmodules::create_module_map(),
+            )
+            .await
+            {
                 Ok(h) => h,
                 Err(e) => {
                     return Ok(Some(format!("failed validating script: {}", e)));

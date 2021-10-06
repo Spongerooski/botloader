@@ -1,25 +1,28 @@
+use crate::moduleloader::ModuleEntry;
+use crate::moduleloader::ModuleManager;
+use crate::AnyError;
 use configstore::Script;
 use configstore::ScriptContext;
+use deno_core::Extension;
+use deno_core::RuntimeOptions;
 use futures::future::LocalBoxFuture;
+use isolatecell::IsolateCell;
+use isolatecell::ManagedIsolate;
 use rusty_v8::IsolateHandle;
-use sandbox::AnyError;
-use sandbox::Sandbox;
 use serde::Serialize;
 use std::fmt::Display;
+use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::task::Poll;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tracing::{error, info};
-use twilight_cache_inmemory::InMemoryCache;
-use twilight_model::gateway;
-use twilight_model::gateway::event::Event;
 use twilight_model::id::GuildId;
+use url::Url;
 use vmthread::CreateVmSuccess;
 use vmthread::VmInterface;
 
-use crate::commonmodels;
 use crate::error_reporter::ErrorReporter;
 use crate::prepend_script_source_header;
 use crate::ContextScript;
@@ -28,8 +31,8 @@ use crate::ModuleNamer;
 pub type ContextScriptId = (u64, ScriptContext);
 
 #[derive(Debug, Clone)]
-pub enum RuntimeCommand {
-    HandleEvent(Box<gateway::event::Event>),
+pub enum VmCommand {
+    DispatchEvent(&'static str, serde_json::Value),
     LoadScriptContext(ContextScript),
 
     // note that this also reloads the runtime, shutting it down and starting it again
@@ -42,7 +45,7 @@ pub enum RuntimeCommand {
 }
 
 #[derive(Debug)]
-pub enum RuntimeEvent {
+pub enum VmEvent {
     Shutdown(ShutdownReason),
 }
 
@@ -58,48 +61,57 @@ pub enum VmRole {
     Pack(u64),
 }
 
-pub type GuildRuntimeEvent = (GuildId, VmRole, RuntimeEvent);
+pub type GuildVmEvent = (GuildId, VmRole, VmEvent);
 
-pub struct Runtime {
-    ctx: RuntimeContext,
-    sandbox: Option<Sandbox>,
+pub struct Vm {
+    ctx: VmContext,
+    runtime: ManagedIsolate,
 
-    rx: UnboundedReceiver<RuntimeCommand>,
-    tx: UnboundedSender<GuildRuntimeEvent>,
+    rx: UnboundedReceiver<VmCommand>,
+    tx: UnboundedSender<GuildVmEvent>,
 
     loaded_scripts: Vec<ContextScript>,
 
     timeout_handle: TimeoutHandle,
     error_reporter: Arc<dyn ErrorReporter>,
+
+    isolate_cell: Rc<IsolateCell>,
+
+    extension_factory: ExtensionFactory,
+    module_manager: Rc<ModuleManager>,
 }
 
 #[derive(Debug, Clone)]
-pub struct RuntimeContext {
+pub struct VmContext {
     pub guild_id: GuildId,
-    pub bot_state: InMemoryCache,
-    pub dapi: twilight_http::Client,
     pub role: VmRole,
 }
 
-impl Runtime {
-    pub fn sandbox_ref(&mut self) -> &mut Sandbox {
-        self.sandbox
-            .as_mut()
-            .expect("if you get this error someone messed up very badly")
-    }
+impl Vm {
+    async fn new(
+        create_req: CreateRt,
+        timeout_handle: TimeoutHandle,
+        isolate_cell: Rc<IsolateCell>,
+    ) -> Self {
+        let module_manager = Rc::new(ModuleManager {
+            module_map: create_req.extension_modules,
+        });
 
-    async fn new(create_req: CreateRt, timeout_handle: TimeoutHandle) -> Self {
-        let mut sandbox = Self::create_sandbox().await;
-        sandbox.add_state_data(create_req.ctx.clone());
+        let sandbox =
+            Self::create_isolate(&create_req.extension_factory, module_manager.clone()).await;
+        // sandbox.add_state_data(create_req.ctx.clone());
 
         let mut rt = Self {
             error_reporter: create_req.error_reporter,
             ctx: create_req.ctx,
             rx: create_req.rx,
             tx: create_req.tx,
-            sandbox: Some(sandbox),
             loaded_scripts: vec![],
             timeout_handle,
+            isolate_cell,
+            runtime: sandbox,
+            extension_factory: create_req.extension_factory,
+            module_manager,
         };
 
         rt.emit_isolate_handle();
@@ -111,21 +123,38 @@ impl Runtime {
         rt
     }
 
-    async fn create_sandbox() -> Sandbox {
-        let extension = crate::jsextensions::init();
-        let mut sandbox = Sandbox::new(vec![extension]);
-        crate::jsmodules::load_core_modules(&mut sandbox).await;
-        sandbox
+    async fn create_isolate(
+        extension_factory: &ExtensionFactory,
+        module_manager: Rc<ModuleManager>,
+    ) -> ManagedIsolate {
+        let mut extensions = extension_factory();
+        extensions.insert(
+            0,
+            Extension::builder()
+                .js(vec![(
+                    "core.js",
+                    in_mem_source_load_fn(include_str!("core.js")),
+                )])
+                .build(),
+        );
+
+        let options = RuntimeOptions {
+            extensions,
+            module_loader: Some(module_manager),
+            ..Default::default()
+        };
+
+        ManagedIsolate::new(options)
     }
 
     fn emit_isolate_handle(&mut self) {
-        if let Some(sbox) = &mut self.sandbox {
-            let isolate = sbox.runtime.v8_isolate();
-            let handle = isolate.thread_safe_handle();
+        let handle = {
+            let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
+            rt.v8_isolate().thread_safe_handle()
+        };
 
-            let mut th = self.timeout_handle.inner.write().unwrap();
-            th.isolate_handle = Some(handle);
-        }
+        let mut th = self.timeout_handle.inner.write().unwrap();
+        th.isolate_handle = Some(handle);
     }
 
     pub async fn run(&mut self) {
@@ -135,7 +164,8 @@ impl Runtime {
         while !self.check_terminated() {
             let fut = TickFuture {
                 rx: &mut self.rx,
-                sandbox: &mut self.sandbox.as_mut().unwrap(),
+                rt: &mut self.runtime,
+                cell: &self.isolate_cell,
             };
 
             match fut.await {
@@ -168,7 +198,7 @@ impl Runtime {
             .send((
                 self.ctx.guild_id,
                 self.ctx.role,
-                RuntimeEvent::Shutdown(if let Some(reason) = shutdown_reason {
+                VmEvent::Shutdown(if let Some(reason) = shutdown_reason {
                     reason
                 } else {
                     ShutdownReason::Unknown
@@ -183,16 +213,16 @@ impl Runtime {
             .load(std::sync::atomic::Ordering::SeqCst)
     }
 
-    async fn handle_cmd(&mut self, cmd: RuntimeCommand) {
+    async fn handle_cmd(&mut self, cmd: VmCommand) {
         match cmd {
-            RuntimeCommand::Terminate => todo!(),
-            RuntimeCommand::Restart => self.reset_sandbox().await,
-            RuntimeCommand::HandleEvent(evt) => self.handle_discord_event(*evt),
-            RuntimeCommand::LoadScriptContext(script) => self.load_script(script).await,
-            RuntimeCommand::UnloadScripts(scripts) => {
+            VmCommand::Terminate => todo!(),
+            VmCommand::Restart => self.reset_sandbox().await,
+            VmCommand::DispatchEvent(name, evt) => self.dispatch_event(name, &evt),
+            VmCommand::LoadScriptContext(script) => self.load_script(script).await,
+            VmCommand::UnloadScripts(scripts) => {
                 self.unload_scripts(scripts).await;
             }
-            RuntimeCommand::UnloadAllScript(id) => {
+            VmCommand::UnloadAllScript(id) => {
                 let to_unload = self
                     .loaded_scripts
                     .iter()
@@ -203,7 +233,7 @@ impl Runtime {
                 self.unload_scripts(to_unload).await;
             }
 
-            RuntimeCommand::UpdateScript(script) => {
+            VmCommand::UpdateScript(script) => {
                 let mut need_reset = false;
                 for (old, _) in &mut self.loaded_scripts {
                     if old.id == script.id {
@@ -246,18 +276,37 @@ impl Runtime {
             return;
         }
 
-        self.sandbox_ref()
-            .add_eval_module(
-                format!(
-                    "user/{}/{}/{}",
-                    script.0.name,
-                    script.0.id,
-                    script.1.module_name()
-                ),
-                prepend_script_source_header(&script.0.compiled_js, Some(&script)),
-            )
-            .await
-            .unwrap();
+        {
+            let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
+            let id = rt
+                .load_module(
+                    &Url::parse(
+                        format!(
+                            "file://user/{}/{}/{}.js",
+                            script.0.name,
+                            script.0.id,
+                            script.1.module_name()
+                        )
+                        .as_str(),
+                    )
+                    .unwrap(),
+                    Some(prepend_script_source_header(
+                        &script.0.compiled_js,
+                        Some(&script),
+                    )),
+                )
+                .await
+                .unwrap();
+
+            // TODO: should we also await the futures?
+            // with
+            let mut r = rt.mod_evaluate(id);
+            rt.run_event_loop(false).await.unwrap();
+
+            if let Ok(Some(result)) = r.try_next() {
+                result.unwrap();
+            };
+        }
 
         self.loaded_scripts.push(script);
     }
@@ -280,32 +329,12 @@ impl Runtime {
         self.reset_sandbox().await;
     }
 
-    fn handle_discord_event(&mut self, evt: Event) {
-        match evt {
-            Event::MessageCreate(m) => {
-                self.dispatch_event("MESSAGE_CREATE", &commonmodels::message::Message::from(m.0))
-            }
-            Event::MessageUpdate(m) => self.dispatch_event(
-                "MESSAGE_UPDATE",
-                &commonmodels::messageupdate::MessageUpdate::from(*m),
-            ),
-            Event::MessageDelete(m) => self.dispatch_event(
-                "MESSAGE_DELETE",
-                &commonmodels::message::MessageDelete::from(m),
-            ),
-            _ => {
-                todo!();
-            }
-        }
-    }
-
     fn dispatch_event<P>(&mut self, name: &str, args: &P)
     where
         P: Serialize,
     {
         info!("rt {} dispatching event: {}", self.ctx.guild_id, name);
-
-        match self.sandbox_ref().call(
+        match self.call_json(
             "$jackGlobal.disaptchEvent",
             &JackRTEvent {
                 name: name.to_string(),
@@ -326,20 +355,19 @@ impl Runtime {
         // complete the event loop
         // TODO: we could potentially have some long running futures
         // so maybe call a function that cancels all long running futures or something?
-        self.sandbox_ref()
-            .runtime
-            .run_event_loop(false)
-            .await
-            .unwrap();
         {
-            self.sandbox.take();
-        }
+            let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
+            rt.run_event_loop(false).await.unwrap()
+        };
 
         // create a new sandbox
-        let mut sandbox = Self::create_sandbox().await;
-        sandbox.add_state_data(self.ctx.clone());
+        let new_rt =
+            Self::create_isolate(&self.extension_factory, self.module_manager.clone()).await;
 
-        self.sandbox = Some(sandbox);
+        // let mut sandbox = Self::create_isolate().await;
+        // sandbox.add_state_data(self.ctx.clone());
+
+        self.runtime = new_rt;
         self.emit_isolate_handle();
 
         let initial_scripts = self.loaded_scripts.clone();
@@ -349,24 +377,44 @@ impl Runtime {
             self.load_script(script).await;
         }
     }
+
+    // TODO: capture return value
+    pub(crate) fn call_json<V: Serialize>(
+        &mut self,
+        fn_name: &str,
+        args: &V,
+    ) -> Result<(), AnyError> {
+        // undefined will cause JSON serialization error, so it needs to be treated as null
+        let js_code = format!("{f}({a});", f = fn_name, a = serde_json::to_value(args)?);
+
+        let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
+        rt.execute("call.js", &js_code)?;
+
+        Ok(())
+    }
 }
 
 struct TickFuture<'a> {
-    rx: &'a mut UnboundedReceiver<RuntimeCommand>,
-    sandbox: &'a mut Sandbox,
+    rx: &'a mut UnboundedReceiver<VmCommand>,
+    rt: &'a mut ManagedIsolate,
+    cell: &'a IsolateCell,
 }
 
 // Future which drives the js event loop while at the same time retrieving commands
 impl<'a> core::future::Future for TickFuture<'a> {
-    type Output = Result<Option<RuntimeCommand>, AnyError>;
+    type Output = Result<Option<VmCommand>, AnyError>;
 
     fn poll(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        if let Poll::Ready(Err(e)) = self.sandbox.runtime.poll_event_loop(cx, false) {
-            // error!("Got a error in polling: {}", e)
-            return Poll::Ready(Err(e));
+        {
+            let mut rt = self.cell.enter_isolate(self.rt);
+
+            if let Poll::Ready(Err(e)) = rt.poll_event_loop(cx, false) {
+                // error!("Got a error in polling: {}", e)
+                return Poll::Ready(Err(e));
+            }
         }
 
         match self.rx.poll_recv(cx) {
@@ -382,7 +430,7 @@ struct JackRTEvent<T: Serialize> {
     data: T,
 }
 
-impl VmInterface for Runtime {
+impl VmInterface for Vm {
     type BuildDesc = CreateRt;
 
     type Future = LocalBoxFuture<'static, ()>;
@@ -391,6 +439,7 @@ impl VmInterface for Runtime {
 
     fn create_vm(
         b: Self::BuildDesc,
+        isolate_cell: Rc<IsolateCell>,
     ) -> vmthread::VmCreateResult<Self::VmId, Self::Future, Self::TimeoutHandle> {
         let timeout_handle = TimeoutHandle {
             terminated: Arc::new(AtomicBool::new(false)),
@@ -406,7 +455,7 @@ impl VmInterface for Runtime {
 
         let thandle_clone = timeout_handle.clone();
         let fut = Box::pin(async move {
-            let mut rt = Runtime::new(b, thandle_clone).await;
+            let mut rt = Vm::new(b, thandle_clone, isolate_cell).await;
             rt.run().await;
         });
 
@@ -442,11 +491,15 @@ struct TimeoutHandleInner {
 
 pub struct CreateRt {
     pub error_reporter: Arc<dyn ErrorReporter + Send>,
-    pub rx: UnboundedReceiver<RuntimeCommand>,
-    pub tx: UnboundedSender<GuildRuntimeEvent>,
-    pub ctx: RuntimeContext,
+    pub rx: UnboundedReceiver<VmCommand>,
+    pub tx: UnboundedSender<GuildVmEvent>,
+    pub ctx: VmContext,
     pub load_scripts: Vec<ContextScript>,
+    pub extension_factory: ExtensionFactory,
+    pub extension_modules: Vec<ModuleEntry>,
 }
+
+type ExtensionFactory = Box<dyn Fn() -> Vec<Extension> + Send>;
 
 #[derive(Clone)]
 pub struct RtId {
@@ -461,4 +514,8 @@ impl Display for RtId {
             self.guild_id, self.role
         ))
     }
+}
+
+pub fn in_mem_source_load_fn(src: &'static str) -> Box<dyn Fn() -> Result<String, AnyError>> {
+    Box::new(move || Ok(src.to_string()))
 }

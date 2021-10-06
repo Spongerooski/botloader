@@ -6,16 +6,17 @@
         "preserveConstEnums": true,
         "sourceMap": false,
         "target": "ES2020",
+        "baseUrl": ".",
         // "typeRoots": [
         //     "../typedecls"
         // ],
         // "rootDirs": [
         //     "../typedecls"
         // ],
-        // "paths": {
-        //     "jack": [
-        //         "../typedecls/jack"
-        //     ]
-        // }
+        "paths": {
+            "index": [
+                "bot/index"
+            ]
+        }
     }
 }

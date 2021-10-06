@@ -1,4 +1,4 @@
-import { Bot, console, CreateMessage, Timers } from './bot/index';
+import { Bot, console, CreateMessage, Timers } from 'index';
 
 Bot.registerMeta({
     name: "pog",
@@ -17,14 +17,6 @@ Bot.on("MESSAGE_CREATE", async evt => {
             content: "pog #" + counter,
         })
     }
-})
-
-Bot.on("MESSAGE_DELETE", async evt => {
-    counter++;
-    await CreateMessage({
-        channelId: evt.channelId,
-        content: "someone deleted a message in this channel :( #" + counter,
-    })
 })
 
 Timers.startInterval("", 100, () => { console.log("Gaming"); });
