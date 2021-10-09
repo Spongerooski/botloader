@@ -356,7 +356,6 @@ dependencies = [
 name = "bot"
 version = "0.1.0"
 dependencies = [
- "configstore",
  "dashmap",
  "dotenv",
  "futures",
@@ -364,6 +363,7 @@ dependencies = [
  "redis",
  "runtime",
  "rusty_v8",
+ "stores",
  "structopt",
  "tokio",
  "tracing",
@@ -509,20 +509,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30ed07550be01594c6026cff2a1d7fe9c8f683caa798e12b68694ac9e88286a3"
 dependencies = [
  "cache-padded",
-]
-
-[[package]]
-name = "configstore"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "redis",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror",
- "twilight-model",
 ]
 
 [[package]]
@@ -1989,13 +1975,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "configstore",
  "deno_core",
  "futures",
  "rusty_v8",
  "scriptscheduler",
  "serde",
  "serde_json",
+ "stores",
  "tokio",
  "tracing",
  "tracing-futures",
@@ -2454,6 +2440,24 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "stores"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.13.0",
+ "dashmap",
+ "oauth2",
+ "rand 0.8.4",
+ "redis",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror",
+ "twilight-model",
+]
 
 [[package]]
 name = "string_cache"
@@ -3161,7 +3165,6 @@ name = "tscompiler"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "configstore",
  "swc_common",
  "swc_ecmascript",
 ]
@@ -3378,7 +3381,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "configstore",
  "deno_core",
  "futures",
  "isolatecell",
@@ -3386,6 +3388,7 @@ dependencies = [
  "scriptscheduler",
  "serde",
  "serde_json",
+ "stores",
  "tokio",
  "tracing",
  "tracing-futures",
@@ -3528,6 +3531,7 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "serde_json",
+ "stores",
  "structopt",
  "thiserror",
  "tokio",

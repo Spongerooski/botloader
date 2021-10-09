@@ -11,7 +11,7 @@ use std::task::{Context, Poll};
 use tower::{Layer, Service};
 use tracing::info;
 
-use crate::stores::{Session, SessionStore};
+use stores::web::{Session, SessionStore};
 
 #[derive(Clone)]
 pub struct LoggedInSession {

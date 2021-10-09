@@ -1,4 +1,4 @@
-use configstore::{ConfigStore, CreateScript, Script, ScriptContext};
+use stores::config::{ConfigStore, CreateScript, Script, ScriptContext};
 use tracing::{error, info, instrument};
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Cluster;

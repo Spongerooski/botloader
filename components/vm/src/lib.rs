@@ -1,5 +1,5 @@
-use configstore::ScriptContext;
 use serde::Deserialize;
+use stores::config::ScriptContext;
 
 pub mod error_reporter;
 pub mod moduleloader;
@@ -55,7 +55,7 @@ pub fn gen_script_source_header(script: Option<&ContextScript>) -> String {
     }
 }
 
-pub type ContextScript = (configstore::Script, ScriptContext);
+pub type ContextScript = (stores::config::Script, ScriptContext);
 pub type ContextScriptId = (u64, ScriptContext);
 
 trait ModuleNamer {

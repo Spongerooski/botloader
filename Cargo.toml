@@ -3,6 +3,7 @@ members = [
     "components/vmthread",
     "components/vm",
     "components/isolatecell",
+    "components/stores",
     "cmd/rs2ts-cli",
     "cmd/bot",
     "cmd/webapi",

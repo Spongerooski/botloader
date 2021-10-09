@@ -1,5 +1,5 @@
 [package]
-name = "configstore"
+name = "stores"
 version = "0.1.0"
 edition = "2018"
 
@@ -14,3 +14,7 @@ serde_json = "1.0"
 async-trait = "0.1"
 redis = { version= "0.20.1", features = ["tokio-comp", "connection-manager"]}
 sqlx = {version = "0.5", features = ["runtime-async-std-rustls", "postgres", "chrono", "macros"]}
+oauth2 = "4.1"
+dashmap = "4.0"
+rand = "0.8"
+base64 = "0.13"

@@ -4,7 +4,7 @@ use axum::{handler::get, AddExtensionLayer, Router};
 use config::RunConfig;
 use oauth2::basic::BasicClient;
 use routes::auth::AuthHandlers;
-use stores::{InMemoryCsrfStore, InMemorySessionStore};
+use stores::inmemory::web::{InMemoryCsrfStore, InMemorySessionStore};
 use structopt::StructOpt;
 use tower::ServiceBuilder;
 use tracing::info;
@@ -13,7 +13,6 @@ mod config;
 mod errors;
 mod middlewares;
 mod routes;
-mod stores;
 
 use errors::ApiErrorResponse;
 use tower_http::trace::TraceLayer;

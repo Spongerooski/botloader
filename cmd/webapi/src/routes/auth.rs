@@ -8,12 +8,9 @@ use axum::{
 use oauth2::{reqwest::async_http_client, AuthorizationCode, Scope, TokenResponse};
 use tracing::{error, info, instrument};
 
-use crate::{
-    errors::ApiErrorResponse,
-    middlewares::LoggedInSession,
-    stores::{CsrfStore, SessionStore},
-    ApiResult, ConfigData,
-};
+use crate::{errors::ApiErrorResponse, middlewares::LoggedInSession, ApiResult, ConfigData};
+
+use stores::web::{CsrfStore, SessionStore};
 
 pub struct AuthHandlers<CT, ST> {
     session_store: ST,

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use configstore::postgres::Postgres;
-use configstore::ConfigStore;
 use futures::StreamExt;
 use futures_core::Stream;
 use runtime::error_reporter::DiscordErrorReporter;
+use stores::config::ConfigStore;
+use stores::postgres::Postgres;
 use structopt::StructOpt;
 use tracing::info;
 use twilight_cache_inmemory::{InMemoryCache, InMemoryCacheBuilder};

@@ -1,3 +1,10 @@
+CREATE TABLE IF NOT EXISTS joined_guilds (
+    id bigint PRIMARY KEY,
+    name text NOT NULL,
+    icon text NOT NULL,
+    owner_id bigint NOT NULL,
+);
+
 CREATE TABLE IF NOT EXISTS guild_scripts (
     id bigserial PRIMARY KEY,
     guild_id bigint NOT NULL,

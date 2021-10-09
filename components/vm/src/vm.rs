@@ -1,8 +1,6 @@
 use crate::moduleloader::ModuleEntry;
 use crate::moduleloader::ModuleManager;
 use crate::AnyError;
-use configstore::Script;
-use configstore::ScriptContext;
 use deno_core::Extension;
 use deno_core::RuntimeOptions;
 use futures::future::LocalBoxFuture;
@@ -16,6 +14,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::task::Poll;
+use stores::config::{Script, ScriptContext};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tracing::{error, info};
 use twilight_model::id::GuildId;

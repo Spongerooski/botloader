@@ -23,7 +23,11 @@ impl<CT> DiscordErrorReporter<CT> {
 }
 
 #[async_trait]
-impl<CT: configstore::ConfigStore + Sync + Send> ErrorReporter for DiscordErrorReporter<CT> {
+impl<CT> ErrorReporter for DiscordErrorReporter<CT>
+where
+    CT: stores::config::ConfigStore + Sync + Send,
+    CT::Error: 'static,
+{
     async fn report_error(&self, guild_id: GuildId, error: String) -> Result<(), AnyError> {
         let conf = self
             .config_storage

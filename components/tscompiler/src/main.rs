@@ -7,3 +7,4 @@ fn main() {
     let output = compiler::compile_typescript(JSMOD_CORE_UTIL).unwrap();
     println!("{}", output);
 }
+ 

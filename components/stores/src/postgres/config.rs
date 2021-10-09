@@ -1,33 +1,21 @@
+use super::Postgres;
 use async_trait::async_trait;
-use sqlx::{postgres::PgPoolOptions, PgPool};
-use twilight_model::id::{ChannelId, GuildId, RoleId};
+use twilight_model::id::{ChannelId, GuildId, RoleId, UserId};
 
-use crate::{Script, ScriptContext, ScriptLink, StoreError, StoreResult};
+use crate::config::{
+    ConfigStoreError, CreateScript, GuildMetaConfig, JoinedGuild, Script, ScriptContext,
+    ScriptLink, StoreResult,
+};
 
-#[derive(Clone)]
-pub struct Postgres {
-    pool: PgPool,
-}
-
-impl Postgres {
-    pub fn new_with_pool(pool: PgPool) -> Self {
-        Self { pool }
-    }
-
-    pub async fn new_with_url(url: &str) -> Result<Self, anyhow::Error> {
-        let pool = PgPoolOptions::new().max_connections(5).connect(url).await?;
-
-        Ok(Self { pool })
-    }
-}
+// impl From<sqlx::
 
 impl Postgres {
     async fn get_db_script_by_name(
         &self,
         guild_id: GuildId,
         script_name: &str,
-    ) -> StoreResult<DbScript> {
-        Ok(sqlx::query_as!(
+    ) -> StoreResult<DbScript, sqlx::Error> {
+        match sqlx::query_as!(
             DbScript,
             "SELECT id, guild_id, original_source, compiled_js, name FROM guild_scripts WHERE \
              guild_id = $1 AND name = $2;",
@@ -35,10 +23,19 @@ impl Postgres {
             script_name
         )
         .fetch_one(&self.pool)
-        .await?)
+        .await
+        {
+            Ok(s) => Ok(s),
+            Err(sqlx::Error::RowNotFound) => Err(ConfigStoreError::ScriptNotFound),
+            Err(e) => Err(e.into()),
+        }
     }
 
-    async fn get_db_script_by_id(&self, guild_id: GuildId, id: i64) -> StoreResult<DbScript> {
+    async fn get_db_script_by_id(
+        &self,
+        guild_id: GuildId,
+        id: i64,
+    ) -> StoreResult<DbScript, sqlx::Error> {
         Ok(sqlx::query_as!(
             DbScript,
             "SELECT id, guild_id, name, original_source, compiled_js FROM guild_scripts WHERE \
@@ -52,12 +49,14 @@ impl Postgres {
 }
 
 #[async_trait]
-impl crate::ConfigStore for Postgres {
+impl crate::config::ConfigStore for Postgres {
+    type Error = sqlx::Error;
+
     async fn get_script(
         &self,
         guild_id: GuildId,
         script_name: String,
-    ) -> crate::StoreResult<crate::Script> {
+    ) -> StoreResult<Script, Self::Error> {
         Ok(self
             .get_db_script_by_name(guild_id, &script_name)
             .await?
@@ -67,8 +66,8 @@ impl crate::ConfigStore for Postgres {
     async fn create_script(
         &self,
         guild_id: GuildId,
-        script: crate::CreateScript,
-    ) -> StoreResult<Script> {
+        script: CreateScript,
+    ) -> StoreResult<Script, Self::Error> {
         let res = sqlx::query_as!(
             DbScript,
             "
@@ -87,7 +86,11 @@ impl crate::ConfigStore for Postgres {
         Ok(res.into())
     }
 
-    async fn update_script(&self, guild_id: GuildId, script: Script) -> StoreResult<Script> {
+    async fn update_script(
+        &self,
+        guild_id: GuildId,
+        script: Script,
+    ) -> StoreResult<Script, Self::Error> {
         let res = sqlx::query_as!(
             DbScript,
             "
@@ -108,7 +111,11 @@ impl crate::ConfigStore for Postgres {
         Ok(res.into())
     }
 
-    async fn del_script(&self, guild_id: GuildId, script_name: String) -> crate::StoreResult<()> {
+    async fn del_script(
+        &self,
+        guild_id: GuildId,
+        script_name: String,
+    ) -> StoreResult<(), Self::Error> {
         let res = sqlx::query!(
             "DELETE FROM guild_scripts WHERE guild_id = $1 AND name = $2;",
             guild_id.0 as i64,
@@ -120,11 +127,11 @@ impl crate::ConfigStore for Postgres {
         if res.rows_affected() > 0 {
             Ok(())
         } else {
-            Err(StoreError::ScriptNotFound)
+            Err(ConfigStoreError::ScriptNotFound)
         }
     }
 
-    async fn list_scripts(&self, guild_id: GuildId) -> crate::StoreResult<Vec<crate::Script>> {
+    async fn list_scripts(&self, guild_id: GuildId) -> StoreResult<Vec<Script>, Self::Error> {
         let res = sqlx::query_as!(
             DbScript,
             "SELECT id, guild_id, original_source, compiled_js, name FROM guild_scripts WHERE \
@@ -141,8 +148,8 @@ impl crate::ConfigStore for Postgres {
         &self,
         guild_id: GuildId,
         script_name: String,
-        ctx: crate::ScriptContext,
-    ) -> crate::StoreResult<crate::ScriptLink> {
+        ctx: ScriptContext,
+    ) -> StoreResult<ScriptLink, Self::Error> {
         let script = self.get_db_script_by_name(guild_id, &script_name).await?;
 
         let (ctx_typ, ctx_id) = ContextPair::from(ctx);
@@ -169,8 +176,8 @@ impl crate::ConfigStore for Postgres {
         &self,
         guild_id: GuildId,
         script_name: String,
-        ctx: crate::ScriptContext,
-    ) -> crate::StoreResult<()> {
+        ctx: ScriptContext,
+    ) -> StoreResult<(), Self::Error> {
         let script = self.get_db_script_by_name(guild_id, &script_name).await?;
 
         let (ctx_typ, ctx_id) = ContextPair::from(ctx);
@@ -189,7 +196,7 @@ impl crate::ConfigStore for Postgres {
         if res.rows_affected() > 0 {
             Ok(())
         } else {
-            Err(StoreError::LinkNotFound)
+            Err(ConfigStoreError::LinkNotFound)
         }
     }
 
@@ -197,7 +204,7 @@ impl crate::ConfigStore for Postgres {
         &self,
         guild_id: GuildId,
         script_name: String,
-    ) -> crate::StoreResult<u64> {
+    ) -> StoreResult<u64, Self::Error> {
         let script = self.get_db_script_by_name(guild_id, &script_name).await?;
 
         let res = sqlx::query!(
@@ -215,7 +222,7 @@ impl crate::ConfigStore for Postgres {
         &self,
         guild_id: GuildId,
         script_name: String,
-    ) -> crate::StoreResult<Vec<crate::ScriptLink>> {
+    ) -> StoreResult<Vec<ScriptLink>, Self::Error> {
         let script = self.get_db_script_by_name(guild_id, &script_name).await?;
 
         let res = sqlx::query_as!(
@@ -237,7 +244,7 @@ impl crate::ConfigStore for Postgres {
             .collect())
     }
 
-    async fn list_links(&self, guild_id: GuildId) -> crate::StoreResult<Vec<crate::ScriptLink>> {
+    async fn list_links(&self, guild_id: GuildId) -> StoreResult<Vec<ScriptLink>, Self::Error> {
         let res = sqlx::query_as!(
             DbLinkWithScript,
             "SELECT script_links.id, script_links.guild_id, script_links.script_id, \
@@ -264,8 +271,8 @@ impl crate::ConfigStore for Postgres {
     async fn list_context_scripts(
         &self,
         guild_id: GuildId,
-        ctx: crate::ScriptContext,
-    ) -> crate::StoreResult<Vec<crate::Script>> {
+        ctx: ScriptContext,
+    ) -> StoreResult<Vec<Script>, Self::Error> {
         let (ctx_type, ctx_id) = ContextPair::from(ctx);
 
         let links = sqlx::query_as!(
@@ -292,7 +299,7 @@ impl crate::ConfigStore for Postgres {
     async fn get_guild_meta_config(
         &self,
         guild_id: GuildId,
-    ) -> StoreResult<crate::GuildMetaConfig> {
+    ) -> StoreResult<Option<GuildMetaConfig>, Self::Error> {
         match sqlx::query_as!(
             DbGuildMetaConfig,
             "SELECT guild_id, error_channel_id FROM guild_meta_configs
@@ -302,16 +309,16 @@ impl crate::ConfigStore for Postgres {
         .fetch_one(&self.pool)
         .await
         {
-            Ok(conf) => Ok(conf.into()),
-            Err(sqlx::Error::RowNotFound) => Err(StoreError::GuildConfigNotFound),
+            Ok(conf) => Ok(Some(conf.into())),
+            Err(sqlx::Error::RowNotFound) => Ok(None),
             Err(e) => Err(e.into()),
         }
     }
 
     async fn update_guild_meta_config(
         &self,
-        conf: &crate::GuildMetaConfig,
-    ) -> StoreResult<crate::GuildMetaConfig> {
+        conf: &GuildMetaConfig,
+    ) -> StoreResult<GuildMetaConfig, Self::Error> {
         let db_conf = sqlx::query_as!(
             DbGuildMetaConfig,
             "INSERT INTO guild_meta_configs (guild_id, error_channel_id) VALUES ($1, $2)
@@ -327,6 +334,53 @@ impl crate::ConfigStore for Postgres {
         .await?;
 
         Ok(db_conf.into())
+    }
+
+    async fn add_update_joined_guild(
+        &self,
+        guild: JoinedGuild,
+    ) -> StoreResult<JoinedGuild, Self::Error> {
+        let db_guild = sqlx::query_as!(
+            DbJoinedGuild,
+            "INSERT INTO joined_guilds (id, name, icon, owner_id) VALUES ($1, $2, $3, $4)
+            ON CONFLICT (id) DO UPDATE SET 
+            name = $2, icon = $3, owner_id = $4
+            RETURNING id, name, icon, owner_id;",
+            guild.id.0 as i64,
+            &guild.name,
+            &guild.icon,
+            guild.owner_id.0 as i64,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(db_guild.into())
+    }
+
+    async fn remove_joined_guild(&self, guild_id: GuildId) -> StoreResult<bool, Self::Error> {
+        let res = sqlx::query!(
+            "DELETE FROM joined_guilds WHERE id = $1;",
+            guild_id.0 as i64,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(res.rows_affected() > 0)
+    }
+
+    async fn get_joined_guilds(
+        &self,
+        ids: &[GuildId],
+    ) -> StoreResult<Vec<JoinedGuild>, Self::Error> {
+        let guilds = sqlx::query_as!(
+            DbJoinedGuild,
+            "SELECT id, name, icon, owner_id FROM joined_guilds WHERE id = ANY ($1)",
+            &ids.into_iter().map(|e| e.0 as i64).collect::<Vec<_>>(),
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(guilds.into_iter().map(|e| e.into()).collect())
     }
 }
 
@@ -397,7 +451,7 @@ struct DbGuildMetaConfig {
     pub error_channel_id: i64,
 }
 
-impl From<DbGuildMetaConfig> for crate::GuildMetaConfig {
+impl From<DbGuildMetaConfig> for GuildMetaConfig {
     fn from(mc: DbGuildMetaConfig) -> Self {
         Self {
             guild_id: GuildId(mc.guild_id as u64),
@@ -406,6 +460,24 @@ impl From<DbGuildMetaConfig> for crate::GuildMetaConfig {
             } else {
                 None
             },
+        }
+    }
+}
+
+pub struct DbJoinedGuild {
+    pub id: i64,
+    pub name: String,
+    pub icon: String,
+    pub owner_id: i64,
+}
+
+impl From<DbJoinedGuild> for JoinedGuild {
+    fn from(g: DbJoinedGuild) -> Self {
+        Self {
+            id: GuildId(g.id as u64),
+            name: g.name,
+            icon: g.icon,
+            owner_id: UserId(g.owner_id as u64),
         }
     }
 }

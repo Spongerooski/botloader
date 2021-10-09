@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use configstore::{ConfigStore, Script, ScriptContext};
+use stores::config::{ConfigStore, Script, ScriptContext};
 
 use runtime::RuntimeContext;
 use tokio::sync::{
