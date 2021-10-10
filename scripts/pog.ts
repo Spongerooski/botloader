@@ -1,8 +1,14 @@
-import { Bot, console, CreateMessage, Timers } from 'index';
+import { Bot, console, CreateMessage, Timers } from 'botloader';
+
+// import { bot } 
 
 Bot.registerMeta({
     name: "pog",
     context: "Guild",
+    timers: [
+        new Timers.IntervalTimerCron("epic", "aaa"),
+        new Timers.IntervalTimerSeconds("epic", 123),
+    ]
 })
 
 let counter = 1;
@@ -18,5 +24,3 @@ Bot.on("MESSAGE_CREATE", async evt => {
         })
     }
 })
-
-Timers.startInterval("", 100, () => { console.log("Gaming"); });

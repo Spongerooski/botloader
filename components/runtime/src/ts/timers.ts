@@ -62,4 +62,25 @@ export namespace Timers {
      * Note that this will also delete the state for a persistent timer.
      */
     export async function stopInterval(id: string) { }
+
+
+    export class IntervalTimerSeconds {
+        name: string;
+        interval_seconds?: number;
+
+        constructor(name: string, interval_seconds: number) {
+            this.name = name;
+            this.interval_seconds = interval_seconds;
+        }
+    }
+
+    export class IntervalTimerCron {
+        name: string;
+        interval_cron?: string;
+
+        constructor(name: string, interval_cron: string) {
+            this.name = name;
+            this.interval_cron = interval_cron;
+        }
+    }
 }

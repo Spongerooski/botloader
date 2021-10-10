@@ -1,5 +1,6 @@
 import { Message, MessageDelete, MessageUpdate } from './commonmodels';
 import { console } from './core_util';
+import { Timers } from './timers';
 
 export namespace Bot {
 
@@ -63,7 +64,26 @@ export namespace Bot {
         author?: string,
         version?: string,
         description?: string,
+
+        commands?: Command[],
+        timers?: (Timers.IntervalTimerCron | Timers.IntervalTimerSeconds)[],
     }
+
+    export interface Command { }
+
+    // export interface IntervalTimer {
+    //     name: string,
+    // }
+
+
+    // export interface IntervalTimerSeconds extends IntervalTimer {
+    //     // How many seconds
+    //     seconds: number,
+    // }
+    // export interface IntervalTimerCron extends IntervalTimer {
+    //     cron: string,
+    // }
+
 
     interface DispatchEvent {
         name: string,

@@ -6,7 +6,7 @@
         "preserveConstEnums": true,
         "sourceMap": false,
         "target": "ES2020",
-        "baseUrl": ".",
+        "baseUrl": "../",
         // "typeRoots": [
         //     "../typedecls"
         // ],
@@ -14,8 +14,8 @@
         //     "../typedecls"
         // ],
         "paths": {
-            "index": [
-                "bot/index"
+            "botloader": [
+                "components/runtime/src/ts/index"
             ]
         }
     }

@@ -1,4 +1,4 @@
-import { Bot, console, CreateMessage, Timers } from './bot/index';
+import { Bot, console, CreateMessage, Timers } from 'botloader';
 
 Bot.registerMeta({
     name: "runaway",
