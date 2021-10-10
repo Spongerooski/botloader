@@ -53,7 +53,7 @@ export namespace Bot {
     }
 
     if ((typeof $jackGlobal) !== "undefined") {
-        $jackGlobal.handleDispath = dispatchEvent;
+        $jackGlobal.handleDispatch = dispatchEvent;
     }
 
     export interface ScriptMeta {

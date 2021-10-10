@@ -1,9 +1,9 @@
 (function($window){
     $window.$jackGlobal = {}
 
-    $window.$jackGlobal.handleDispath = function(){};
+    $window.$jackGlobal.handleDispatch = function(){};
 
-    $window.$jackGlobal.disaptchEvent = function(evt){
-        $window.$jackGlobal.handleDispath(evt);
-    };
-})(this);
+    $window.$jackGlobal.dispatchEvent = function(evt){
+        $window.$jackGlobal.handleDispatch(evt);
+    }; 
+})(this); 

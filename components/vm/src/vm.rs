@@ -334,7 +334,7 @@ impl Vm {
     {
         info!("rt {} dispatching event: {}", self.ctx.guild_id, name);
         match self.call_json(
-            "$jackGlobal.disaptchEvent",
+            "$jackGlobal.dispatchEvent",
             &JackRTEvent {
                 name: name.to_string(),
                 data: args,

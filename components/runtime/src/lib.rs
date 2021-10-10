@@ -4,9 +4,8 @@ use twilight_model::id::GuildId;
 use vm::{vm::VmRole, AnyError, JsValue};
 
 mod commonmodels;
-pub mod error_reporter;
-// pub mod runtime;
 pub mod dispatchevents;
+pub mod error_reporter;
 pub mod jsmodules;
 mod sendmessage;
 
