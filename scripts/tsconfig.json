@@ -6,6 +6,8 @@
         "preserveConstEnums": true,
         "sourceMap": false,
         "target": "ES2020",
+        "alwaysStrict": true,
+        "strictNullChecks": true,
         "baseUrl": "../",
         // "typeRoots": [
         //     "../typedecls"

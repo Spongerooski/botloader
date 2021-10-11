@@ -7,6 +7,7 @@
         "sourceMap": false,
         "target": "ES2020",
         "declaration": true,
+        "strictNullChecks": true,
         "emitDeclarationOnly": true,
         "declarationDir": "../../../../scripts/bot",
     }

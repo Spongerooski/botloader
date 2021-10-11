@@ -1,4 +1,4 @@
-import { Bot, console, CreateMessage, Timers } from 'index';
+import { Bot, console, CreateMessage, Timers } from 'botloader';
 
 let a = 0;
 let b = a;

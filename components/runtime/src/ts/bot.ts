@@ -1,3 +1,4 @@
+import { Commands } from './command';
 import { Message, MessageDelete, MessageUpdate } from './commonmodels';
 import { console } from './core_util';
 import { Timers } from './timers';
@@ -20,7 +21,7 @@ export namespace Bot {
         T extends "MESSAGE_DELETE" ? MessageDelete
         : never;
 
-    export function on<T extends EventDataType<U>, U extends EventType>(eventType: U, f: EventListenerFunction<T>) {
+    export function on<U extends EventType>(eventType: U, f: EventListenerFunction<EventDataType<U>>) {
         let listener: EventListener = {
             f: f,
             event: eventType,
@@ -65,11 +66,10 @@ export namespace Bot {
         version?: string,
         description?: string,
 
-        commands?: Command[],
         timers?: (Timers.IntervalTimerCron | Timers.IntervalTimerSeconds)[],
     }
 
-    export interface Command { }
+    // export interface Command { }
 
     // export interface IntervalTimer {
     //     name: string,
