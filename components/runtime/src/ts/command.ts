@@ -16,9 +16,7 @@ export namespace Commands {
 
     type ParsedOptionsMap<T extends OptionsMap> = {
         [Property in keyof T]:
-        T[Property] extends BaseOption<undefined> ? OptionTypeToParsedType<T[Property]> | undefined :
-        T[Property] extends BaseOption<true> ? OptionTypeToParsedType<T[Property]> :
-        OptionTypeToParsedType<T[Property]> | undefined;
+        T[Property] extends BaseOption<false> ? OptionTypeToParsedType<T[Property]> | undefined : OptionTypeToParsedType<T[Property]>;
     }
 
     interface BaseOption<TRequired extends boolean | undefined> {
