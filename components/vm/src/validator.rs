@@ -9,14 +9,13 @@ use url::Url;
 
 use crate::{
     moduleloader::{ModuleEntry, ModuleManager},
-    prepend_script_source_header, AnyError, ContextType, JsValue,
+    prepend_script_source_header, AnyError, JsValue,
 };
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ScriptHeader {
     pub name: String,
-    pub context: ContextType,
 
     #[serde(default)]
     pub author: String,

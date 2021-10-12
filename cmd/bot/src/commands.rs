@@ -1,12 +1,8 @@
-use stores::config::{ConfigStore, CreateScript, Script, ScriptContext};
+use stores::config::{ConfigStore, CreateScript, Script};
 use tracing::{error, info, instrument};
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Cluster;
-use twilight_model::{
-    gateway::payload::MessageCreate,
-    guild::Permissions,
-    id::{ChannelId, RoleId},
-};
+use twilight_model::{gateway::payload::MessageCreate, guild::Permissions, id::RoleId};
 use twilight_util::permission_calculator::PermissionCalculator;
 
 use crate::{vm_manager, BotContext};
@@ -28,10 +24,8 @@ pub enum Command {
     DeleteScript(String),
     ListScripts,
 
-    AttachScript(String, ScriptContext),
-    DetachScript(String, ScriptContext),
-    ListScriptAttachments(Option<String>),
-    DetachAllScript(String),
+    EnabledScript(String),
+    DisableScript(String),
 
     StartVM,
     SetErrorChannel(bool),
@@ -122,26 +116,10 @@ fn parse_command(_m: &MessageCreate, split: Vec<String>) -> Result<Option<Comman
                     )?))),
                     "list" => Ok(Some(Command::ListScripts)),
 
-                    "linkchannel" => Ok(Some(Command::AttachScript(
-                        cmd_parse_string_word(&mut iter)?,
-                        ScriptContext::Channel(ChannelId(cmd_parse_uint64(&mut iter)?)),
-                    ))),
-                    "unlinkchannel" => Ok(Some(Command::DetachScript(
-                        cmd_parse_string_word(&mut iter)?,
-                        ScriptContext::Channel(ChannelId(cmd_parse_uint64(&mut iter)?)),
-                    ))),
-                    "linkguild" => Ok(Some(Command::AttachScript(
-                        cmd_parse_string_word(&mut iter)?,
-                        ScriptContext::Guild,
-                    ))),
-                    "unlinkguild" => Ok(Some(Command::DetachScript(
-                        cmd_parse_string_word(&mut iter)?,
-                        ScriptContext::Guild,
-                    ))),
-                    "listlinks" => Ok(Some(Command::ListScriptAttachments(
-                        cmd_parse_string_word(&mut iter).ok(),
-                    ))),
-                    "unlinkall" => Ok(Some(Command::DetachAllScript(cmd_parse_string_word(
+                    "enable" => Ok(Some(Command::EnabledScript(cmd_parse_string_word(
+                        &mut iter,
+                    )?))),
+                    "disable" => Ok(Some(Command::DisableScript(cmd_parse_string_word(
                         &mut iter,
                     )?))),
                     _ => Ok(None),
@@ -157,6 +135,7 @@ fn parse_command(_m: &MessageCreate, split: Vec<String>) -> Result<Option<Comman
     }
 }
 
+#[allow(dead_code)]
 fn cmd_parse_uint64<T: Iterator<Item = String>>(iter: &mut T) -> Result<u64, String> {
     match iter.next() {
         None => Err("no more args".to_string()),
@@ -289,6 +268,7 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                                 name: header.name.clone(),
                                 original_source: source.clone(),
                                 compiled_js: compiled,
+                                enabled: true,
                             },
                         )
                         .await
@@ -333,73 +313,6 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                 script.name, script.original_source, script.compiled_js
             )))
         }
-        Command::AttachScript(name, context) => {
-            let script = ctx
-                .config_store
-                .get_script(cmd.m.guild_id.unwrap(), name.clone())
-                .await
-                .map_err(|e| format!("unknown script: {}", e))?;
-
-            ctx.config_store
-                .link_script(cmd.m.guild_id.unwrap(), name.clone(), context.clone())
-                .await
-                .map_err(|e| format!("failed linking script: {}", e))?;
-
-            ctx.vm_manager
-                .attach_script(cmd.m.guild_id.unwrap(), script, context.clone())
-                .await
-                .unwrap();
-
-            Ok(Some(format!(
-                "Script {} has been attatched to {:?}!",
-                name, context
-            )))
-        }
-        Command::DetachScript(name, context) => {
-            let script = ctx
-                .config_store
-                .get_script(cmd.m.guild_id.unwrap(), name.clone())
-                .await
-                .map_err(|e| format!("unknown script: {}", e))?;
-
-            ctx.config_store
-                .unlink_script(cmd.m.guild_id.unwrap(), name.clone(), context.clone())
-                .await
-                .map_err(|e| format!("failed adding script: {}", e))?;
-
-            ctx.vm_manager
-                .detach_scripts(cmd.m.guild_id.unwrap(), vec![(script.id, context.clone())])
-                .await
-                .unwrap();
-
-            Ok(Some(format!(
-                "Script {} has been detatched from {:?}!",
-                name, context
-            )))
-        }
-        Command::DetachAllScript(name) => {
-            let script = ctx
-                .config_store
-                .get_script(cmd.m.guild_id.unwrap(), name.clone())
-                .await
-                .map_err(|e| format!("unknown script: {}", e))?;
-
-            let all = ctx
-                .config_store
-                .unlink_all_script(cmd.m.guild_id.unwrap(), name.clone())
-                .await
-                .map_err(|e| format!("failed adding script: {}", e))?;
-
-            ctx.vm_manager
-                .detach_all_script(cmd.m.guild_id.unwrap(), script.id)
-                .await
-                .unwrap();
-
-            Ok(Some(format!(
-                "Script {} has been detached from {} contexts!",
-                name, all
-            )))
-        }
         Command::ListScripts => {
             let scripts = ctx
                 .config_store
@@ -407,18 +320,9 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                 .await
                 .map_err(|e| format!("failed fetching scripts: {}", e))?;
 
-            let links = ctx
-                .config_store
-                .list_links(cmd.m.guild_id.unwrap())
-                .await
-                .map_err(|e| format!("failed fetching links: {}", e))?;
-
             let summary = scripts
                 .into_iter()
-                .map(|e| (links.iter().filter(|l| l.script_name == e.name).count(), e))
-                .map(|(num_links, script)| {
-                    format!("{} linked to {} contexts\n", script.name, num_links)
-                })
+                .map(|script| format!("{}: enabled: {}\n", script.name, script.enabled))
                 .collect::<String>();
 
             Ok(Some(format!(
@@ -426,28 +330,55 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                 summary
             )))
         }
-        Command::ListScriptAttachments(_) => {
-            // let _scripts = ctx
-            //     .config_store
-            //     .list_scripts(cmd.m.guild_id.unwrap())
-            //     .await
-            //     .map_err(|e| format!("failed fetching scripts: {}", e))?;
-
-            let links = ctx
+        Command::EnabledScript(name) => {
+            let mut script = ctx
                 .config_store
-                .list_links(cmd.m.guild_id.unwrap())
+                .get_script(cmd.m.guild_id.unwrap(), name.clone())
                 .await
-                .map_err(|e| format!("failed fetching links: {}", e))?;
+                .map_err(|e| format!("unknown script: {}", e))?;
 
-            let summary = links
-                .into_iter()
-                .map(|l| format!("script {} linked to {:?}\n", l.script_name, l.context))
-                .collect::<String>();
+            if script.enabled {
+                Ok(Some("Script already enabled".to_string()))
+            } else {
+                script.enabled = true;
+                let script = ctx
+                    .config_store
+                    .update_script(cmd.m.guild_id.unwrap(), script)
+                    .await
+                    .map_err(|e| format!("failed updating script :( {}", e))?;
 
-            Ok(Some(format!(
-                "Script links on this guild: ```\n{}\n```",
-                summary
-            )))
+                ctx.vm_manager
+                    .load_script(cmd.m.guild_id.unwrap(), script)
+                    .await
+                    .ok();
+
+                Ok(Some("Enabled script".to_string()))
+            }
+        }
+        Command::DisableScript(name) => {
+            let mut script = ctx
+                .config_store
+                .get_script(cmd.m.guild_id.unwrap(), name.clone())
+                .await
+                .map_err(|e| format!("unknown script: {}", e))?;
+
+            if !script.enabled {
+                Ok(Some("Script already disabled".to_string()))
+            } else {
+                script.enabled = false;
+                let script = ctx
+                    .config_store
+                    .update_script(cmd.m.guild_id.unwrap(), script)
+                    .await
+                    .map_err(|e| format!("failed updating script :( {}", e))?;
+
+                ctx.vm_manager
+                    .unload_scripts(cmd.m.guild_id.unwrap(), vec![script])
+                    .await
+                    .ok();
+
+                Ok(Some("Enabled script".to_string()))
+            }
         }
         Command::StartVM => {
             ctx.vm_manager
@@ -457,8 +388,8 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
 
             Ok(Some(
                 "Restarting your guild's vm... (note that if it keeps stopping, there might be a \
-                 runaway script that contains something like a infinite loop, you should find \
-                 and remove the culprit)"
+                 runaway script that contains something like a infinite loop, you should find and \
+                 remove the culprit)"
                     .to_string(),
             ))
         }

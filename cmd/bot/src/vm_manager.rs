@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use stores::config::{ConfigStore, Script, ScriptContext};
+use stores::config::{ConfigStore, Script};
 
 use runtime::RuntimeContext;
 use tokio::sync::{
@@ -13,7 +13,6 @@ use twilight_model::id::GuildId;
 use vm::{
     error_reporter::ErrorReporter,
     vm::{CreateRt, GuildVmEvent, Vm, VmCommand, VmContext, VmEvent, VmRole},
-    ContextScriptId,
 };
 use vmthread::{VmThreadCommand, VmThreadFuture, VmThreadHandle};
 
@@ -122,25 +121,9 @@ where
             .await
             .unwrap();
 
-        let links = self
-            .inner
-            .shared_state
-            .bot_context
-            .config_store
-            .list_links(guild_id)
-            .await
-            .unwrap();
-
         // start all the runtimes!
         // let to_load = links.into_iter().map(|sl| )
-        let mut to_load = Vec::new();
-        for link in links {
-            let script = scripts.iter().find(|e| e.name == link.script_name);
-            if let Some(script) = script {
-                to_load.push((script.clone(), link.context));
-                // self.launch_rt(script.name.clone(), script.contents.clone(), link.context);
-            }
-        }
+        let to_load = scripts.into_iter().filter(|e| e.enabled).collect();
 
         let (tx, rx) = mpsc::unbounded_channel();
 
@@ -237,27 +220,18 @@ where
             .await
     }
 
-    pub async fn detach_scripts(
+    pub async fn unload_scripts(
         &self,
         guild_id: GuildId,
-        scripts: Vec<ContextScriptId>,
+        scripts: Vec<Script>,
     ) -> Result<(), String> {
         self.send_vm_command(guild_id, VmRole::Main, VmCommand::UnloadScripts(scripts))
             .await
     }
 
-    pub async fn attach_script(
-        &self,
-        guild_id: GuildId,
-        script: Script,
-        script_context: ScriptContext,
-    ) -> Result<(), String> {
-        self.send_vm_command(
-            guild_id,
-            VmRole::Main,
-            VmCommand::LoadScriptContext((script, script_context)),
-        )
-        .await
+    pub async fn load_script(&self, guild_id: GuildId, script: Script) -> Result<(), String> {
+        self.send_vm_command(guild_id, VmRole::Main, VmCommand::LoadScript(script))
+            .await
     }
 
     pub async fn handle_discord_event(&self, evt: Event) {

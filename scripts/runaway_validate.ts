@@ -11,6 +11,5 @@ while (true) {
 
 Bot.registerMeta({
     name: "runaway_validate",
-    context: "Guild",
 })
 

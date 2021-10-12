@@ -4,7 +4,6 @@ import { Bot, Commands, console, CreateMessage, Timers } from 'botloader';
 
 Bot.registerMeta({
     name: "pog",
-    context: "Guild",
     timers: [
         new Timers.IntervalTimerCron("epic", "aaa"),
         new Timers.IntervalTimerSeconds("epic", 123),
@@ -59,7 +58,7 @@ Commands.registerGroup(new Commands.Group("misc", "misc").registerCommand({
 
 let counter = 1;
 
-console.log("Were in script: " + SCRIPT_ID + ", Full:" + SCRIPT_CONTEXT_ID);
+console.log("Were in script: " + SCRIPT_ID);
 
 Bot.on("MESSAGE_CREATE", async evt => {
     if (!evt.author.bot && evt.content === "pog") {

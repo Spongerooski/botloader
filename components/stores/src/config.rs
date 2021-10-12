@@ -3,7 +3,7 @@ use std::error::Error;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use twilight_model::id::{ChannelId, GuildId, RoleId, UserId};
+use twilight_model::id::{ChannelId, GuildId, UserId};
 
 #[derive(Debug, Error)]
 pub enum ConfigStoreError<T: std::fmt::Debug + Error + 'static> {
@@ -44,40 +44,6 @@ pub trait ConfigStore: Clone + Sync {
         script_name: String,
     ) -> StoreResult<(), Self::Error>;
     async fn list_scripts(&self, guild_id: GuildId) -> StoreResult<Vec<Script>, Self::Error>;
-
-    async fn link_script(
-        &self,
-        guild_id: GuildId,
-        script_name: String,
-        ctx: ScriptContext,
-    ) -> StoreResult<ScriptLink, Self::Error>;
-
-    async fn unlink_script(
-        &self,
-        guild_id: GuildId,
-        script_name: String,
-        ctx: ScriptContext,
-    ) -> StoreResult<(), Self::Error>;
-
-    async fn unlink_all_script(
-        &self,
-        guild_id: GuildId,
-        script_name: String,
-    ) -> StoreResult<u64, Self::Error>;
-
-    async fn list_script_links(
-        &self,
-        guild_id: GuildId,
-        script_name: String,
-    ) -> StoreResult<Vec<ScriptLink>, Self::Error>;
-
-    async fn list_links(&self, guild_id: GuildId) -> StoreResult<Vec<ScriptLink>, Self::Error>;
-
-    async fn list_context_scripts(
-        &self,
-        guild_id: GuildId,
-        ctx: ScriptContext,
-    ) -> StoreResult<Vec<Script>, Self::Error>;
 
     async fn get_guild_meta_config(
         &self,
@@ -121,6 +87,7 @@ pub struct Script {
     pub name: String,
     pub original_source: String,
     pub compiled_js: String,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,19 +95,7 @@ pub struct CreateScript {
     pub name: String,
     pub original_source: String,
     pub compiled_js: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ScriptLink {
-    pub script_name: String,
-    pub context: ScriptContext,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum ScriptContext {
-    Guild,
-    Channel(ChannelId),
-    Role(RoleId),
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]

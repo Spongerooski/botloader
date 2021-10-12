@@ -14,7 +14,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::task::Poll;
-use stores::config::{Script, ScriptContext};
+use stores::config::Script;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tracing::{error, info};
 use twilight_model::id::GuildId;
@@ -24,19 +24,15 @@ use vmthread::VmInterface;
 
 use crate::error_reporter::ErrorReporter;
 use crate::prepend_script_source_header;
-use crate::ContextScript;
-use crate::ModuleNamer;
-
-pub type ContextScriptId = (u64, ScriptContext);
 
 #[derive(Debug, Clone)]
 pub enum VmCommand {
     DispatchEvent(&'static str, serde_json::Value),
-    LoadScriptContext(ContextScript),
+    LoadScript(Script),
 
     // note that this also reloads the runtime, shutting it down and starting it again
     // we send a message when that has been accomplished
-    UnloadScripts(Vec<ContextScriptId>),
+    UnloadScripts(Vec<Script>),
     UnloadAllScript(u64),
     UpdateScript(Script),
     Terminate,
@@ -69,7 +65,7 @@ pub struct Vm {
     rx: UnboundedReceiver<VmCommand>,
     tx: UnboundedSender<GuildVmEvent>,
 
-    loaded_scripts: Vec<ContextScript>,
+    loaded_scripts: Vec<Script>,
 
     timeout_handle: TimeoutHandle,
     error_reporter: Arc<dyn ErrorReporter>,
@@ -217,16 +213,17 @@ impl Vm {
             VmCommand::Terminate => todo!(),
             VmCommand::Restart => self.reset_sandbox().await,
             VmCommand::DispatchEvent(name, evt) => self.dispatch_event(name, &evt),
-            VmCommand::LoadScriptContext(script) => self.load_script(script).await,
+            VmCommand::LoadScript(script) => self.load_script(script).await,
             VmCommand::UnloadScripts(scripts) => {
-                self.unload_scripts(scripts).await;
+                self.unload_scripts(scripts.into_iter().map(|e| e.id).collect())
+                    .await;
             }
             VmCommand::UnloadAllScript(id) => {
                 let to_unload = self
                     .loaded_scripts
                     .iter()
-                    .filter(|e| e.0.id == id)
-                    .map(|e| (e.0.id, e.1.clone()))
+                    .filter(|e| e.id == id)
+                    .map(|e| (e.id))
                     .collect::<Vec<_>>();
 
                 self.unload_scripts(to_unload).await;
@@ -234,7 +231,7 @@ impl Vm {
 
             VmCommand::UpdateScript(script) => {
                 let mut need_reset = false;
-                for (old, _) in &mut self.loaded_scripts {
+                for old in &mut self.loaded_scripts {
                     if old.id == script.id {
                         *old = script.clone();
                         need_reset = true;
@@ -248,28 +245,13 @@ impl Vm {
         }
     }
 
-    async fn load_script(&mut self, script: ContextScript) {
-        info!("rt {} loading script: {}", self.ctx.guild_id, script.0.id);
-        if self
-            .loaded_scripts
-            .iter()
-            .any(|e| e.0.id == script.0.id && e.1 == script.1)
-        {
-            info!(
-                "rt {} aborted loading script, duplicate.",
-                self.ctx.guild_id
-            );
-            return;
-        }
+    async fn load_script(&mut self, script: Script) {
+        info!("rt {} loading script: {}", self.ctx.guild_id, script.id);
 
-        if self
-            .loaded_scripts
-            .iter()
-            .any(|(sc, ctx)| sc.id == script.0.id && *ctx == script.1)
-        {
+        if self.loaded_scripts.iter().any(|sc| sc.id == script.id) {
             info!(
                 "rt {} loading script: {} was already loaded, skipping",
-                self.ctx.guild_id, script.0.id
+                self.ctx.guild_id, script.id
             );
 
             return;
@@ -279,18 +261,9 @@ impl Vm {
             let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
             let id = rt
                 .load_module(
-                    &Url::parse(
-                        format!(
-                            "file://user/{}/{}/{}.js",
-                            script.0.name,
-                            script.0.id,
-                            script.1.module_name()
-                        )
-                        .as_str(),
-                    )
-                    .unwrap(),
+                    &Url::parse(format!("file://guild/{}.js", script.name,).as_str()).unwrap(),
                     Some(prepend_script_source_header(
-                        &script.0.compiled_js,
+                        &script.compiled_js,
                         Some(&script),
                     )),
                 )
@@ -310,7 +283,7 @@ impl Vm {
         self.loaded_scripts.push(script);
     }
 
-    async fn unload_scripts(&mut self, scripts: Vec<ContextScriptId>) {
+    async fn unload_scripts(&mut self, scripts: Vec<u64>) {
         info!(
             "rt {} unloading scripts: {}",
             self.ctx.guild_id,
@@ -320,7 +293,7 @@ impl Vm {
         let new_scripts = self
             .loaded_scripts
             .drain(..)
-            .filter(|e| scripts.iter().find(|x| e.0.id == x.0 && e.1 == x.1) == None)
+            .filter(|e| scripts.iter().any(|x| e.id == *x))
             .collect::<Vec<_>>();
 
         self.loaded_scripts = new_scripts;
@@ -493,7 +466,7 @@ pub struct CreateRt {
     pub rx: UnboundedReceiver<VmCommand>,
     pub tx: UnboundedSender<GuildVmEvent>,
     pub ctx: VmContext,
-    pub load_scripts: Vec<ContextScript>,
+    pub load_scripts: Vec<Script>,
     pub extension_factory: ExtensionFactory,
     pub extension_modules: Vec<ModuleEntry>,
 }

@@ -60,7 +60,6 @@ export namespace Bot {
 
     export interface ScriptMeta {
         name: string,
-        context: "Channel" | "Guild",
 
         author?: string,
         version?: string,

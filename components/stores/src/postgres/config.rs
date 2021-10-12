@@ -1,10 +1,9 @@
 use super::Postgres;
 use async_trait::async_trait;
-use twilight_model::id::{ChannelId, GuildId, RoleId, UserId};
+use twilight_model::id::{ChannelId, GuildId, UserId};
 
 use crate::config::{
-    ConfigStoreError, CreateScript, GuildMetaConfig, JoinedGuild, Script, ScriptContext,
-    ScriptLink, StoreResult,
+    ConfigStoreError, CreateScript, GuildMetaConfig, JoinedGuild, Script, StoreResult,
 };
 
 // impl From<sqlx::
@@ -17,8 +16,8 @@ impl Postgres {
     ) -> StoreResult<DbScript, sqlx::Error> {
         match sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, original_source, compiled_js, name FROM guild_scripts WHERE \
-             guild_id = $1 AND name = $2;",
+            "SELECT id, guild_id, original_source, compiled_js, name, enabled FROM guild_scripts \
+             WHERE guild_id = $1 AND name = $2;",
             guild_id.0 as i64,
             script_name
         )
@@ -31,21 +30,21 @@ impl Postgres {
         }
     }
 
-    async fn get_db_script_by_id(
-        &self,
-        guild_id: GuildId,
-        id: i64,
-    ) -> StoreResult<DbScript, sqlx::Error> {
-        Ok(sqlx::query_as!(
-            DbScript,
-            "SELECT id, guild_id, name, original_source, compiled_js FROM guild_scripts WHERE \
-             guild_id = $1 AND id = $2;",
-            guild_id.0 as i64,
-            id
-        )
-        .fetch_one(&self.pool)
-        .await?)
-    }
+    // async fn get_db_script_by_id(
+    //     &self,
+    //     guild_id: GuildId,
+    //     id: i64,
+    // ) -> StoreResult<DbScript, sqlx::Error> {
+    //     Ok(sqlx::query_as!(
+    //         DbScript,
+    //         "SELECT id, guild_id, name, original_source, compiled_js, enabled FROM guild_scripts \
+    //          WHERE guild_id = $1 AND id = $2;",
+    //         guild_id.0 as i64,
+    //         id
+    //     )
+    //     .fetch_one(&self.pool)
+    //     .await?)
+    // }
 }
 
 #[async_trait]
@@ -71,14 +70,15 @@ impl crate::config::ConfigStore for Postgres {
         let res = sqlx::query_as!(
             DbScript,
             "
-                INSERT INTO guild_scripts (guild_id, name, original_source, compiled_js) 
-                VALUES ($1, $2, $3, $4)
-                RETURNING id, guild_id, name, original_source, compiled_js;
+                INSERT INTO guild_scripts (guild_id, name, original_source, compiled_js, enabled) 
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id, guild_id, name, original_source, compiled_js, enabled;
             ",
             guild_id.0 as i64,
             script.name,
             script.original_source,
             script.compiled_js,
+            script.enabled,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -96,14 +96,16 @@ impl crate::config::ConfigStore for Postgres {
             "
                 UPDATE guild_scripts SET
                 original_source = $3,
-                compiled_js = $4
+                compiled_js = $4,
+                enabled = $5
                 WHERE guild_id = $1 AND id=$2
-                RETURNING id, name, original_source, compiled_js, guild_id;
+                RETURNING id, name, original_source, compiled_js, guild_id, enabled;
             ",
             guild_id.0 as i64,
             script.id as i64,
             script.original_source,
             script.compiled_js,
+            script.enabled,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -134,166 +136,14 @@ impl crate::config::ConfigStore for Postgres {
     async fn list_scripts(&self, guild_id: GuildId) -> StoreResult<Vec<Script>, Self::Error> {
         let res = sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, original_source, compiled_js, name FROM guild_scripts WHERE \
-             guild_id = $1",
+            "SELECT id, guild_id, original_source, compiled_js, name, enabled FROM guild_scripts \
+             WHERE guild_id = $1",
             guild_id.0 as i64,
         )
         .fetch_all(&self.pool)
         .await?;
 
         Ok(res.into_iter().map(|e| e.into()).collect())
-    }
-
-    async fn link_script(
-        &self,
-        guild_id: GuildId,
-        script_name: String,
-        ctx: ScriptContext,
-    ) -> StoreResult<ScriptLink, Self::Error> {
-        let script = self.get_db_script_by_name(guild_id, &script_name).await?;
-
-        let (ctx_typ, ctx_id) = ContextPair::from(ctx);
-
-        let res = sqlx::query_as!(
-            DbLink,
-            "INSERT INTO script_links (guild_id, script_id, context_type, context_id) 
-            VALUES ($1, $2, $3, $4) RETURNING id, guild_id, script_id, context_type, context_id;",
-            guild_id.0 as i64,
-            script.id,
-            ctx_typ,
-            ctx_id,
-        )
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(ScriptLink {
-            context: (res.context_type, res.context_id).into(),
-            script_name,
-        })
-    }
-
-    async fn unlink_script(
-        &self,
-        guild_id: GuildId,
-        script_name: String,
-        ctx: ScriptContext,
-    ) -> StoreResult<(), Self::Error> {
-        let script = self.get_db_script_by_name(guild_id, &script_name).await?;
-
-        let (ctx_typ, ctx_id) = ContextPair::from(ctx);
-
-        let res = sqlx::query!(
-            "DELETE FROM script_links WHERE guild_id = $1 AND script_id = $2 AND context_type = \
-             $3 AND context_id = $4;",
-            guild_id.0 as i64,
-            script.id,
-            ctx_typ,
-            ctx_id,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        if res.rows_affected() > 0 {
-            Ok(())
-        } else {
-            Err(ConfigStoreError::LinkNotFound)
-        }
-    }
-
-    async fn unlink_all_script(
-        &self,
-        guild_id: GuildId,
-        script_name: String,
-    ) -> StoreResult<u64, Self::Error> {
-        let script = self.get_db_script_by_name(guild_id, &script_name).await?;
-
-        let res = sqlx::query!(
-            "DELETE FROM script_links WHERE guild_id = $1 AND script_id = $2;",
-            guild_id.0 as i64,
-            script.id,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        Ok(res.rows_affected())
-    }
-
-    async fn list_script_links(
-        &self,
-        guild_id: GuildId,
-        script_name: String,
-    ) -> StoreResult<Vec<ScriptLink>, Self::Error> {
-        let script = self.get_db_script_by_name(guild_id, &script_name).await?;
-
-        let res = sqlx::query_as!(
-            DbLink,
-            "SELECT id, guild_id, script_id, context_type, context_id FROM script_links
-        WHERE guild_id = $1 AND script_id = $2;",
-            guild_id.0 as i64,
-            script.id,
-        )
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(res
-            .into_iter()
-            .map(|e| ScriptLink {
-                script_name: script_name.clone(),
-                context: (e.context_type, e.context_id).into(),
-            })
-            .collect())
-    }
-
-    async fn list_links(&self, guild_id: GuildId) -> StoreResult<Vec<ScriptLink>, Self::Error> {
-        let res = sqlx::query_as!(
-            DbLinkWithScript,
-            "SELECT script_links.id, script_links.guild_id, script_links.script_id, \
-             script_links.context_type, script_links.context_id, guild_scripts.name as script_name
-             FROM script_links
-            
-            INNER JOIN guild_scripts ON script_id = guild_scripts.id
-
-        WHERE script_links.guild_id = $1;",
-            guild_id.0 as i64,
-        )
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(res
-            .into_iter()
-            .map(|e| ScriptLink {
-                script_name: e.script_name,
-                context: (e.context_type, e.context_id).into(),
-            })
-            .collect())
-    }
-
-    async fn list_context_scripts(
-        &self,
-        guild_id: GuildId,
-        ctx: ScriptContext,
-    ) -> StoreResult<Vec<Script>, Self::Error> {
-        let (ctx_type, ctx_id) = ContextPair::from(ctx);
-
-        let links = sqlx::query_as!(
-            DbLink,
-            "SELECT id, guild_id, script_id, context_type, context_id FROM script_links
-        WHERE guild_id = $1 AND context_type = $2 AND context_id = $3;",
-            guild_id.0 as i64,
-            ctx_type,
-            ctx_id,
-        )
-        .fetch_all(&self.pool)
-        .await?;
-
-        let mut result = Vec::with_capacity(links.len());
-
-        for link in links {
-            let script = self.get_db_script_by_id(guild_id, link.script_id).await?;
-            result.push(script.into())
-        }
-
-        Ok(result)
     }
 
     async fn get_guild_meta_config(
@@ -391,6 +241,7 @@ struct DbScript {
     original_source: String,
     compiled_js: String,
     name: String,
+    enabled: bool,
 }
 
 impl From<DbScript> for Script {
@@ -400,48 +251,7 @@ impl From<DbScript> for Script {
             name: script.name,
             compiled_js: script.compiled_js,
             original_source: script.original_source,
-        }
-    }
-}
-
-#[allow(dead_code)]
-struct DbLink {
-    id: i64,
-    guild_id: i64,
-    script_id: i64,
-    context_type: i16,
-    context_id: i64,
-}
-
-#[allow(dead_code)]
-struct DbLinkWithScript {
-    id: i64,
-    guild_id: i64,
-    script_id: i64,
-    context_type: i16,
-    context_id: i64,
-    script_name: String,
-}
-
-type ContextPair = (i16, i64);
-
-impl From<ScriptContext> for ContextPair {
-    fn from(sc: ScriptContext) -> Self {
-        match sc {
-            ScriptContext::Guild => (1, 0),
-            ScriptContext::Channel(cid) => (2, cid.0 as i64),
-            ScriptContext::Role(rid) => (3, rid.0 as i64),
-        }
-    }
-}
-
-impl From<ContextPair> for ScriptContext {
-    fn from((typ, id): ContextPair) -> Self {
-        match typ {
-            1 => Self::Guild,
-            2 => Self::Channel(ChannelId(id as u64)),
-            3 => Self::Role(RoleId(id as u64)),
-            _ => panic!("unknown script context type"),
+            enabled: script.enabled,
         }
     }
 }

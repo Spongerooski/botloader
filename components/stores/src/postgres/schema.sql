@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS joined_guilds (
     id bigint PRIMARY KEY,
     name text NOT NULL,
     icon text NOT NULL,
-    owner_id bigint NOT NULL,
+    owner_id bigint NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS guild_scripts (
@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS guild_scripts (
     name text NOT NULL,
     original_source text NOT NULL,
     compiled_js text NOT NULL,
+    enabled boolean NOT NULL,
     UNIQUE (guild_id, name)
 );
 
