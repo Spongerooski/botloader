@@ -1,4 +1,3 @@
-use oauth2::TokenResponse;
 use twilight_http::Client;
 
 use axum::{
@@ -21,10 +20,7 @@ pub struct LoggedInSession {
 
 impl LoggedInSession {
     pub fn new(raw: Session) -> Self {
-        let client = twilight_http::Client::new(format!(
-            "Bearer {}",
-            raw.discord_oauth2_token.access_token().secret()
-        ));
+        let client = twilight_http::Client::new(format!("Bearer {}", raw.oauth_token.access_token));
 
         Self {
             discord_client: client,
@@ -92,7 +88,9 @@ where
                         info!("we are logged in!");
                         let extensions = req.extensions_mut();
 
-                        _span = Some(tracing::debug_span!("session", user_id=%session.user.id));
+                        _span = Some(
+                            tracing::debug_span!("session", user_id=%session.oauth_token.user.id),
+                        );
                         _span_guard = Some(_span.as_ref().unwrap().enter());
 
                         let logged_in_session = LoggedInSession::new(session);

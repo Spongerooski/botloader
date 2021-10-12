@@ -10,7 +10,7 @@ use tracing::{error, info, instrument};
 
 use crate::{errors::ApiErrorResponse, middlewares::LoggedInSession, ApiResult, ConfigData};
 
-use stores::web::{CsrfStore, SessionStore};
+use stores::web::{CsrfStore, DiscordOauthToken, SessionStore};
 
 pub struct AuthHandlers<CT, ST> {
     session_store: ST,
@@ -115,7 +115,10 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
 
         let session = auth_handler
             .session_store
-            .create_session(user, token_result)
+            .set_oauth_create_session(
+                DiscordOauthToken::new(user, token_result),
+                stores::web::SessionType::User,
+            )
             .await
             .map_err(|err| {
                 error!(%err, "failed creating user session");
@@ -152,7 +155,7 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
         <html>
         <body>Logout successful! {}</body>
         </html>",
-            session.raw.user.name
+            session.raw.oauth_token.user.name
         )))
     }
 }
