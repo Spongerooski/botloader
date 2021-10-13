@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS guild_meta_configs (
 
 CREATE TABLE IF NOT EXISTS discord_oauth_tokens (
     user_id bigint PRIMARY KEY,
+    discriminator smallint NOT NULL,
+    username text NOT NULL,
+    avatar text NOT NULL,
     discord_bearer_token text NOT NULL,
     discord_refresh_token text NOT NULL,
     discord_token_expires_at timestamp with time zone NOT NULL
