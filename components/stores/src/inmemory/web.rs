@@ -3,7 +3,7 @@ use std::{convert::Infallible, sync::Arc};
 use async_trait::async_trait;
 use dashmap::{mapref::entry::Entry, DashMap};
 use oauth2::CsrfToken;
-use twilight_model::id::UserId;
+use twilight_model::{id::UserId, user::CurrentUser};
 
 use crate::web::{gen_token, CsrfStore, DiscordOauthToken, Session, SessionType};
 
@@ -14,7 +14,7 @@ pub struct InMemorySessionStore {
 }
 pub struct BareSession {
     pub token: String,
-    pub user_id: UserId,
+    pub user: CurrentUser,
     pub kind: SessionType,
 }
 
@@ -32,7 +32,7 @@ impl crate::web::SessionStore for InMemorySessionStore {
         &self,
         oauth_token: DiscordOauthToken,
     ) -> Result<DiscordOauthToken, Self::Error> {
-        let user_id = oauth_token.user.id;
+        let user_id = oauth_token.user_id;
         self.tokens.insert(user_id, oauth_token.clone());
         Ok(oauth_token)
     }
@@ -40,44 +40,56 @@ impl crate::web::SessionStore for InMemorySessionStore {
     async fn set_oauth_create_session(
         &self,
         oauth_token: DiscordOauthToken,
+        user: CurrentUser,
         kind: SessionType,
     ) -> Result<Session, Self::Error> {
-        let user_id = oauth_token.user.id;
         self.set_user_oatuh_token(oauth_token).await?;
-        self.create_session(user_id, kind).await
+        self.create_session(user, kind).await
     }
 
     async fn create_session(
         &self,
-        user_id: UserId,
+        user: CurrentUser,
         kind: SessionType,
     ) -> Result<Session, Self::Error> {
-        let oauth_token = match self.tokens.get(&user_id) {
+        let oauth_token = match self.tokens.get(&user.id) {
             Some(t) => t,
             None => return Err(Error::OauthTokenNotFound),
         };
 
         loop {
             let token = gen_token();
-            let session = Session {
-                oauth_token: oauth_token.clone(),
-                token: token.clone(),
-                kind,
-            };
-            let bare_session = BareSession {
-                token: token.clone(),
-                user_id,
-                kind,
-            };
 
             match self.sessions.entry(token.clone()) {
                 Entry::Occupied(_) => continue,
                 Entry::Vacant(e) => {
+                    let bare_session = BareSession {
+                        token: token.clone(),
+                        user: user.clone(),
+                        kind,
+                    };
+
+                    let session = Session {
+                        oauth_token: oauth_token.clone(),
+                        token,
+                        kind,
+                        user,
+                    };
+
                     e.insert(bare_session);
                     return Ok(session);
                 }
             }
         }
+    }
+
+    async fn get_oauth_token(&self, user_id: UserId) -> Result<DiscordOauthToken, Self::Error> {
+        let token = match self.tokens.get(&user_id) {
+            Some(s) => s,
+            None => return Err(Error::OauthTokenNotFound),
+        };
+
+        Ok(token.clone())
     }
 
     async fn get_session(&self, token: &str) -> Result<Option<Session>, Self::Error> {
@@ -86,7 +98,7 @@ impl crate::web::SessionStore for InMemorySessionStore {
             None => return Ok(None),
         };
 
-        let token = match self.tokens.get(&bare_session.user_id) {
+        let token = match self.tokens.get(&bare_session.user.id) {
             Some(s) => s,
             None => return Err(Error::OauthTokenNotFound),
         };
@@ -95,6 +107,7 @@ impl crate::web::SessionStore for InMemorySessionStore {
             oauth_token: token.clone(),
             token: bare_session.token.clone(),
             kind: bare_session.kind,
+            user: bare_session.user.clone(),
         }))
     }
 
@@ -107,11 +120,12 @@ impl crate::web::SessionStore for InMemorySessionStore {
         Ok(self
             .sessions
             .iter()
-            .filter(|e| e.user_id == user_id)
+            .filter(|e| e.user.id == user_id)
             .map(|e| Session {
                 oauth_token: token.clone(),
                 token: e.token.clone(),
                 kind: e.kind,
+                user: e.user.clone(),
             })
             .collect())
     }
@@ -121,7 +135,7 @@ impl crate::web::SessionStore for InMemorySessionStore {
     }
 
     async fn del_all_sessions(&self, user_id: UserId) -> Result<(), Self::Error> {
-        self.sessions.retain(|_, v| v.user_id != user_id);
+        self.sessions.retain(|_, v| v.user.id != user_id);
         Ok(())
     }
 }

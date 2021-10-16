@@ -23,26 +23,16 @@ impl crate::web::SessionStore for Postgres {
     ) -> Result<DiscordOauthToken, Self::Error> {
         Ok(sqlx::query_as!(
             DbOauthToken,
-            "INSERT INTO discord_oauth_tokens (user_id, discriminator, username, avatar, \
-             discord_bearer_token, discord_refresh_token, discord_token_expires_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "INSERT INTO discord_oauth_tokens (user_id, discord_bearer_token, \
+             discord_refresh_token, discord_token_expires_at)
+            VALUES ($1, $2, $3, $4)
             ON CONFLICT (user_id) DO UPDATE SET 
-            discriminator = $2,
-            username = $3,
-            avatar = $4,
-            discord_bearer_token = $5,
-            discord_refresh_token = $6,
-            discord_token_expires_at = $7
-            RETURNING user_id, discriminator, username, avatar, discord_bearer_token, \
-             discord_refresh_token, discord_token_expires_at;",
-            oauth2_token.user.id.0 as i64,
-            oauth2_token
-                .user
-                .discriminator
-                .parse::<i16>()
-                .unwrap_or_default(),
-            oauth2_token.user.name,
-            oauth2_token.user.avatar,
+            discord_bearer_token = $2,
+            discord_refresh_token = $3,
+            discord_token_expires_at = $4
+            RETURNING user_id, discord_bearer_token, discord_refresh_token, \
+             discord_token_expires_at;",
+            oauth2_token.user_id.0 as i64,
             oauth2_token.access_token,
             oauth2_token.refresh_token,
             oauth2_token.token_expires,
@@ -55,23 +45,23 @@ impl crate::web::SessionStore for Postgres {
     async fn set_oauth_create_session(
         &self,
         oauth2_token: DiscordOauthToken,
+        user: CurrentUser,
         kind: SessionType,
     ) -> Result<Session, Self::Error> {
-        let oauth_token = self.set_user_oatuh_token(oauth2_token).await?;
-        Ok(self.create_session(oauth_token.user.id, kind).await?)
+        self.set_user_oatuh_token(oauth2_token).await?;
+        Ok(self.create_session(user, kind).await?)
     }
 
     async fn create_session(
         &self,
-        user_id: UserId,
+        user: CurrentUser,
         kind: SessionType,
     ) -> Result<Session, Self::Error> {
         let oauth_token = sqlx::query_as!(
             DbOauthToken,
-            "SELECT user_id, discriminator, username, avatar, discord_bearer_token, \
-             discord_refresh_token, discord_token_expires_at
+            "SELECT user_id, discord_bearer_token, discord_refresh_token, discord_token_expires_at
             FROM discord_oauth_tokens WHERE user_id = $1",
-            user_id.0 as i64,
+            user.id.0 as i64,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -80,11 +70,15 @@ impl crate::web::SessionStore for Postgres {
 
         sqlx::query_as!(
             DbSession,
-            "INSERT INTO web_sessions (token, kind, user_id) VALUES ($1, $2, $3)
-            RETURNING token, kind, user_id;",
+            "INSERT INTO web_sessions (token, kind, user_id, discriminator, username, avatar) \
+             VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING token, kind, user_id, discriminator, username, avatar;",
             &token,
             i16::from(kind),
-            user_id.0 as i64,
+            user.id.0 as i64,
+            user.discriminator.parse::<i16>().unwrap_or_default(),
+            user.name,
+            user.avatar,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -93,13 +87,27 @@ impl crate::web::SessionStore for Postgres {
             oauth_token: oauth_token.into(),
             token,
             kind,
+            user,
         })
+    }
+
+    async fn get_oauth_token(&self, user_id: UserId) -> Result<DiscordOauthToken, Self::Error> {
+        Ok(sqlx::query_as!(
+            DbOauthToken,
+            "SELECT user_id, discord_bearer_token, discord_refresh_token, discord_token_expires_at
+            FROM discord_oauth_tokens WHERE user_id = $1",
+            user_id.0 as i64,
+        )
+        .fetch_one(&self.pool)
+        .await?
+        .into())
     }
 
     async fn get_session(&self, token: &str) -> Result<Option<Session>, Self::Error> {
         let session = sqlx::query_as!(
             DbSession,
-            "SELECT token, kind, user_id FROM web_sessions WHERE token = $1;",
+            "SELECT token, kind, user_id, discriminator, username, avatar FROM web_sessions WHERE \
+             token = $1;",
             token
         )
         .fetch_one(&self.pool)
@@ -107,8 +115,7 @@ impl crate::web::SessionStore for Postgres {
 
         let oauth_token = sqlx::query_as!(
             DbOauthToken,
-            "SELECT user_id, discriminator, username, avatar, discord_bearer_token, \
-             discord_refresh_token, discord_token_expires_at
+            "SELECT user_id, discord_bearer_token, discord_refresh_token, discord_token_expires_at
             FROM discord_oauth_tokens WHERE user_id = $1",
             session.user_id,
         )
@@ -119,13 +126,13 @@ impl crate::web::SessionStore for Postgres {
             token: token.to_string(),
             kind: SessionType::from(session.kind),
             oauth_token: oauth_token.into(),
+            user: session.into(),
         }))
     }
     async fn get_all_sessions(&self, user_id: UserId) -> Result<Vec<Session>, Self::Error> {
         let oauth_token: DiscordOauthToken = sqlx::query_as!(
             DbOauthToken,
-            "SELECT user_id, discriminator, username, avatar, discord_bearer_token, \
-             discord_refresh_token, discord_token_expires_at
+            "SELECT user_id, discord_bearer_token, discord_refresh_token, discord_token_expires_at
             FROM discord_oauth_tokens WHERE user_id = $1",
             user_id.0 as i64,
         )
@@ -135,7 +142,8 @@ impl crate::web::SessionStore for Postgres {
 
         let sessions = sqlx::query_as!(
             DbSession,
-            "SELECT token, kind, user_id FROM web_sessions WHERE user_id = $1",
+            "SELECT token, kind, user_id, discriminator, username, avatar FROM web_sessions WHERE \
+             user_id = $1",
             user_id.0 as i64,
         )
         .fetch_all(&self.pool)
@@ -144,9 +152,10 @@ impl crate::web::SessionStore for Postgres {
         Ok(sessions
             .into_iter()
             .map(|e| Session {
-                token: e.token,
+                token: e.token.clone(),
                 kind: e.kind.into(),
                 oauth_token: oauth_token.clone(),
+                user: e.into(),
             })
             .collect())
     }
@@ -173,9 +182,6 @@ impl crate::web::SessionStore for Postgres {
 
 struct DbOauthToken {
     user_id: i64,
-    discriminator: i16,
-    username: String,
-    avatar: String,
     discord_bearer_token: String,
     discord_refresh_token: String,
     discord_token_expires_at: chrono::DateTime<chrono::Utc>,
@@ -187,24 +193,7 @@ impl From<DbOauthToken> for DiscordOauthToken {
             access_token: db_t.discord_bearer_token,
             refresh_token: db_t.discord_refresh_token,
             token_expires: db_t.discord_token_expires_at,
-            user: CurrentUser {
-                avatar: if !db_t.avatar.is_empty() {
-                    Some(db_t.avatar)
-                } else {
-                    None
-                },
-                bot: false,
-                discriminator: db_t.discriminator.to_string(),
-                email: None,
-                flags: None,
-                id: UserId(db_t.user_id as u64),
-                locale: None,
-                mfa_enabled: false,
-                name: db_t.username,
-                premium_type: None,
-                public_flags: None,
-                verified: None,
-            },
+            user_id: UserId(db_t.user_id as u64),
         }
     }
 }
@@ -213,9 +202,33 @@ struct DbSession {
     token: String,
     kind: i16,
     user_id: i64,
+    discriminator: i16,
+    username: String,
+    avatar: String,
 }
 
-struct DbSessionWithAuthToken {}
+impl From<DbSession> for CurrentUser {
+    fn from(db_u: DbSession) -> Self {
+        Self {
+            avatar: if !db_u.avatar.is_empty() {
+                Some(db_u.avatar)
+            } else {
+                None
+            },
+            bot: false,
+            discriminator: db_u.discriminator.to_string(),
+            email: None,
+            flags: None,
+            id: UserId(db_u.user_id as u64),
+            locale: None,
+            mfa_enabled: false,
+            name: db_u.username,
+            premium_type: None,
+            public_flags: None,
+            verified: None,
+        }
+    }
+}
 
 impl From<SessionType> for i16 {
     fn from(st: SessionType) -> Self {

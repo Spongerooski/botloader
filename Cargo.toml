@@ -4,6 +4,7 @@ members = [
     "components/vm",
     "components/isolatecell",
     "components/stores",
+    "components/discordoauthwrapper",
     "cmd/rs2ts-cli",
     "cmd/bot",
     "cmd/webapi",

@@ -18,7 +18,7 @@ use errors::ApiErrorResponse;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
 
-use crate::middlewares::{RequireAuthLayer, SessionLayer};
+use crate::middlewares::SessionLayer;
 
 #[derive(Clone)]
 pub struct ConfigData {
@@ -42,6 +42,12 @@ async fn main() {
     let auth_handler: AuthHandlerData =
         routes::auth::AuthHandlers::new(session_store.clone(), InMemoryCsrfStore::default());
 
+    let session_layer = SessionLayer {
+        session_store,
+        oauth_conf: oatuh_client.clone(),
+    };
+    let require_auth_layer = session_layer.require_auth_layer();
+
     let common_middleware_stack = ServiceBuilder::new() // Process at most 100 requests concurrently
         .layer(AddExtensionLayer::new(ConfigData {
             oauth_client: oatuh_client,
@@ -49,7 +55,7 @@ async fn main() {
         }))
         .layer(TraceLayer::new_for_http())
         .layer(AddExtensionLayer::new(Arc::new(auth_handler)))
-        .layer(SessionLayer { session_store })
+        .layer(session_layer)
         .into_inner();
 
     // TODO: See about the removal of the boxed method
@@ -57,7 +63,7 @@ async fn main() {
     let authorized_routes = Router::new()
         .boxed()
         .route("/logout", get(AuthHandlerData::handle_logout))
-        .layer(RequireAuthLayer)
+        .layer(require_auth_layer)
         .layer(common_middleware_stack.clone())
         .boxed();
 

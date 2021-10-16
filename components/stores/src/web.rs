@@ -8,7 +8,7 @@ use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use twilight_model::{id::UserId, user::CurrentUser};
 
-type OauthToken = StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>;
+pub type OauthToken = StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>;
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum SessionType {
@@ -28,15 +28,17 @@ pub trait SessionStore {
     async fn set_oauth_create_session(
         &self,
         oauth2_token: DiscordOauthToken,
+        user: CurrentUser,
         kind: SessionType,
     ) -> Result<Session, Self::Error>;
 
     async fn create_session(
         &self,
-        user_id: UserId,
+        user: CurrentUser,
         kind: SessionType,
     ) -> Result<Session, Self::Error>;
 
+    async fn get_oauth_token(&self, user_id: UserId) -> Result<DiscordOauthToken, Self::Error>;
     async fn get_session(&self, token: &str) -> Result<Option<Session>, Self::Error>;
     async fn get_all_sessions(&self, user_id: UserId) -> Result<Vec<Session>, Self::Error>;
     async fn del_session(&self, token: &str) -> Result<bool, Self::Error>;
@@ -61,18 +63,19 @@ pub struct Session {
     pub oauth_token: DiscordOauthToken,
     pub token: String,
     pub kind: SessionType,
+    pub user: CurrentUser,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct DiscordOauthToken {
-    pub user: CurrentUser,
+    pub user_id: UserId,
     pub access_token: String,
     pub refresh_token: String,
     pub token_expires: chrono::DateTime<chrono::Utc>,
 }
 
 impl DiscordOauthToken {
-    pub fn new(user: CurrentUser, oauth2_token: OauthToken) -> DiscordOauthToken {
+    pub fn new(user_id: UserId, oauth2_token: OauthToken) -> DiscordOauthToken {
         DiscordOauthToken {
             access_token: oauth2_token.access_token().secret().clone(),
             refresh_token: oauth2_token
@@ -86,7 +89,7 @@ impl DiscordOauthToken {
                         .unwrap_or_else(|| Duration::from_secs(60 * 60 * 24 * 7)),
                 )
                 .unwrap(),
-            user,
+            user_id,
         }
     }
 }
@@ -94,7 +97,7 @@ impl DiscordOauthToken {
 impl Debug for DiscordOauthToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DiscordOauthToken")
-            .field("user", &self.user)
+            .field("user", &self.user_id)
             .field("access_token", &"<yoinked>")
             .field("refresh_token", &"<yoinked>")
             .field("token_expires", &self.token_expires)

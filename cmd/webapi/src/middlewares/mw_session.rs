@@ -1,4 +1,4 @@
-use twilight_http::Client;
+use discordoauthwrapper::{DiscordOauthApiClient, TwilightApiProvider};
 
 use axum::{
     http::{Request, Response},
@@ -6,25 +6,34 @@ use axum::{
 };
 use core::fmt;
 use futures::future::BoxFuture;
-use std::task::{Context, Poll};
+use std::{
+    marker::PhantomData,
+    task::{Context, Poll},
+};
 use tower::{Layer, Service};
 use tracing::info;
 
 use stores::web::{Session, SessionStore};
 
 #[derive(Clone)]
-pub struct LoggedInSession {
-    pub raw: Session,
-    pub discord_client: Client,
+pub struct LoggedInSession<ST> {
+    pub api_client: DiscordOauthApiClient<TwilightApiProvider, oauth2::basic::BasicClient, ST>,
+    pub session: Session,
 }
 
-impl LoggedInSession {
-    pub fn new(raw: Session) -> Self {
-        let client = twilight_http::Client::new(format!("Bearer {}", raw.oauth_token.access_token));
-
+impl<T> LoggedInSession<T>
+where
+    T: SessionStore + 'static,
+{
+    pub fn new(oauth_client: oauth2::basic::BasicClient, session: Session, store: T) -> Self {
         Self {
-            discord_client: client,
-            raw,
+            api_client: DiscordOauthApiClient::new_twilight(
+                session.user.id,
+                session.oauth_token.access_token.clone(),
+                oauth_client,
+                store,
+            ),
+            session,
         }
     }
 }
@@ -32,6 +41,15 @@ impl LoggedInSession {
 #[derive(Clone)]
 pub struct SessionLayer<ST> {
     pub session_store: ST,
+    pub oauth_conf: oauth2::basic::BasicClient,
+}
+
+impl<ST> SessionLayer<ST> {
+    pub fn require_auth_layer(&self) -> RequireAuthLayer<ST> {
+        RequireAuthLayer {
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<ST: Clone, S> Layer<S> for SessionLayer<ST> {
@@ -40,6 +58,7 @@ impl<ST: Clone, S> Layer<S> for SessionLayer<ST> {
     fn layer(&self, inner: S) -> Self::Service {
         SessionMiddleware {
             session_store: self.session_store.clone(),
+            oauth_conf: self.oauth_conf.clone(),
             inner,
         }
     }
@@ -49,6 +68,7 @@ impl<ST: Clone, S> Layer<S> for SessionLayer<ST> {
 pub struct SessionMiddleware<S, ST> {
     pub inner: S,
     pub session_store: ST,
+    pub oauth_conf: oauth2::basic::BasicClient,
 }
 
 impl<S, ST, ReqBody, ResBody> Service<Request<ReqBody>> for SessionMiddleware<S, ST>
@@ -75,6 +95,7 @@ where
         let mut inner = std::mem::replace(&mut self.inner, clone);
 
         let store = self.session_store.clone();
+        let oauth_conf = self.oauth_conf.clone();
 
         Box::pin(async move {
             let auth_header = req.headers().get("Authorization");
@@ -88,12 +109,10 @@ where
                         info!("we are logged in!");
                         let extensions = req.extensions_mut();
 
-                        _span = Some(
-                            tracing::debug_span!("session", user_id=%session.oauth_token.user.id),
-                        );
+                        _span = Some(tracing::debug_span!("session", user_id=%session.user.id));
                         _span_guard = Some(_span.as_ref().unwrap().enter());
 
-                        let logged_in_session = LoggedInSession::new(session);
+                        let logged_in_session = LoggedInSession::new(oauth_conf, session, store);
                         extensions.insert(logged_in_session);
                     }
                 }
@@ -107,28 +126,35 @@ where
 }
 
 #[derive(Clone)]
-pub struct RequireAuthLayer;
+pub struct RequireAuthLayer<ST> {
+    _phantom: PhantomData<ST>,
+}
 
-impl<S> Layer<S> for RequireAuthLayer {
-    type Service = RequireAuthMiddleware<S>;
+impl<S, ST> Layer<S> for RequireAuthLayer<ST> {
+    type Service = RequireAuthMiddleware<S, ST>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        RequireAuthMiddleware { inner }
+        RequireAuthMiddleware {
+            inner,
+            _phantom: PhantomData,
+        }
     }
 }
 
 #[derive(Clone)]
-pub struct RequireAuthMiddleware<S> {
-    pub inner: S,
+pub struct RequireAuthMiddleware<S, ST> {
+    inner: S,
+    _phantom: PhantomData<ST>,
 }
 
-impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for RequireAuthMiddleware<S>
+impl<S, ST, ReqBody, ResBody> Service<Request<ReqBody>> for RequireAuthMiddleware<S, ST>
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Future: Send + 'static,
     S::Error: Into<BoxError>,
     ReqBody: Send + 'static,
     ResBody: Send + 'static,
+    ST: Send + Sync + SessionStore + 'static,
 {
     type Response = S::Response;
     type Error = BoxError;
@@ -148,7 +174,7 @@ where
 
         Box::pin(async move {
             let extensions = req.extensions();
-            match extensions.get::<LoggedInSession>() {
+            match extensions.get::<LoggedInSession<ST>>() {
                 Some(_) => inner.call(req).await.map_err(|e| e.into()),
                 None => Err(NoSession(()).into()),
             }

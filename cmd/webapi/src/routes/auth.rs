@@ -116,7 +116,8 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
         let session = auth_handler
             .session_store
             .set_oauth_create_session(
-                DiscordOauthToken::new(user, token_result),
+                DiscordOauthToken::new(user.id, token_result),
+                user,
                 stores::web::SessionType::User,
             )
             .await
@@ -137,11 +138,11 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
     #[instrument(skip(auth_handler, session))]
     pub async fn handle_logout(
         auth_handler: extract::Extension<Arc<AuthHandlers<CT, ST>>>,
-        session: extract::Extension<LoggedInSession>,
+        session: extract::Extension<LoggedInSession<ST>>,
     ) -> ApiResult<impl IntoResponse> {
         auth_handler
             .session_store
-            .del_session(&session.raw.token)
+            .del_session(&session.session.token)
             .await
             .map_err(|err| {
                 error!(%err, "failed deleting sesison");
@@ -155,7 +156,7 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
         <html>
         <body>Logout successful! {}</body>
         </html>",
-            session.raw.oauth_token.user.name
+            session.session.user.name
         )))
     }
 }
