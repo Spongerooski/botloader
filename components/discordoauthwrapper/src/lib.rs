@@ -12,6 +12,8 @@ use twilight_model::{
     user::{CurrentUser, CurrentUserGuild},
 };
 
+pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
+
 struct ApiClientInner<T, TU, ST> {
     user_id: UserId,
     api_provider: T,
@@ -63,7 +65,7 @@ where
     T: DiscordOauthApiProvider + 'static,
     TU: TokenRefresher + 'static,
     ST: SessionStore + 'static,
-    T::OtherError: Debug + Display + 'static,
+    T::OtherError: Debug + Display + Send + Sync + 'static,
 {
     pub fn new(user_id: UserId, api_provider: T, token_refresher: TU, session_store: ST) -> Self {
         Self {
@@ -76,20 +78,18 @@ where
         }
     }
 
-    pub async fn current_user(&self) -> Result<CurrentUser, Box<dyn std::error::Error>> {
+    pub async fn current_user(&self) -> Result<CurrentUser, BoxError> {
         self.run_api_check_err(|| self.inner.api_provider.get_current_user())
             .await
     }
 
-    pub async fn current_user_guilds(
-        &self,
-    ) -> Result<Vec<CurrentUserGuild>, Box<dyn std::error::Error>> {
+    pub async fn current_user_guilds(&self) -> Result<Vec<CurrentUserGuild>, BoxError> {
         self.run_api_check_err(|| self.inner.api_provider.get_user_guilds())
             .await
     }
 
     // runs the provided closure, refreshing the token if needed
-    async fn run_api_check_err<F, FRT, Fut>(&self, f: F) -> Result<FRT, Box<dyn std::error::Error>>
+    async fn run_api_check_err<F, FRT, Fut>(&self, f: F) -> Result<FRT, BoxError>
     where
         F: Fn() -> Fut,
         Fut: Future<Output = Result<FRT, ApiProviderError<T::OtherError>>>,
@@ -104,7 +104,7 @@ where
         }
     }
 
-    pub async fn update_token(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn update_token(&self) -> Result<(), BoxError> {
         let current = self
             .inner
             .session_store
@@ -133,7 +133,7 @@ pub trait TokenRefresher {
     async fn update_token(
         &self,
         token: DiscordOauthToken,
-    ) -> Result<stores::web::OauthToken, Box<dyn std::error::Error>>;
+    ) -> Result<stores::web::OauthToken, BoxError>;
 }
 
 #[derive(Debug)]
@@ -224,7 +224,7 @@ impl TokenRefresher for oauth2::basic::BasicClient {
     async fn update_token(
         &self,
         token: DiscordOauthToken,
-    ) -> Result<stores::web::OauthToken, Box<dyn std::error::Error>> {
+    ) -> Result<stores::web::OauthToken, BoxError> {
         let token = oauth2::RefreshToken::new(token.refresh_token);
 
         Ok(self

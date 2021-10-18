@@ -1,5 +1,3 @@
-use twilight_http::Client;
-
 use axum::{
     extract::{FromRequest, Path, RequestParts},
     http::{Request, Response},
@@ -7,12 +5,14 @@ use axum::{
 };
 use core::fmt;
 use futures::future::BoxFuture;
-use std::task::{Context, Poll};
+use std::{
+    fmt::Display,
+    task::{Context, Poll},
+};
 use tower::{Layer, Service};
-use tracing::info;
-use twilight_model::id::GuildId;
+use twilight_model::{guild::Permissions, id::GuildId, user::CurrentUserGuild};
 
-use stores::web::{Session, SessionStore};
+use stores::web::SessionStore;
 
 use super::LoggedInSession;
 
@@ -60,7 +60,7 @@ where
         self.inner.poll_ready(cx).map_err(|e| e.into())
     }
 
-    fn call(&mut self, mut req: Request<ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
         // best practice is to clone the inner service like this
         // see https://github.com/tower-rs/tower/issues/547 for details
         let clone = self.inner.clone();
@@ -70,11 +70,20 @@ where
             let mut req_parts = RequestParts::new(req);
 
             let guild_path = Path::<GuildPath>::from_request(&mut req_parts).await;
-            let session: Option<&LoggedInSession> =
+            let session: Option<&LoggedInSession<ST>> =
                 req_parts.extensions().map(|e| e.get()).flatten();
 
+            let mut _span = None;
+            let mut _span_guard = None;
+
             if let (Some(s), Ok(gp)) = (session, guild_path) {
-                let g = fetch_guild(s, gp.guild).await;
+                if let Some(g) = fetch_guild(s, gp.guild).await? {
+                    _span = Some(tracing::debug_span!("guild", guild_id=%g.id));
+                    _span_guard = Some(_span.as_ref().unwrap().enter());
+
+                    let extensions_mut = req_parts.extensions_mut().unwrap();
+                    extensions_mut.insert(g);
+                }
             }
 
             inner
@@ -85,4 +94,86 @@ where
     }
 }
 
-async fn fetch_guild<ST>(session: &LoggedInSession<ST>, guild_id: GuildId) {}
+async fn fetch_guild<ST: SessionStore + Send + 'static>(
+    session: &LoggedInSession<ST>,
+    guild_id: GuildId,
+) -> Result<Option<CurrentUserGuild>, BoxError> {
+    let user_guilds = session.api_client.current_user_guilds().await?;
+    Ok(user_guilds.into_iter().find(|e| e.id == guild_id))
+}
+
+pub struct RequireCurrentGuildAuthLayer;
+
+impl<S> Layer<S> for RequireCurrentGuildAuthLayer {
+    type Service = RequireCurrentGuildMiddleware<S>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        RequireCurrentGuildMiddleware { inner }
+    }
+}
+
+pub struct RequireCurrentGuildMiddleware<S> {
+    inner: S,
+}
+
+impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for RequireCurrentGuildMiddleware<S>
+where
+    S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
+    S::Future: Send + 'static,
+    S::Error: Into<BoxError>,
+    ReqBody: Send + 'static,
+    ResBody: Send + 'static,
+{
+    type Response = S::Response;
+    type Error = BoxError;
+    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx).map_err(|e| e.into())
+    }
+
+    fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
+        // best practice is to clone the inner service like this
+        // see https://github.com/tower-rs/tower/issues/547 for details
+        let clone = self.inner.clone();
+        let mut inner = std::mem::replace(&mut self.inner, clone);
+
+        Box::pin(async move {
+            let current_guild = req
+                .extensions()
+                .get::<CurrentUserGuild>()
+                .ok_or(UnknownGuildError)?;
+
+            if !current_guild
+                .permissions
+                .intersects(Permissions::ADMINISTRATOR | Permissions::MANAGE_GUILD)
+            {
+                return Err(MissingPermsError.into());
+            }
+
+            inner.call(req).await.map_err(|e| e.into())
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct UnknownGuildError;
+
+impl Display for UnknownGuildError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("unknown guild, not found in current_user_guilds")
+    }
+}
+
+impl std::error::Error for UnknownGuildError {}
+
+#[derive(Debug)]
+pub struct MissingPermsError;
+
+impl Display for MissingPermsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("missing permissions to manage this guild")
+    }
+}
+
+impl std::error::Error for MissingPermsError {}
