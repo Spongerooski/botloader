@@ -75,10 +75,16 @@ async fn main() {
 
     // TODO: See about the removal of the boxed method
     let script_routes: Router<BoxRoute> = Router::new()
-        .route("/:script_id/update", get(todo_route))
-        .route("/:script_id/delete", get(todo_route))
-        .route("/", get(todo_route))
-        .route("/new", post(todo_route))
+        .route(
+            "/:script_id/update",
+            get(routes::scripts::update_guild_script),
+        )
+        .route(
+            "/:script_id/delete",
+            get(routes::scripts::delete_guild_script),
+        )
+        .route("/", get(routes::scripts::get_all_guild_scripts))
+        .route("/new", post(routes::scripts::create_guild_script))
         .boxed();
 
     let authorized_api_guild_routes = Router::new()
@@ -131,6 +137,7 @@ fn init_tracing() {
         .init();
 }
 
+#[allow(dead_code)]
 async fn todo_route() -> &'static str {
     "todo"
 }

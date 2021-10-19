@@ -28,6 +28,11 @@ pub trait ConfigStore: Clone + Sync {
         guild_id: GuildId,
         script_name: String,
     ) -> StoreResult<Script, Self::Error>;
+    async fn get_script_by_id(
+        &self,
+        guild_id: GuildId,
+        script_id: u64,
+    ) -> StoreResult<Script, Self::Error>;
     async fn create_script(
         &self,
         guild_id: GuildId,

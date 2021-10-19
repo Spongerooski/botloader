@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies] 
 stores = {path="../../components/stores"}
 discordoauthwrapper = {path="../../components/discordoauthwrapper"}
+tscompiler = {path="../../components/tscompiler"}
 
 oauth2 = "4.1"
 anyhow = "1.0"

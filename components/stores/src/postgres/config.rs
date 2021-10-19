@@ -30,21 +30,21 @@ impl Postgres {
         }
     }
 
-    // async fn get_db_script_by_id(
-    //     &self,
-    //     guild_id: GuildId,
-    //     id: i64,
-    // ) -> StoreResult<DbScript, sqlx::Error> {
-    //     Ok(sqlx::query_as!(
-    //         DbScript,
-    //         "SELECT id, guild_id, name, original_source, compiled_js, enabled FROM guild_scripts \
-    //          WHERE guild_id = $1 AND id = $2;",
-    //         guild_id.0 as i64,
-    //         id
-    //     )
-    //     .fetch_one(&self.pool)
-    //     .await?)
-    // }
+    async fn get_db_script_by_id(
+        &self,
+        guild_id: GuildId,
+        id: i64,
+    ) -> StoreResult<DbScript, sqlx::Error> {
+        Ok(sqlx::query_as!(
+            DbScript,
+            "SELECT id, guild_id, name, original_source, compiled_js, enabled FROM guild_scripts \
+             WHERE guild_id = $1 AND id = $2;",
+            guild_id.0 as i64,
+            id
+        )
+        .fetch_one(&self.pool)
+        .await?)
+    }
 }
 
 #[async_trait]
@@ -58,6 +58,17 @@ impl crate::config::ConfigStore for Postgres {
     ) -> StoreResult<Script, Self::Error> {
         Ok(self
             .get_db_script_by_name(guild_id, &script_name)
+            .await?
+            .into())
+    }
+
+    async fn get_script_by_id(
+        &self,
+        guild_id: GuildId,
+        script_id: u64,
+    ) -> StoreResult<Script, Self::Error> {
+        Ok(self
+            .get_db_script_by_id(guild_id, script_id as i64)
             .await?
             .into())
     }
