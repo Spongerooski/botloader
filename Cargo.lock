@@ -300,6 +300,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "axum-debug"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08b7c2138c8c7b0021324df698036e003ad2ab05f622dbc95de55eed661629c6"
+dependencies = [
+ "axum",
+ "axum-debug-macros",
+ "bytes",
+ "http",
+ "http-body",
+ "tower-service",
+]
+
+[[package]]
+name = "axum-debug-macros"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d71956f60ac01c313acfbccdc5a1aa8c54ba1543e80df1abc2266c1c2d6200fa"
+dependencies = [
+ "axum",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "base64"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3535,11 +3561,13 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "axum-debug",
  "base64 0.13.0",
  "dashmap",
  "discordoauthwrapper",
  "dotenv",
  "futures",
+ "http-body",
  "oauth2",
  "rand 0.8.4",
  "serde",

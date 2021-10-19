@@ -15,6 +15,9 @@ pub struct RunConfig {
 
     #[structopt(long, env = "HOST_BASE", default_value = "localhost:3000")]
     pub host_base: String,
+
+    #[structopt(long, env = "DATABASE_URL")]
+    pub database_url: String,
 }
 
 impl RunConfig {

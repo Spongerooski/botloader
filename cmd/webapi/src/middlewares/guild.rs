@@ -105,18 +105,19 @@ async fn fetch_guild<ST: SessionStore + Send + 'static>(
 pub struct RequireCurrentGuildAuthLayer;
 
 impl<S> Layer<S> for RequireCurrentGuildAuthLayer {
-    type Service = RequireCurrentGuildMiddleware<S>;
+    type Service = RequireCurrentGuildAuthMiddleware<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        RequireCurrentGuildMiddleware { inner }
+        RequireCurrentGuildAuthMiddleware { inner }
     }
 }
 
-pub struct RequireCurrentGuildMiddleware<S> {
+#[derive(Clone)]
+pub struct RequireCurrentGuildAuthMiddleware<S> {
     inner: S,
 }
 
-impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for RequireCurrentGuildMiddleware<S>
+impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for RequireCurrentGuildAuthMiddleware<S>
 where
     S: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + 'static,
     S::Future: Send + 'static,
