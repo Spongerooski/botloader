@@ -5,6 +5,7 @@ members = [
     "components/isolatecell",
     "components/stores",
     "components/discordoauthwrapper",
+    "components/botrpc",
     "components/vm-manager",
     "cmd/rs2ts-cli",
     "cmd/bot",
