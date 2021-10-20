@@ -5,7 +5,7 @@ use twilight_gateway::Cluster;
 use twilight_model::{gateway::payload::MessageCreate, guild::Permissions, id::RoleId};
 use twilight_util::permission_calculator::PermissionCalculator;
 
-use crate::{vm_manager, BotContext};
+use crate::BotContext;
 
 #[derive(Clone)]
 pub struct CommandContext<CT> {

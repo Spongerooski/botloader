@@ -10,6 +10,7 @@ stores = {path="../../components/stores"}
 runtime = {path="../../components/runtime"}
 tscompiler = {path="../../components/tscompiler"}
 vmthread = {path="../../components/vmthread"}
+vm-manager = {path="../../components/vm-manager"}
 vm = {path="../../components/vm"}
 
 twilight-cache-inmemory = "0.6"

@@ -12,8 +12,6 @@ use twilight_gateway::{Cluster, Event, Intents};
 use twilight_model::oauth::CurrentApplicationInfo;
 
 mod commands;
-// mod scriptmanager;
-mod vm_manager;
 
 #[derive(Clone, StructOpt)]
 pub struct RunConfig {
@@ -91,7 +89,12 @@ async fn handle_events<CT: Clone + ConfigStore + Send + Sync + 'static>(
 ) {
     let script_err_reporter = DiscordErrorReporter::new(ctx.config_store.clone(), ctx.http.clone());
 
-    let vm_manager = vm_manager::Manager::new(ctx.clone(), Arc::new(script_err_reporter));
+    let vm_manager = vm_manager::Manager::new(
+        Arc::new(script_err_reporter),
+        ctx.http.clone(),
+        ctx.state.clone(),
+        ctx.config_store.clone(),
+    );
 
     let cmd_context = commands::CommandContext {
         http: ctx.http.clone(),

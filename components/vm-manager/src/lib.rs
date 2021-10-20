@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use std::{collections::HashMap, sync::Arc};
 
 use stores::config::{ConfigStore, Script};
@@ -8,27 +10,26 @@ use tokio::sync::{
     RwLock,
 };
 use tracing::info;
+use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Event;
 use twilight_model::id::GuildId;
 use vm::{
     error_reporter::ErrorReporter,
     vm::{CreateRt, GuildVmEvent, Vm, VmCommand, VmContext, VmEvent, VmRole},
+    AnyError,
 };
 use vmthread::{VmThreadCommand, VmThreadFuture, VmThreadHandle};
 
-use crate::BotContext;
-
-pub struct SharedState<CT> {
-    bot_context: BotContext<CT>,
-    rt_evt_tx: UnboundedSender<GuildVmEvent>,
-    error_reporter: Arc<dyn ErrorReporter + Send + Sync>,
-}
-
 type GuildMap = HashMap<GuildId, GuildState>;
 pub struct InnerManager<CT> {
-    shared_state: SharedState<CT>,
     guilds: RwLock<GuildMap>,
     worker_thread: VmThreadHandle<Vm>,
+
+    http: twilight_http::Client,
+    state: InMemoryCache,
+    config_store: CT,
+    rt_evt_tx: UnboundedSender<GuildVmEvent>,
+    error_reporter: Arc<dyn ErrorReporter + Send + Sync>,
 }
 
 #[derive(Clone)]
@@ -42,22 +43,23 @@ where
     CT: ConfigStore + Send + 'static + Sync,
 {
     pub fn new(
-        bot_context: BotContext<CT>,
         error_reporter: Arc<dyn ErrorReporter + Send + Sync>,
+        twilight_http_client: twilight_http::Client,
+        state: InMemoryCache,
+        config_store: CT,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
-
-        let shared = SharedState {
-            bot_context,
-            error_reporter,
-            rt_evt_tx: tx,
-        };
 
         let manager = Manager {
             inner: Arc::new(InnerManager {
                 guilds: RwLock::new(Default::default()),
-                shared_state: shared,
                 worker_thread: VmThreadFuture::create(),
+
+                http: twilight_http_client,
+                rt_evt_tx: tx,
+                error_reporter,
+                config_store,
+                state,
             }),
         };
 
@@ -100,6 +102,7 @@ where
                         id: guild_id,
                         main_vm: VmState::Stopped,
                         pack_vms: Vec::new(),
+                        log_subscribers: Vec::new(),
                     },
                 );
                 self.crate_new_guild_rt(&mut guilds, guild_id).await
@@ -114,8 +117,6 @@ where
     ) -> Result<(), String> {
         let scripts = self
             .inner
-            .shared_state
-            .bot_context
             .config_store
             .list_scripts(guild_id)
             .await
@@ -128,8 +129,8 @@ where
         let (tx, rx) = mpsc::unbounded_channel();
 
         let rt_ctx = RuntimeContext {
-            bot_state: self.inner.shared_state.bot_context.state.clone(),
-            dapi: self.inner.shared_state.bot_context.http.clone(),
+            bot_state: self.inner.state.clone(),
+            dapi: self.inner.http.clone(),
             guild_id,
             role: VmRole::Main,
         };
@@ -139,9 +140,9 @@ where
             .worker_thread
             .send_cmd
             .send(VmThreadCommand::StartVM(CreateRt {
-                error_reporter: self.inner.shared_state.error_reporter.clone(),
+                error_reporter: self.inner.clone(),
                 rx,
-                tx: self.inner.shared_state.rt_evt_tx.clone(),
+                tx: self.inner.rt_evt_tx.clone(),
                 ctx: VmContext {
                     // bot_state: self.inner.shared_state.bot_context.state.clone(),
                     // dapi: self.inner.shared_state.bot_context.http.clone(),
@@ -162,7 +163,8 @@ where
             GuildState {
                 id: guild_id,
                 main_vm: VmState::Running(VmRunningState { tx }),
-                pack_vms: vec![],
+                pack_vms: Vec::new(),
+                log_subscribers: Vec::new(),
             },
         );
 
@@ -188,7 +190,7 @@ where
                 .ok();
 
                 // report the shutdown to the guild
-                let err_reporter = self.inner.shared_state.error_reporter.clone();
+                let err_reporter = self.inner.clone();
                 tokio::spawn(async move {
                     err_reporter
                         .report_error(
@@ -271,18 +273,6 @@ where
         .await
     }
 
-    // async fn with_guild<F>(&self, guild_id: GuildId, f: F) -> Result<(), String>
-    // where
-    //     F: FnOnce(&GuildState) -> Result<(), String>,
-    // {
-    //     let guilds = self.guilds.read().await;
-
-    //     match guilds.get(&guild_id) {
-    //         Some(gs) => f(gs),
-    //         None => Err("Unknown guild".to_string()),
-    //     }
-    // }
-
     async fn with_guild_mut<F>(&self, guild_id: GuildId, f: F) -> Result<(), String>
     where
         F: FnOnce(&mut GuildState) -> Result<(), String>,
@@ -351,12 +341,28 @@ where
         })
         .await
     }
+
+    pub async fn subscribe_to_guild_logs(
+        &self,
+        guild_id: GuildId,
+    ) -> Option<UnboundedReceiver<String>> {
+        let (tx, rx) = mpsc::unbounded_channel();
+
+        let mut guilds = self.inner.guilds.write().await;
+        if let Some(guild) = guilds.get_mut(&guild_id) {
+            guild.log_subscribers.push(tx);
+            Some(rx)
+        } else {
+            None
+        }
+    }
 }
 
 struct GuildState {
     id: GuildId,
     main_vm: VmState,
     pack_vms: Vec<(u64, VmState)>,
+    log_subscribers: Vec<UnboundedSender<String>>,
 }
 
 impl GuildState {
@@ -399,4 +405,21 @@ enum VmState {
 /// The state of a vm, the details are set by an event from the runtime so it's set after the fact
 struct VmRunningState {
     tx: UnboundedSender<VmCommand>,
+}
+
+#[async_trait::async_trait]
+impl<CT: Send + Sync> ErrorReporter for InnerManager<CT> {
+    async fn report_error(&self, guild_id: GuildId, error: String) -> Result<(), AnyError> {
+        {
+            let mut guilds = self.guilds.write().await;
+            if let Some(guild) = guilds.get_mut(&guild_id) {
+                // if the send failed then the subscription is no longer active
+                guild
+                    .log_subscribers
+                    .retain(|gs| gs.send(error.clone()).is_ok());
+            }
+        }
+
+        self.error_reporter.report_error(guild_id, error).await
+    }
 }
