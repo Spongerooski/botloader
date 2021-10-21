@@ -100,6 +100,10 @@ async fn main() {
             "/guilds",
             get(routes::guilds::list_user_guilds_route::<CurrentSessionStore, CurrentConfigStore>),
         )
+        .route(
+            "/current_user",
+            get(routes::general::get_current_user::<CurrentSessionStore>),
+        )
         .boxed();
 
     let authorized_routes = Router::new()
