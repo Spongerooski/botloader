@@ -11,7 +11,7 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{Layer, Service};
-use tracing::info;
+use tracing::{info, Instrument};
 
 use stores::web::{Session, SessionStore};
 
@@ -100,8 +100,7 @@ where
         Box::pin(async move {
             let auth_header = req.headers().get("Authorization");
 
-            let mut _span = None;
-            let mut _span_guard = None;
+            let mut span = None;
 
             match auth_header.map(|e| e.to_str()) {
                 Some(Ok(t)) => {
@@ -109,8 +108,7 @@ where
                         info!("we are logged in!");
                         let extensions = req.extensions_mut();
 
-                        _span = Some(tracing::debug_span!("session", user_id=%session.user.id));
-                        _span_guard = Some(_span.as_ref().unwrap().enter());
+                        span = Some(tracing::debug_span!("session", user_id=%session.user.id));
 
                         let logged_in_session = LoggedInSession::new(oauth_conf, session, store);
                         extensions.insert(logged_in_session);
@@ -120,7 +118,11 @@ where
                 None => {}
             };
 
-            inner.call(req).await.map_err(|e| e.into())
+            if let Some(s) = span {
+                inner.call(req).instrument(s).await.map_err(|e| e.into())
+            } else {
+                inner.call(req).await.map_err(|e| e.into())
+            }
         })
     }
 }

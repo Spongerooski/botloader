@@ -1,12 +1,15 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{self, Query},
+    extract::{self},
     http::{header::LOCATION, HeaderMap, HeaderValue, StatusCode},
     response::{Html, IntoResponse},
+    Json,
 };
 use oauth2::{reqwest::async_http_client, AuthorizationCode, Scope, TokenResponse};
+use serde::{Deserialize, Serialize};
 use tracing::{error, info, instrument};
+use twilight_model::user::CurrentUser;
 
 use crate::{errors::ApiErrorResponse, middlewares::LoggedInSession, ApiResult, ConfigData};
 
@@ -17,7 +20,7 @@ pub struct AuthHandlers<CT, ST> {
     csrf_store: CT,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Deserialize)]
 pub struct ConfirmLoginQuery {
     code: String,
     state: String,
@@ -29,6 +32,12 @@ impl<CT, ST> AuthHandlers<CT, ST> {
             session_store,
         }
     }
+}
+
+#[derive(Serialize)]
+pub struct ConfirmLoginSuccess {
+    user: CurrentUser,
+    token: String,
 }
 
 impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
@@ -70,7 +79,7 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
     pub async fn handle_confirm_login(
         auth_handler: extract::Extension<Arc<AuthHandlers<CT, ST>>>,
         conf: extract::Extension<ConfigData>,
-        Query(data): Query<ConfirmLoginQuery>,
+        Json(data): Json<ConfirmLoginQuery>,
     ) -> ApiResult<impl IntoResponse> {
         let valid_csrf_token = auth_handler
             .csrf_store
@@ -117,7 +126,7 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
             .session_store
             .set_oauth_create_session(
                 DiscordOauthToken::new(user.id, token_result),
-                user,
+                user.clone(),
                 stores::web::SessionType::User,
             )
             .await
@@ -126,13 +135,10 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
                 ApiErrorResponse::InternalError
             })?;
 
-        Ok(Html(format!(
-            "
-        <html>
-        <body>Login successful! Token: {}</body>
-        </html>",
-            session.token,
-        )))
+        Ok(Json(ConfirmLoginSuccess {
+            token: session.token,
+            user,
+        }))
     }
 
     #[instrument(skip(auth_handler, session))]

@@ -24,7 +24,9 @@ use errors::ApiErrorResponse;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
 
-use crate::middlewares::{CurrentGuildLayer, RequireCurrentGuildAuthLayer, SessionLayer};
+use crate::middlewares::{
+    CorsLayer, CurrentGuildLayer, RequireCurrentGuildAuthLayer, SessionLayer,
+};
 
 #[derive(Clone)]
 pub struct ConfigData {
@@ -62,7 +64,7 @@ async fn main() {
     let common_middleware_stack = ServiceBuilder::new() // Process at most 100 requests concurrently
         .layer(AddExtensionLayer::new(ConfigData {
             oauth_client: oatuh_client,
-            run_config: conf,
+            run_config: conf.clone(),
         }))
         .layer(TraceLayer::new_for_http())
         .layer(AddExtensionLayer::new(Arc::new(auth_handler)))
@@ -70,6 +72,9 @@ async fn main() {
         .layer(session_layer)
         .layer(CurrentGuildLayer {
             session_store: session_store.clone(),
+        })
+        .layer(CorsLayer {
+            run_config: conf.clone(),
         })
         .into_inner();
 
@@ -111,26 +116,28 @@ async fn main() {
         .nest("/api", authorized_api_routes)
         .boxed()
         .layer(require_auth_layer)
-        .layer(common_middleware_stack.clone())
+        .handle_error(handle_mw_err_internal_err)
         .boxed();
 
     let public_routes = Router::new()
-        .route("/", get(|| async { "Hello, World!" }))
         .route("/error", get(routes::errortest::handle_errortest))
         .route("/login", get(AuthHandlerData::handle_login))
-        .route("/confirm_login", get(AuthHandlerData::handle_confirm_login))
-        .boxed()
-        .layer(common_middleware_stack.clone())
+        .route(
+            "/api/confirm_login",
+            post(AuthHandlerData::handle_confirm_login),
+        )
         .boxed();
 
-    let app = public_routes.or(authorized_routes);
+    let app = public_routes
+        .or(authorized_routes)
+        .layer(common_middleware_stack.clone());
+
     let make_service = app.into_make_service();
 
-    // run it with hyper on localhost:3000
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-        .serve(make_service)
-        .await
-        .unwrap();
+    // run it with hyper on configured address
+    info!("Starting hype on address: {}", conf.listen_addr);
+    let addr = conf.listen_addr.parse().unwrap();
+    axum::Server::bind(&addr).serve(make_service).await.unwrap();
 }
 
 fn init_tracing() {

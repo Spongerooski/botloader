@@ -10,6 +10,7 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{Layer, Service};
+use tracing::Instrument;
 use twilight_model::{guild::Permissions, id::GuildId, user::CurrentUserGuild};
 
 use stores::web::SessionStore;
@@ -73,23 +74,23 @@ where
             let session: Option<&LoggedInSession<ST>> =
                 req_parts.extensions().map(|e| e.get()).flatten();
 
-            let mut _span = None;
-            let mut _span_guard = None;
+            let mut span = None;
 
             if let (Some(s), Ok(gp)) = (session, guild_path) {
                 if let Some(g) = fetch_guild(s, gp.guild).await? {
-                    _span = Some(tracing::debug_span!("guild", guild_id=%g.id));
-                    _span_guard = Some(_span.as_ref().unwrap().enter());
+                    span = Some(tracing::debug_span!("guild", guild_id=%g.id));
 
                     let extensions_mut = req_parts.extensions_mut().unwrap();
                     extensions_mut.insert(g);
                 }
             }
 
-            inner
-                .call(req_parts.try_into_request().unwrap())
-                .await
-                .map_err(|e| e.into())
+            let req = req_parts.try_into_request().unwrap();
+            if let Some(s) = span {
+                inner.call(req).instrument(s).await.map_err(|e| e.into())
+            } else {
+                inner.call(req).await.map_err(|e| e.into())
+            }
         })
     }
 }

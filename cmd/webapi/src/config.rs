@@ -13,11 +13,22 @@ pub struct RunConfig {
     #[structopt(long, env = "CLIENT_SECRET")]
     pub client_secret: String,
 
-    #[structopt(long, env = "HOST_BASE", default_value = "localhost:3000")]
-    pub host_base: String,
+    /// points to the frontend's host base, this can be seperate from the api server(webapi)
+    ///
+    /// example: api may run on https://api.botlabs.io and the frontend could use https://botlabs.io
+    /// in this case, the frontend host base is https://botlabs.io
+    #[structopt(
+        long,
+        env = "FRONTEND_HOST_BASE",
+        default_value = "http://localhost:3000"
+    )]
+    pub frontend_host_base: String,
 
     #[structopt(long, env = "DATABASE_URL")]
     pub database_url: String,
+
+    #[structopt(long, env = "LISTEN_ADDR", default_value = "127.0.0.1:7447")]
+    pub listen_addr: String,
 }
 
 impl RunConfig {
@@ -30,7 +41,7 @@ impl RunConfig {
         )
         // Set the URL the user will be redirected to after the authorization process.
         .set_redirect_uri(
-            RedirectUrl::new(format!("http://{}/confirm_login", self.host_base)).unwrap(),
+            RedirectUrl::new(format!("{}/confirm_login", self.frontend_host_base)).unwrap(),
         )
     }
 }
