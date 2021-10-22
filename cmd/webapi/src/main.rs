@@ -1,7 +1,7 @@
 use std::{convert::Infallible, sync::Arc};
 
 use axum::{
-    handler::{get, post},
+    handler::{delete, get, post},
     http::StatusCode,
     response::IntoResponse,
     routing::BoxRoute,
@@ -69,6 +69,7 @@ async fn main() {
         .layer(TraceLayer::new_for_http())
         .layer(AddExtensionLayer::new(Arc::new(auth_handler)))
         .layer(AddExtensionLayer::new(config_store))
+        .layer(AddExtensionLayer::new(session_store.clone()))
         .layer(session_layer)
         .layer(CurrentGuildLayer {
             session_store: session_store.clone(),
@@ -104,6 +105,16 @@ async fn main() {
         .route(
             "/guilds",
             get(routes::guilds::list_user_guilds_route::<CurrentSessionStore, CurrentConfigStore>),
+        )
+        .route(
+            "/sessions",
+            get(routes::sessions::get_all_sessions::<CurrentSessionStore>)
+                .delete(routes::sessions::del_session::<CurrentSessionStore>)
+                .put(routes::sessions::create_api_token::<CurrentSessionStore>),
+        )
+        .route(
+            "/sessions/all",
+            delete(routes::sessions::del_all_sessions::<CurrentSessionStore>),
         )
         .route(
             "/current_user",
