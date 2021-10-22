@@ -68,11 +68,11 @@ impl crate::web::SessionStore for Postgres {
 
         let token = gen_token();
 
-        sqlx::query_as!(
+        let resp = sqlx::query_as!(
             DbSession,
-            "INSERT INTO web_sessions (token, kind, user_id, discriminator, username, avatar) \
-             VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING token, kind, user_id, discriminator, username, avatar;",
+            "INSERT INTO web_sessions (token, kind, user_id, discriminator, username, avatar, \
+             created_at) VALUES ($1, $2, $3, $4, $5, $6, now())
+            RETURNING token, kind, user_id, discriminator, username, avatar, created_at;",
             &token,
             i16::from(kind),
             user.id.0 as i64,
@@ -85,6 +85,7 @@ impl crate::web::SessionStore for Postgres {
 
         Ok(Session {
             oauth_token: oauth_token.into(),
+            created_at: resp.created_at,
             token,
             kind,
             user,
@@ -106,8 +107,8 @@ impl crate::web::SessionStore for Postgres {
     async fn get_session(&self, token: &str) -> Result<Option<Session>, Self::Error> {
         let session = sqlx::query_as!(
             DbSession,
-            "SELECT token, kind, user_id, discriminator, username, avatar FROM web_sessions WHERE \
-             token = $1;",
+            "SELECT token, kind, user_id, discriminator, username, avatar, created_at FROM \
+             web_sessions WHERE token = $1;",
             token
         )
         .fetch_one(&self.pool)
@@ -126,6 +127,7 @@ impl crate::web::SessionStore for Postgres {
             token: token.to_string(),
             kind: SessionType::from(session.kind),
             oauth_token: oauth_token.into(),
+            created_at: session.created_at,
             user: session.into(),
         }))
     }
@@ -142,8 +144,8 @@ impl crate::web::SessionStore for Postgres {
 
         let sessions = sqlx::query_as!(
             DbSession,
-            "SELECT token, kind, user_id, discriminator, username, avatar FROM web_sessions WHERE \
-             user_id = $1",
+            "SELECT token, kind, user_id, discriminator, username, avatar, created_at FROM \
+             web_sessions WHERE user_id = $1",
             user_id.0 as i64,
         )
         .fetch_all(&self.pool)
@@ -155,6 +157,7 @@ impl crate::web::SessionStore for Postgres {
                 token: e.token.clone(),
                 kind: e.kind.into(),
                 oauth_token: oauth_token.clone(),
+                created_at: e.created_at,
                 user: e.into(),
             })
             .collect())
@@ -205,6 +208,7 @@ struct DbSession {
     discriminator: i16,
     username: String,
     avatar: String,
+    created_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl From<DbSession> for CurrentUser {

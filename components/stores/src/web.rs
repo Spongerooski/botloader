@@ -64,6 +64,7 @@ pub struct Session {
     pub token: String,
     pub kind: SessionType,
     pub user: CurrentUser,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

@@ -16,6 +16,7 @@ pub struct BareSession {
     pub token: String,
     pub user: CurrentUser,
     pub kind: SessionType,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -66,11 +67,13 @@ impl crate::web::SessionStore for InMemorySessionStore {
                     let bare_session = BareSession {
                         token: token.clone(),
                         user: user.clone(),
+                        created_at: chrono::Utc::now(),
                         kind,
                     };
 
                     let session = Session {
                         oauth_token: oauth_token.clone(),
+                        created_at: bare_session.created_at,
                         token,
                         kind,
                         user,
@@ -108,6 +111,7 @@ impl crate::web::SessionStore for InMemorySessionStore {
             token: bare_session.token.clone(),
             kind: bare_session.kind,
             user: bare_session.user.clone(),
+            created_at: bare_session.created_at,
         }))
     }
 
@@ -126,6 +130,7 @@ impl crate::web::SessionStore for InMemorySessionStore {
                 token: e.token.clone(),
                 kind: e.kind,
                 user: e.user.clone(),
+                created_at: e.created_at,
             })
             .collect())
     }

@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS web_sessions (
     user_id bigint NOT NULL REFERENCES discord_oauth_tokens (user_id) ON DELETE CASCADE,
     discriminator smallint NOT NULL,
     username text NOT NULL,
-    avatar text NOT NULL
+    avatar text NOT NULL,
+    created_at timestamp with time zone NOT NULL
 );
 
