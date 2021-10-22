@@ -3,10 +3,10 @@ use std::sync::Arc;
 use futures::StreamExt;
 use futures_core::Stream;
 use runtime::error_reporter::DiscordErrorReporter;
-use stores::config::ConfigStore;
+use stores::config::{ConfigStore, JoinedGuild};
 use stores::postgres::Postgres;
 use structopt::StructOpt;
-use tracing::info;
+use tracing::{error, info};
 use twilight_cache_inmemory::{InMemoryCache, InMemoryCacheBuilder};
 use twilight_gateway::{Cluster, Event, Intents};
 use twilight_model::oauth::CurrentApplicationInfo;
@@ -119,6 +119,17 @@ async fn handle_events<CT: Clone + ConfigStore + Send + Sync + 'static>(
             }
             Event::GuildCreate(gc) => {
                 vm_manager.init_guild(gc.id).await.unwrap();
+                cmd_context
+                    .config_store
+                    .add_update_joined_guild(JoinedGuild {
+                        id: gc.id,
+                        name: gc.name.clone(),
+                        icon: gc.icon.clone().unwrap_or_default(),
+                        owner_id: gc.owner_id,
+                    })
+                    .await
+                    .map_err(|err| error!(%err, "failed updating joined guild"))
+                    .ok();
             }
             Event::MessageCreate(m) => {
                 if let Some(cmd) = commands::check_for_command(&ctx, *(m).clone()) {
