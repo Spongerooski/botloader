@@ -17,7 +17,10 @@ export function GuildsProvider({ children }: { children: JSX.Element[] | JSX.Ele
         }
 
         if (session.user) {
+            console.log("YOOOOOOOOOOOOOOOOOOOOOOOOO");
             inner();
+        } else {
+            console.log("no user, not fetching guilds");
         }
     }, [session])
 

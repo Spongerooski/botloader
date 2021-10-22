@@ -1,25 +1,34 @@
+import { Link } from "react-router-dom";
 import { BotGuild, User } from "../ApiClient";
 import { BuildConfig } from "../BuildConfig";
 import { useCurrentGuild } from "./GuildsProvider";
 import { useSession } from "./Session";
+import "./TopNav.css"
+import { guildIconUrl, userAvatarUrl } from "./Util";
 
 export function TopNav() {
     let session = useSession();
     let currentGuild = useCurrentGuild();
 
     return <div className="top-nav">
-        <div className="current-user">
-            {session.user ? <UserLoggedIn user={session.user} /> : <UserNotLoggedIn />}
-        </div>
+        <p className="brand">BotLoader</p>
+        <div className="top-nav-right">
+            <div className="current-server">
+                {currentGuild ? <CurrentGuild guild={currentGuild} /> : <NoCurrentGuild />}
+            </div>
+            <div className="current-user">
+                {session.user ? <UserLoggedIn user={session.user} /> : <UserNotLoggedIn />}
+            </div>
 
-        <div className="current-server">
-            {currentGuild ? <CurrentGuild guild={currentGuild} /> : <NoCurrentGuild />}
         </div>
     </div>
 }
 
 function UserLoggedIn(props: { user: User }) {
-    return <p>Logged in as {props.user.username}</p>
+    return <Link to="/settings">
+        <img src={userAvatarUrl(props.user, 32)} alt="user avatar" />
+        <p>{props.user.username}#{props.user.discriminator}</p>
+    </Link>
 }
 
 function UserNotLoggedIn() {
@@ -27,9 +36,14 @@ function UserNotLoggedIn() {
 }
 
 function CurrentGuild(props: { guild: BotGuild }) {
-    return <p>On guild: {props.guild.guild.name}</p>
+    return <>
+        <img src={guildIconUrl(props.guild.guild, 32)} alt="guild icon" />
+        <p>{props.guild.guild.name}</p>
+    </>
 }
 
 function NoCurrentGuild() {
-    return <p>No current guild</p>
+    return <Link to="/servers">
+        <p>Select server...</p>
+    </Link>
 }

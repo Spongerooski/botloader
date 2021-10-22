@@ -51,12 +51,38 @@ export class ApiClient {
         return await this.do("POST", path, body);
     }
 
+    async delete<T>(path: string, body?: any): Promise<ApiResult<T>> {
+        return await this.do("DELETE", path, body);
+    }
+
+    async put<T>(path: string, body?: any): Promise<ApiResult<T>> {
+        return await this.do("PUT", path, body);
+    }
+
     async getCurrentUser(): Promise<ApiResult<User>> {
         return await this.get("/api/current_user")
     }
 
     async getCurrentUserGuilds(): Promise<ApiResult<CurrentGuildsResponse>> {
         return await this.get("/api/guilds")
+    }
+
+    async getAllSessions(): Promise<ApiResult<SessionMeta[]>> {
+        return await this.get("/api/sessions")
+    }
+
+    async deleteSession(token: string): Promise<ApiResult<{}>> {
+        return await this.delete("/api/sessions", {
+            token: token,
+        })
+    }
+
+    async deleteAllSessions(): Promise<ApiResult<{}>> {
+        return await this.delete("/api/sessions/all")
+    }
+
+    async createApiToken(): Promise<ApiResult<SessionMeta>> {
+        return await this.put("/api/sessions")
     }
 
     async confirmLogin(code: string, state: string): Promise<ApiResult<LoginResponse>> {
@@ -123,3 +149,11 @@ export interface LoginResponse {
     user: User,
     token: string,
 }
+
+export interface SessionMeta {
+    kind: SessionType,
+    created_at: string,
+    token: string,
+}
+
+export type SessionType = "User" | "ApiKey";

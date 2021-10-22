@@ -10,6 +10,8 @@ import { RequireLoggedInSession, SessionProvider } from './components/Session';
 import { CurrentGuildProvider, GuildsProvider } from './components/GuildsProvider';
 import { TopNav } from './components/TopNav';
 import { ConfirmLoginPage } from './pages/ConfirmLogin';
+import { SelectServerPage } from './pages/SelectServer';
+import { UserSettingsPage } from './pages/UserSettings';
 
 function App() {
   return (
@@ -18,29 +20,36 @@ function App() {
         <Route path="/confirm_login">
           <ConfirmLoginPage />
         </Route>
-
-        <Route path="/servers">
-          <SessionProvider>
-            <GuildsProvider>
-              <Switch>
-                <Route path="/servers/:guildId">
-                  <RequireLoggedInSession>
-                    <GuildPage />
-                  </RequireLoggedInSession>
-                </Route>
-                <Route path="/servers">
-                  <TopNav />
-                  <header><p>List guilds...TODO</p></header>
-                </Route>
-              </Switch>
-            </GuildsProvider>
-          </SessionProvider>
-        </Route>
         <Route path="/">
-          <header className="App-header">
-            <p>BotLoader coming soon™</p>
-            <img src="/logo192.png" alt="zzz"></img>
-          </header>
+          <SessionProvider>
+            <Switch>
+              <Route path="/settings">
+                <TopNav />
+                <UserSettingsPage></UserSettingsPage>
+              </Route>
+              <Route path="/servers">
+                <GuildsProvider>
+                  <Switch>
+                    <Route path="/servers/:guildId">
+                      <RequireLoggedInSession>
+                        <GuildPage />
+                      </RequireLoggedInSession>
+                    </Route>
+                    <Route path="/servers">
+                      <TopNav />
+                      <SelectServerPage />
+                    </Route>
+                  </Switch>
+                </GuildsProvider>
+              </Route>
+              <Route path="/">
+                <header className="App-header">
+                  <p>BotLoader coming soon™</p>
+                  <img src="/logo192.png" alt="zzz"></img>
+                </header>
+              </Route>
+            </Switch>
+          </SessionProvider>
         </Route>
       </Switch>
     </Router>
