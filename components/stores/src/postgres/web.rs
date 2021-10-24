@@ -105,14 +105,19 @@ impl crate::web::SessionStore for Postgres {
     }
 
     async fn get_session(&self, token: &str) -> Result<Option<Session>, Self::Error> {
-        let session = sqlx::query_as!(
+        let session = match sqlx::query_as!(
             DbSession,
             "SELECT token, kind, user_id, discriminator, username, avatar, created_at FROM \
              web_sessions WHERE token = $1;",
             token
         )
         .fetch_one(&self.pool)
-        .await?;
+        .await
+        {
+            Ok(s) => s,
+            Err(sqlx::Error::RowNotFound) => return Ok(None),
+            Err(err) => return Err(err.into()),
+        };
 
         let oauth_token = sqlx::query_as!(
             DbOauthToken,
