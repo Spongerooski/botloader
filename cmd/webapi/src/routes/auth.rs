@@ -157,12 +157,6 @@ impl<CT: CsrfStore, ST: SessionStore> AuthHandlers<CT, ST> {
 
         info!("Logged out a user");
 
-        Ok(Html(format!(
-            "
-        <html>
-        <body>Logout successful! {}</body>
-        </html>",
-            session.session.user.name
-        )))
+        Ok(Json(()))
     }
 }
