@@ -71,6 +71,10 @@ export class ApiClient {
         return await this.get("/api/sessions")
     }
 
+    async logout(): Promise<ApiResult<{}>> {
+        return await this.post("/api/logout")
+    }
+
     async deleteSession(token: string): Promise<ApiResult<{}>> {
         return await this.delete("/api/sessions", {
             token: token,

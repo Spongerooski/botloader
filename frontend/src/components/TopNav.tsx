@@ -14,7 +14,7 @@ export function TopNav() {
         <p className="brand">BotLoader</p>
         <div className="top-nav-right">
             <div className="current-server">
-                {currentGuild ? <CurrentGuild guild={currentGuild} /> : <NoCurrentGuild />}
+                {currentGuild && session.user ? <CurrentGuild guild={currentGuild} /> : session.user ? <NoCurrentGuild /> : null}
             </div>
             <div className="current-user">
                 {session.user ? <UserLoggedIn user={session.user} /> : <UserNotLoggedIn />}
@@ -32,7 +32,7 @@ function UserLoggedIn(props: { user: User }) {
 }
 
 function UserNotLoggedIn() {
-    return <p>Not logged in, log in using <a href={BuildConfig.botloaderApiBase + "/login"}>this link</a></p>
+    return <a href={BuildConfig.botloaderApiBase + "/login"}><p>Sign in</p></a>
 }
 
 function CurrentGuild(props: { guild: BotGuild }) {

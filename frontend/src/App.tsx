@@ -25,7 +25,9 @@ function App() {
             <Switch>
               <Route path="/settings">
                 <TopNav />
-                <UserSettingsPage></UserSettingsPage>
+                <RequireLoggedInSession>
+                  <div className="page-wrapper"><UserSettingsPage /></div>
+                </RequireLoggedInSession>
               </Route>
               <Route path="/servers">
                 <GuildsProvider>
@@ -37,7 +39,7 @@ function App() {
                     </Route>
                     <Route path="/servers">
                       <TopNav />
-                      <SelectServerPage />
+                      <div className="page-wrapper"><SelectServerPage /></div>
                     </Route>
                   </Switch>
                 </GuildsProvider>
@@ -59,7 +61,12 @@ function App() {
 function GuildPage() {
   let { guildId }: { guildId: string } = useParams();
 
-  return <CurrentGuildProvider guildId={guildId}><TopNav /><p>Current guild page for {guildId}</p></CurrentGuildProvider>
+  return <CurrentGuildProvider guildId={guildId}>
+    <TopNav />
+    <div className="page-wrapper">
+      <p>Current guild page for {guildId}</p>
+    </div>
+  </CurrentGuildProvider>
 
 }
 

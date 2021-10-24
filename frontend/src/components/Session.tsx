@@ -5,7 +5,7 @@ export const SessionContext = createContext<Session>({
     apiClient: new ApiClient(),
 });
 
-export function SessionProvider({ children }: { children: JSX.Element[] | JSX.Element }) {
+export function SessionProvider({ children }: { children: React.ReactNode }) {
     let [session, setSession] = useState<Session>({
         apiClient: new ApiClient(),
     });
@@ -51,7 +51,7 @@ export interface Session {
     apiClient: ApiClient,
 }
 
-export function RequireLoggedInSession({ children }: { children: JSX.Element[] | JSX.Element }) {
+export function RequireLoggedInSession({ children }: { children: React.ReactNode }) {
     let session = useSession();
 
     if (session.user) {

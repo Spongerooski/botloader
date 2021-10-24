@@ -23,7 +23,7 @@ export function SelectServerPage() {
     }, [guilds])
 
     if (!guilds) {
-        return <p>Loading guilds....</p>
+        return <p>Loading guilds.... (unless you're not logged in that is)</p>
     }
 
     return <div className="guild-select-page">

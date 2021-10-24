@@ -4,7 +4,7 @@ import { useSession } from "./Session";
 
 export const GuildsContext = createContext<CurrentGuildsResponse | undefined>(undefined);
 
-export function GuildsProvider({ children }: { children: JSX.Element[] | JSX.Element }) {
+export function GuildsProvider({ children }: { children: React.ReactNode }) {
     let session = useSession();
     let [guilds, setGuilds] = useState<CurrentGuildsResponse | undefined>(undefined);
 
@@ -34,7 +34,7 @@ export function useGuilds() {
 
 export const CurrentGuildContext = createContext<BotGuild | undefined>(undefined);
 
-export function CurrentGuildProvider(props: { guildId?: string, children: JSX.Element[] | JSX.Element }) {
+export function CurrentGuildProvider(props: { guildId?: string, children: React.ReactNode }) {
     let guilds = useGuilds();
 
     let current = undefined;
