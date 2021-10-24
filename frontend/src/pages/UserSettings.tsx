@@ -62,7 +62,7 @@ export function UserSettingsPage() {
 function SessionItem(props: { item: SessionMeta }) {
     return <div className="user-session-item">
         <div className="session-kind">{props.item.kind}</div>
-        <div className="session-token"><code>{props.item.token}</code></div>
+        <div className="session-token"><KeySpoiler content={props.item.token} /></div>
         <div className="session-created_at"><DisplayDateTime dt={props.item.created_at} /></div>
     </div>
 }
@@ -110,10 +110,21 @@ function CreateApiKeyComponent(props: CreateApiTokenProps) {
     }
 
     return <>
+        <p>WARNING: This will display the key on screen, anyone with the key can log into your account</p>
         <button onClick={() => doCreateApiToken()}>Create a new API token</button>
         {status.success ?
             <p>Success!: token: <code>{status.success.token}</code></p> : null}
 
         {status.error ? <p> Error: <code>{status.error}</code></p> : null}
     </>
+}
+
+function KeySpoiler(props: { content: string }) {
+    const [show, setShow] = useState<boolean>(false);
+
+    if (show) {
+        return <code>{props.content}</code>
+    } else {
+        return <button onClick={() => setShow(true)}>Show key. DO NOT SHOW OR SEND THIS TO OTHER PEOPLE.</button>
+    }
 }
