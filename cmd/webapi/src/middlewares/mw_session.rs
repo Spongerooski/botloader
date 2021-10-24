@@ -189,7 +189,7 @@ pub struct NoSession(pub ());
 
 impl fmt::Display for NoSession {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("no logged in session")
+        f.pad("no session or session expired")
     }
 }
 

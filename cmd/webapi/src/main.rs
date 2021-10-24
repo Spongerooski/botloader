@@ -2,7 +2,6 @@ use std::{convert::Infallible, sync::Arc};
 
 use axum::{
     handler::{delete, get, post},
-    http::StatusCode,
     response::IntoResponse,
     routing::BoxRoute,
     AddExtensionLayer, BoxError, Router,
@@ -25,7 +24,7 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
 
 use crate::middlewares::{
-    CorsLayer, CurrentGuildLayer, RequireCurrentGuildAuthLayer, SessionLayer,
+    CorsLayer, CurrentGuildLayer, NoSession, RequireCurrentGuildAuthLayer, SessionLayer,
 };
 
 #[derive(Clone)]
@@ -120,14 +119,14 @@ async fn main() {
             "/current_user",
             get(routes::general::get_current_user::<CurrentSessionStore>),
         )
+        .route("/logout", post(AuthHandlerData::handle_logout))
         .boxed();
 
     let authorized_routes = Router::new()
-        .route("/logout", get(AuthHandlerData::handle_logout))
         .nest("/api", authorized_api_routes)
         .boxed()
         .layer(require_auth_layer)
-        .handle_error(handle_mw_err_internal_err)
+        .handle_error(handle_mw_err_no_auth)
         .boxed();
 
     let public_routes = Router::new()
@@ -167,8 +166,12 @@ async fn todo_route() -> &'static str {
 fn handle_mw_err_internal_err(err: BoxError) -> Result<impl IntoResponse, Infallible> {
     error!("internal error occured: {}", err);
 
-    Ok((
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "Unhandled internal error",
-    ))
+    Ok(ApiErrorResponse::InternalError)
+}
+
+fn handle_mw_err_no_auth(err: BoxError) -> Result<impl IntoResponse, Infallible> {
+    match err.downcast::<NoSession>() {
+        Ok(_) => Ok(ApiErrorResponse::SessionExpired),
+        Err(_) => Ok(ApiErrorResponse::InternalError),
+    }
 }
