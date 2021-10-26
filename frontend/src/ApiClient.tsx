@@ -13,16 +13,18 @@ export class ApiClient {
         let headers = {};
         if (this.token) {
             headers = {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 Authorization: this.token,
                 ...headers,
-            }
+            };
         }
 
         if (body) {
             headers = {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 "Content-Type": "application/json",
                 ...headers,
-            }
+            };
         }
 
         let response = await fetch(base + path, {
@@ -60,40 +62,40 @@ export class ApiClient {
     }
 
     async getCurrentUser(): Promise<ApiResult<User>> {
-        return await this.get("/api/current_user")
+        return await this.get("/api/current_user");
     }
 
     async getCurrentUserGuilds(): Promise<ApiResult<CurrentGuildsResponse>> {
-        return await this.get("/api/guilds")
+        return await this.get("/api/guilds");
     }
 
     async getAllSessions(): Promise<ApiResult<SessionMeta[]>> {
-        return await this.get("/api/sessions")
+        return await this.get("/api/sessions");
     }
 
     async logout(): Promise<ApiResult<{}>> {
-        return await this.post("/api/logout")
+        return await this.post("/api/logout");
     }
 
     async deleteSession(token: string): Promise<ApiResult<{}>> {
         return await this.delete("/api/sessions", {
             token: token,
-        })
+        });
     }
 
     async deleteAllSessions(): Promise<ApiResult<{}>> {
-        return await this.delete("/api/sessions/all")
+        return await this.delete("/api/sessions/all");
     }
 
     async createApiToken(): Promise<ApiResult<SessionMeta>> {
-        return await this.put("/api/sessions")
+        return await this.put("/api/sessions");
     }
 
     async confirmLogin(code: string, state: string): Promise<ApiResult<LoginResponse>> {
         return await this.post("/api/confirm_login", {
             code: code,
             state: state,
-        })
+        });
     }
 }
 
