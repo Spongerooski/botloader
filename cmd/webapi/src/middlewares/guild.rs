@@ -39,9 +39,9 @@ pub struct CurrentGuildMiddleware<S, ST> {
     pub session_store: ST,
 }
 
-#[derive(Clone, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize, Debug)]
 struct GuildPath {
-    guild: GuildId,
+    guild: u64,
 }
 
 impl<S, ST, ReqBody, ResBody> Service<Request<ReqBody>> for CurrentGuildMiddleware<S, ST>
@@ -77,7 +77,7 @@ where
             let mut span = None;
 
             if let (Some(s), Ok(gp)) = (session, guild_path) {
-                if let Some(g) = fetch_guild(s, gp.guild).await? {
+                if let Some(g) = fetch_guild(s, GuildId(gp.guild)).await? {
                     span = Some(tracing::debug_span!("guild", guild_id=%g.id));
 
                     let extensions_mut = req_parts.extensions_mut().unwrap();

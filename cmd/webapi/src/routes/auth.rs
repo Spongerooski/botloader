@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{
     extract::{self},
     http::{header::LOCATION, HeaderMap, HeaderValue, StatusCode},
-    response::{Html, IntoResponse},
+    response::IntoResponse,
     Json,
 };
 use oauth2::{reqwest::async_http_client, AuthorizationCode, Scope, TokenResponse};

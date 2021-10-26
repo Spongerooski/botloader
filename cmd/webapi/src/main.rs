@@ -1,7 +1,7 @@
 use std::{convert::Infallible, sync::Arc};
 
 use axum::{
-    handler::{delete, get, post},
+    handler::{delete, get, patch, post, put},
     response::IntoResponse,
     routing::BoxRoute,
     AddExtensionLayer, BoxError, Router,
@@ -70,9 +70,6 @@ async fn main() {
         .layer(AddExtensionLayer::new(config_store))
         .layer(AddExtensionLayer::new(session_store.clone()))
         .layer(session_layer)
-        .layer(CurrentGuildLayer {
-            session_store: session_store.clone(),
-        })
         .layer(CorsLayer {
             run_config: conf.clone(),
         })
@@ -82,20 +79,24 @@ async fn main() {
     let script_routes: Router<BoxRoute> = Router::new()
         .route(
             "/:script_id/update",
-            get(routes::scripts::update_guild_script),
+            patch(routes::scripts::update_guild_script),
         )
         .route(
             "/:script_id/delete",
             get(routes::scripts::delete_guild_script),
         )
         .route("/", get(routes::scripts::get_all_guild_scripts))
-        .route("/new", post(routes::scripts::create_guild_script))
+        .route("/new", put(routes::scripts::create_guild_script))
         .boxed();
 
     let authorized_api_guild_routes = Router::new()
         .nest("/scripts", script_routes)
         .boxed()
         .layer(RequireCurrentGuildAuthLayer)
+        .handle_error(handle_mw_err_internal_err)
+        .layer(CurrentGuildLayer {
+            session_store: session_store.clone(),
+        })
         .handle_error(handle_mw_err_internal_err)
         .boxed();
 
