@@ -61,6 +61,10 @@ export class ApiClient {
         return await this.do("PUT", path, body);
     }
 
+    async patch<T>(path: string, body?: any): Promise<ApiResult<T>> {
+        return await this.do("PATCH", path, body);
+    }
+
     async getCurrentUser(): Promise<ApiResult<User>> {
         return await this.get("/api/current_user");
     }
@@ -96,6 +100,22 @@ export class ApiClient {
             code: code,
             state: state,
         });
+    }
+
+    async getAllScripts(guildId: string,): Promise<ApiResult<Script[]>> {
+        return await this.get(`/api/guilds/${guildId}/scripts`);
+    }
+
+    async createScript(guildId: string, data: CreateScript): Promise<ApiResult<Script>> {
+        return await this.put(`/api/guilds/${guildId}/scripts`, data);
+    }
+
+    async updateScript(guildId: string, id: number, data: UpdateScript): Promise<ApiResult<Script>> {
+        return await this.patch(`/api/guilds/${guildId}/scripts/${id}`, data);
+    }
+
+    async delScript(guildId: string, id: number): Promise<ApiResult<{}>> {
+        return await this.delete(`/api/guilds/${guildId}/scripts/${id}`);
     }
 }
 
@@ -163,3 +183,24 @@ export interface SessionMeta {
 }
 
 export type SessionType = "User" | "ApiKey";
+
+
+export interface Script {
+    id: number,
+    name: string,
+    original_source: string,
+    compiled_js: string,
+    enabled: boolean,
+}
+
+export interface CreateScript {
+    name: string,
+    original_source: string,
+    enabled: boolean,
+}
+
+export interface UpdateScript {
+    name: string,
+    original_source: string,
+    enabled: boolean,
+}
