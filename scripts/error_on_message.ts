@@ -1,11 +1,11 @@
-import { Bot, console, CreateMessage, Timers } from 'botloader';
+import { console, CreateMessage, Script, Timers } from 'botloader';
 
-Bot.registerMeta({
-    name: "error_on_message",
-})
+const script = new Script("should trigger a error on messages");
 
-Bot.on("MESSAGE_CREATE", async evt => {
+script.on("MESSAGE_CREATE", async evt => {
     if (!evt.author.bot) {
-        counter++;
+        throw new Error("woo fancy error appeared");
     }
 })
+
+script.run();

@@ -1,8 +1,6 @@
 pub mod error_reporter;
 pub mod moduleloader;
-pub mod validator;
 use stores::config::Script;
-pub use validator::validate_script;
 pub mod vm;
 
 /// Represents a value passed to or from JavaScript.

@@ -3,7 +3,7 @@ use vm::moduleloader::ModuleEntry;
 
 macro_rules! include_js {
     ($f:tt) => {
-        include_str!(concat!(env!("OUT_DIR"), concat!("/js/", $f)));
+        include_str!(concat!(env!("OUT_DIR"), concat!("/js/", $f)))
     };
 }
 
@@ -11,9 +11,11 @@ macro_rules! include_js {
 pub const CORE_MODULES: &[(&str, &str)] = &[
     ("core_util", include_js!("core_util.js")),
     ("commonmodels", include_js!("commonmodels.js")),
-    ("bot", include_js!("bot.js")),
     ("op_wrappers", include_js!("op_wrappers.js")),
     ("timers", include_js!("timers.js")),
+    ("events", include_js!("events.js")),
+    ("commands", include_js!("commands.js")),
+    ("script", include_js!("script.js")),
     ("index", include_js!("index.js")),
 ];
 

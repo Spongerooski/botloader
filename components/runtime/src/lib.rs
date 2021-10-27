@@ -8,6 +8,9 @@ pub mod dispatchevents;
 pub mod error_reporter;
 pub mod jsmodules;
 mod sendmessage;
+pub mod validator;
+
+pub use validator::validate_script;
 
 pub fn create_extension(ctx: RuntimeContext) -> Extension {
     Extension::builder()
@@ -16,7 +19,7 @@ pub fn create_extension(ctx: RuntimeContext) -> Extension {
                 "op_jack_sendmessage",
                 op_async(sendmessage::op_send_message),
             ),
-            ("op_jack_register_meta", op_sync(dummy_op)),
+            ("op_botloader_script_start", op_sync(dummy_op)),
         ])
         .state(move |state| {
             state.put(ctx.clone());

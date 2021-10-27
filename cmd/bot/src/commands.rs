@@ -18,8 +18,8 @@ pub struct CommandContext<CT> {
 
 #[derive(Debug)]
 pub enum Command {
-    AddScript(String),
-    UpdateScript(String),
+    AddScript(String, String),
+    UpdateScript(String, String),
     GetScript(String),
     DeleteScript(String),
     ListScripts,
@@ -106,14 +106,18 @@ fn parse_command(_m: &MessageCreate, split: Vec<String>) -> Result<Option<Comman
         "script" => {
             if let Some(sub) = iter.next() {
                 match sub.as_str().to_lowercase().as_str() {
-                    "add" => Ok(Some(Command::AddScript(cmd_parse_string_rest(&mut iter)?))),
+                    "add" => Ok(Some(Command::AddScript(
+                        cmd_parse_string_word(&mut iter)?,
+                        cmd_parse_string_rest(&mut iter)?,
+                    ))),
                     "del" => Ok(Some(Command::DeleteScript(cmd_parse_string_word(
                         &mut iter,
                     )?))),
                     "get" => Ok(Some(Command::GetScript(cmd_parse_string_word(&mut iter)?))),
-                    "update" => Ok(Some(Command::UpdateScript(cmd_parse_string_rest(
-                        &mut iter,
-                    )?))),
+                    "update" => Ok(Some(Command::UpdateScript(
+                        cmd_parse_string_word(&mut iter)?,
+                        cmd_parse_string_rest(&mut iter)?,
+                    ))),
                     "list" => Ok(Some(Command::ListScripts)),
 
                     "enable" => Ok(Some(Command::EnabledScript(cmd_parse_string_word(
@@ -216,18 +220,13 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
     cmd: &ParsedCommand,
 ) -> Result<Option<String>, String> {
     match &cmd.command {
-        Command::AddScript(source) | Command::UpdateScript(source) => {
+        Command::AddScript(name, source) | Command::UpdateScript(name, source) => {
             let compiled = tscompiler::compile_typescript(source)
                 .map_err(|e| format!("failed compiling: {:?}", e))?;
 
             println!("Compiled: {}", compiled);
 
-            let header = match vm::validate_script(
-                compiled.clone(),
-                runtime::jsmodules::create_module_map(),
-            )
-            .await
-            {
+            let _ = match runtime::validate_script(compiled.clone()).await {
                 Ok(h) => h,
                 Err(e) => {
                     return Ok(Some(format!("failed validating script: {}", e)));
@@ -236,7 +235,7 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
 
             match ctx
                 .config_store
-                .get_script(cmd.m.guild_id.unwrap(), header.name.clone())
+                .get_script(cmd.m.guild_id.unwrap(), name.clone())
                 .await
             {
                 Ok(existing) => {
@@ -257,7 +256,7 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                         .update_script(cmd.m.guild_id.unwrap(), script)
                         .await?;
 
-                    Ok(Some(format!("Script {} has been updated!", header.name)))
+                    Ok(Some(format!("Script {} has been updated!", name)))
                 }
 
                 Err(_) => {
@@ -265,7 +264,7 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                         .create_script(
                             cmd.m.guild_id.unwrap(),
                             CreateScript {
-                                name: header.name.clone(),
+                                name: name.clone(),
                                 original_source: source.clone(),
                                 compiled_js: compiled,
                                 enabled: true,
@@ -277,7 +276,7 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                     Ok(Some(format!(
                         "Script {} has been added! (note that it still needs to be linked to a \
                          context)",
-                        header.name
+                        name
                     )))
                 }
             }

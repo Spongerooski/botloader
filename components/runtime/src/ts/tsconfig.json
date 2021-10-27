@@ -10,5 +10,6 @@
         "strictNullChecks": true,
         "emitDeclarationOnly": true,
         "declarationDir": "../../../../typings",
+        "strict": true
     }
 }

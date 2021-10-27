@@ -1,15 +1,16 @@
-import { Bot, console, CreateMessage, Timers } from 'botloader';
+import { Script } from 'botloader';
 
-Bot.registerMeta({
-    name: "runaway",
-})
+const script = new Script("runaway script");
+
 
 let a = 0;
 let b = a;
 
-Bot.on("MESSAGE_CREATE", async evt => {
+script.on("MESSAGE_CREATE", async evt => {
     while (true) {
         a++;
         b = a;
     }
 })
+
+script.run();

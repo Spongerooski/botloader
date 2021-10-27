@@ -2,35 +2,22 @@ use std::{rc::Rc, time::Duration};
 
 use deno_core::{op_sync, Extension, JsRuntime, OpState, RuntimeOptions};
 use rusty_v8::IsolateHandle;
-use serde::Deserialize;
 use tokio::sync::oneshot;
 use tracing::info;
 use url::Url;
 
-use crate::{
+use vm::{
     moduleloader::{ModuleEntry, ModuleManager},
     prepend_script_source_header, AnyError, JsValue,
 };
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ScriptHeader {
-    pub name: String,
-
-    #[serde(default)]
-    pub author: String,
-    #[serde(default)]
-    pub version: String,
-    #[serde(default)]
-    pub description: String,
-}
+use crate::commonmodels::script::ScriptMeta;
 
 /// Validates a script, making sure it parses correctly and runs the ScriptMeta function to retrieve essential information about this script
-pub async fn validate_script(
-    source: String,
-    module_map: Vec<ModuleEntry>,
-) -> Result<ScriptHeader, AnyError> {
+pub async fn validate_script(source: String) -> Result<ScriptMeta, AnyError> {
     info!("validating script");
+
+    let module_map = crate::jsmodules::create_module_map();
 
     let (iso_tx, iso_rx) = oneshot::channel();
     let (result_tx, result_rx) = oneshot::channel();
@@ -63,10 +50,13 @@ async fn validator_thread(
     module_map: Vec<ModuleEntry>,
     iso_handle_back: oneshot::Sender<IsolateHandle>,
     term_rx: oneshot::Receiver<bool>,
-) -> Result<ScriptHeader, AnyError> {
+) -> Result<ScriptMeta, AnyError> {
     let mut rt = JsRuntime::new(RuntimeOptions {
         extensions: vec![Extension::builder()
-            .ops(vec![("op_jack_register_meta", op_sync(op_set_meta))])
+            .ops(vec![(
+                "op_botloader_script_start",
+                op_sync(op_script_start),
+            )])
             .build()],
         module_loader: Some(Rc::new(ModuleManager { module_map })),
         ..Default::default()
@@ -98,7 +88,7 @@ async fn validator_thread(
 
     let r = {
         if let Ok(op) = op_state.try_borrow() {
-            match op.try_borrow::<ScriptHeader>() {
+            match op.try_borrow::<ScriptMeta>() {
                 Some(h) => Ok(h.clone()),
                 None => Err(anyhow::anyhow!("never called Jack.registerMeta")),
             }
@@ -109,9 +99,9 @@ async fn validator_thread(
     r
 }
 
-pub fn op_set_meta(state: &mut OpState, args: JsValue, _: ()) -> Result<(), AnyError> {
-    let des: ScriptHeader = serde_json::from_value(args)?;
-    info!("Set script header: {:?}", des);
+pub fn op_script_start(state: &mut OpState, args: JsValue, _: ()) -> Result<(), AnyError> {
+    let des: ScriptMeta = serde_json::from_value(args)?;
+    info!("Set script meta: {:?}", des);
     state.put(des);
     Ok(())
 }

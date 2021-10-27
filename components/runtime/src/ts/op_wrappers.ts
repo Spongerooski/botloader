@@ -1,13 +1,26 @@
-import { Message } from "./commonmodels";
+import { Message, ScriptMeta } from "./commonmodels";
 
-export interface CreateMessageData {
-    content: string,
-    channelId: string,
-}
+// This file contains op wrappers
+// They are used internally and you should generally not need to use them in your own scripts.
+// May be removed from the publid API at some point.
 
-export async function CreateMessage(args: CreateMessageData): Promise<Message> {
-    return await Deno.core.opAsync(
-        "op_jack_sendmessage",
-        args
-    ) as Message;
+export namespace OpWrappers {
+    export interface CreateMessageData {
+        content: string,
+        channelId: string,
+    }
+
+    export async function createMessage(args: CreateMessageData): Promise<Message> {
+        return await Deno.core.opAsync(
+            "op_jack_sendmessage",
+            args
+        ) as Message;
+    }
+
+    export function scriptStarted(meta: ScriptMeta) {
+        Deno.core.opSync(
+            "op_botloader_script_start",
+            meta
+        );
+    }
 }

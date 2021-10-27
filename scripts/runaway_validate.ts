@@ -1,4 +1,4 @@
-import { Bot, console, CreateMessage, Timers } from 'botloader';
+import { Script } from 'botloader';
 
 let a = 0;
 let b = a;
@@ -8,8 +8,6 @@ while (true) {
     b = a;
 }
 
-
-Bot.registerMeta({
-    name: "runaway_validate",
-})
+const script = new Script("asd");
+script.run()
 
