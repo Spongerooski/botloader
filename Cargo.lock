@@ -787,9 +787,11 @@ dependencies = [
 name = "discordoauthwrapper"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "oauth2",
  "stores",
+ "tokio",
  "twilight-http",
  "twilight-model",
 ]
