@@ -60,7 +60,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			apiClient.token = newClient.token;
 			await context.secrets.store("botloader-api-key", key as string);
 		}
+	}), vscode.commands.registerCommand('botloader-vscode.push', async (f: vscode.Uri) => {
+		console.log("Need to push", f);
 	}));
+
+	console.log("gaming", context.extensionPath, context.extensionUri);
 
 	context.subscriptions.push(new WorkspaceManager(apiClient));
 
@@ -80,7 +84,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		let textEncoder = new TextEncoder();
 		for (let script of scripts) {
 			await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/${script.name}.ts`), textEncoder.encode(script.original_source));
-			await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/.botloader/scripts/${script.name}.ts`), textEncoder.encode(script.original_source));
+			await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/.botloader/scripts/${script.name}.ts.bloader`), textEncoder.encode(script.original_source));
 		}
 
 		await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/.botloader/index.json`), textEncoder.encode(JSON.stringify({
@@ -88,11 +92,41 @@ export async function activate(context: vscode.ExtensionContext) {
 			openScripts: scripts.map(script => script.id),
 		})));
 
+		await vscode.workspace.fs.copy(vscode.Uri.joinPath(context.extensionUri, "/out/typings/lib.deno_core.d.ts"), vscode.Uri.joinPath(dirUri, "/.botloader/lib.global.d.ts"));
+
+		await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/tsconfig.json`), textEncoder.encode(JSON.stringify(generateTsConfig(context.extensionPath), undefined, 4)));
+
 		vscode.workspace.updateWorkspaceFolders(0, 0, {
 			uri: dirUri,
 			name: guild.name,
 		});
+
 	}
+}
+
+function generateTsConfig(extensionPath: string) {
+	return {
+		"include": [
+			"*.ts",
+			".botloader/*.d.ts"
+		],
+		"compilerOptions": {
+			"module": "ES2020",
+			"noImplicitAny": true,
+			"removeComments": true,
+			"preserveConstEnums": true,
+			"sourceMap": false,
+			"target": "ES2020",
+			"alwaysStrict": true,
+			"strictNullChecks": true,
+			"baseUrl": "./",
+			"paths": {
+				"botloader": [
+					extensionPath + "/out/typings/index"
+				]
+			}
+		}
+	};
 }
 
 // this method is called when your extension is deactivated

@@ -31,11 +31,72 @@
         "command": "botloader-vscode.set-accesstoken",
         "title": "Set API key",
         "category": "BotLoader"
+      },
+      {
+        "command": "botloader-vscode.push",
+        "title": "Push changes",
+        "category": "BotLoader",
+        "icon": "$(cloud-upload)"
+      }
+    ],
+    "menus": {
+      "scm/resourceGroup/context": [
+        {
+          "command": "botloader-vscode.push",
+          "when": "scmProvider == botloader && scmResourceGroup == changed",
+          "group": "inline"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "botloader-vscode.push",
+          "when": "scmProvider == botloader && scmResourceGroup == changed",
+          "group": "inline"
+        }
+      ]
+    },
+    "colors": [
+      {
+        "id": "botloaderDecoration.addedResourceForeground",
+        "description": "addedResourceForeground",
+        "defaults": {
+          "light": "#587c0c",
+          "dark": "#81b88b",
+          "highContrast": "#1b5225"
+        }
+      },
+      {
+        "id": "botloaderDecoration.modifiedResourceForeground",
+        "description": "modifiedResourceForeground",
+        "defaults": {
+          "light": "#895503",
+          "dark": "#E2C08D",
+          "highContrast": "#E2C08D"
+        }
+      },
+      {
+        "id": "botloaderDecoration.deletedResourceForeground",
+        "description": "deletedResourceForeground",
+        "defaults": {
+          "light": "#ad0707",
+          "dark": "#c74e39",
+          "highContrast": "#c74e39"
+        }
+      },
+      {
+        "id": "botloaderDecoration.untrackedResourceForeground",
+        "description": "deletedResourceForeground",
+        "defaults": {
+          "light": "#007100",
+          "dark": "#73C991",
+          "highContrast": "#73C991"
+        }
       }
     ]
   },
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "preesbuild-base": "node prebuild.mjs",
     "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
@@ -54,7 +115,8 @@
     "glob": "^7.1.7",
     "mocha": "^9.1.1",
     "node-fetch": "^3.0.0",
-    "typescript": "^4.4.3"
+    "typescript": "^4.4.3",
+    "fs-extra": "^10.0.0"
   },
   "dependencies": {
     "node-fetch": "^3.0.0"
