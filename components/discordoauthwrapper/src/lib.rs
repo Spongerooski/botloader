@@ -2,11 +2,12 @@ use std::{
     fmt::{Debug, Display},
     future::Future,
     sync::{Arc, RwLock},
+    time::Duration,
 };
 
 use oauth2::reqwest::async_http_client;
 use stores::web::{DiscordOauthToken, SessionStore};
-use twilight_http::api_error::{ApiError, ErrorCode, GeneralApiError};
+use twilight_http::api_error::{ApiError, ErrorCode, GeneralApiError, RatelimitedApiError};
 use twilight_model::{
     id::UserId,
     user::{CurrentUser, CurrentUserGuild},
@@ -94,13 +95,23 @@ where
         F: Fn() -> Fut,
         Fut: Future<Output = Result<FRT, ApiProviderError<T::OtherError>>>,
     {
-        match f().await {
-            Ok(v) => Ok(v),
-            Err(ApiProviderError::InvalidToken) => {
-                self.update_token().await?;
-                Ok(f().await?)
+        let mut updated_token = false;
+        loop {
+            match f().await {
+                Ok(v) => return Ok(v),
+                Err(ApiProviderError::InvalidToken) => {
+                    if updated_token {
+                        return Err(anyhow::anyhow!("invalid token twice").into());
+                    }
+
+                    self.update_token().await?;
+                    updated_token = true;
+                }
+                Err(ApiProviderError::Ratelimit(dur)) => {
+                    tokio::time::sleep(dur).await;
+                }
+                Err(e) => return Err(e.into()),
             }
-            Err(e) => Err(e.into()),
         }
     }
 
@@ -139,6 +150,7 @@ pub trait TokenRefresher {
 #[derive(Debug)]
 pub enum ApiProviderError<T> {
     InvalidToken,
+    Ratelimit(Duration),
     Other(T),
 }
 
@@ -148,6 +160,7 @@ impl<T: std::fmt::Debug + Display> Display for ApiProviderError<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidToken => f.write_str("invalid token"),
+            Self::Ratelimit(dur) => f.write_fmt(format_args!("ratelimited: {:?}", dur)),
             Self::Other(inner) => f.write_fmt(format_args!("{}", inner)),
         }
     }
@@ -214,6 +227,10 @@ impl From<twilight_http::Error> for ApiProviderError<twilight_http::Error> {
                     }),
                 ..
             } => Self::InvalidToken,
+            twilight_http::error::ErrorType::Response {
+                error: ApiError::Ratelimited(RatelimitedApiError { retry_after, .. }),
+                ..
+            } => Self::Ratelimit(Duration::from_millis(*retry_after as u64)),
             _ => Self::Other(te),
         }
     }
