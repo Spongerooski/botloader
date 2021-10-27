@@ -9,6 +9,6 @@
         "declaration": true,
         "strictNullChecks": true,
         "emitDeclarationOnly": true,
-        "declarationDir": "../../../../scripts/bot",
+        "declarationDir": "../../../../typings",
     }
 }
