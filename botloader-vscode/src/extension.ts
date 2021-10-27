@@ -118,6 +118,7 @@ function generateTsConfig(extensionPath: string) {
 			"sourceMap": false,
 			"target": "ES2020",
 			"alwaysStrict": true,
+			"strict": true,
 			"strictNullChecks": true,
 			"baseUrl": "./",
 			"paths": {
