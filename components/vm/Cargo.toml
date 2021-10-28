@@ -32,7 +32,8 @@ tscompiler = {path="../../components/tscompiler"}
 scriptscheduler = {path="../../components/scriptscheduler"}
 
 [build-dependencies]
-tscompiler = {path="../../components/tscompiler"}
+deno_core = "0.91"
+
 
 # swc = "0.24"
 # swc_common = "0.10"

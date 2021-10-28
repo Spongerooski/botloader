@@ -3,9 +3,11 @@ use crate::moduleloader::ModuleManager;
 use crate::AnyError;
 use deno_core::Extension;
 use deno_core::RuntimeOptions;
+use deno_core::Snapshot;
 use futures::future::LocalBoxFuture;
 use isolatecell::IsolateCell;
 use isolatecell::ManagedIsolate;
+use rusty_v8::CreateParams;
 use rusty_v8::IsolateHandle;
 use serde::Serialize;
 use std::fmt::Display;
@@ -122,20 +124,13 @@ impl Vm {
         extension_factory: &ExtensionFactory,
         module_manager: Rc<ModuleManager>,
     ) -> ManagedIsolate {
-        let mut extensions = extension_factory();
-        extensions.insert(
-            0,
-            Extension::builder()
-                .js(vec![(
-                    "core.js",
-                    in_mem_source_load_fn(include_str!("core.js")),
-                )])
-                .build(),
-        );
+        let extensions = extension_factory();
 
         let options = RuntimeOptions {
             extensions,
             module_loader: Some(module_manager),
+            // create_params: Some(CreateParams::default().heap_limits(64 * 8_000, 64 * 1_000_000)),
+            startup_snapshot: Some(Snapshot::Static(crate::BOTLOADER_CORE_SNAPSHOT)),
             ..Default::default()
         };
 
@@ -443,10 +438,14 @@ impl VmInterface for Vm {
     fn shutdown_runaway(shutdown_handle: &Self::TimeoutHandle) {
         let mut inner = shutdown_handle.inner.write().unwrap();
         inner.shutdown_reason = Some(ShutdownReason::RunawayScript);
-        shutdown_handle
-            .terminated
-            .store(true, std::sync::atomic::Ordering::SeqCst);
-        inner.isolate_handle.as_ref().unwrap().terminate_execution();
+        if let Some(iso_handle) = &inner.isolate_handle {
+            shutdown_handle
+                .terminated
+                .store(true, std::sync::atomic::Ordering::SeqCst);
+            iso_handle.terminate_execution();
+        } else {
+            inner.shutdown_reason = None;
+        }
     }
 }
 
