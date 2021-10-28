@@ -171,6 +171,62 @@ where
         Ok(())
     }
 
+    pub async fn create_new_guild_pack_rt(
+        &self,
+        guild_id: GuildId,
+        pack_id: u64,
+    ) -> Result<(), String> {
+        let scripts = self
+            .inner
+            .config_store
+            .list_scripts(guild_id)
+            .await
+            .unwrap();
+
+        // start all the runtimes!
+        // let to_load = links.into_iter().map(|sl| )
+        let to_load = scripts.into_iter().filter(|e| e.enabled).collect();
+
+        let mut guilds = self.inner.guilds.write().await;
+        if let Some(g) = guilds.get_mut(&guild_id) {
+            let (tx, rx) = mpsc::unbounded_channel();
+
+            let rt_ctx = RuntimeContext {
+                bot_state: self.inner.state.clone(),
+                dapi: self.inner.http.clone(),
+                guild_id,
+                role: VmRole::Main,
+            };
+
+            info!("spawning guild vm for {}", guild_id);
+            self.inner
+                .worker_thread
+                .send_cmd
+                .send(VmThreadCommand::StartVM(CreateRt {
+                    error_reporter: self.inner.clone(),
+                    rx,
+                    tx: self.inner.rt_evt_tx.clone(),
+                    ctx: VmContext {
+                        // bot_state: self.inner.shared_state.bot_context.state.clone(),
+                        // dapi: self.inner.shared_state.bot_context.http.clone(),
+                        guild_id,
+                        role: VmRole::Pack(pack_id),
+                    },
+                    load_scripts: to_load,
+                    extension_factory: Box::new(move || {
+                        vec![runtime::create_extension(rt_ctx.clone())]
+                    }),
+                    extension_modules: runtime::jsmodules::create_module_map(),
+                }))
+                .map_err(|_| panic!("failed creating vm"))
+                .unwrap();
+
+            g.pack_vms
+                .push((pack_id, VmState::Running(VmRunningState { tx })));
+        }
+        Ok(())
+    }
+
     async fn vm_events_rcv(&self, mut rx: UnboundedReceiver<GuildVmEvent>) {
         loop {
             if let Some((guild_id, r, evt)) = rx.recv().await {
