@@ -390,7 +390,9 @@ impl<'a> Iterator for GuildStateIter<'a> {
             self.1 += 1;
             Some(&self.0.main_vm)
         } else if self.0.pack_vms.len() > self.1 - 1 {
-            Some(&self.0.pack_vms[self.1 - 1].1)
+            let index = self.1 - 1;
+            self.1 += 1;
+            Some(&self.0.pack_vms[index].1)
         } else {
             None
         }
