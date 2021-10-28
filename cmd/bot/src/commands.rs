@@ -260,7 +260,8 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                 }
 
                 Err(_) => {
-                    ctx.config_store
+                    let script = ctx
+                        .config_store
                         .create_script(
                             cmd.m.guild_id.unwrap(),
                             CreateScript {
@@ -272,6 +273,10 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                         )
                         .await
                         .map_err(|e| format!("failed creating script :( {}", e))?;
+
+                    ctx.vm_manager
+                        .load_script(cmd.m.guild_id.unwrap(), script)
+                        .await?;
 
                     Ok(Some(format!(
                         "Script {} has been added! (note that it still needs to be linked to a \
