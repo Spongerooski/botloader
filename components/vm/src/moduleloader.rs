@@ -23,7 +23,7 @@ impl ModuleLoader for ModuleManager {
             return Ok(u);
         };
 
-        if specifier == "bot/index" {
+        if specifier == "botloader" {
             specifier = "index";
         }
 
