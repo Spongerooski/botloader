@@ -106,7 +106,7 @@ where
     // to do so we simply track the running vm and send pings to the thread
     // if we get no pong back within the allowed interval, then we have a problem
     async fn runaway_checker(handle: VmThreadHandle<T>) {
-        let ping_interval = Duration::from_secs(10);
+        let ping_interval = Duration::from_secs(100);
         loop {
             let (send, rcv) = oneshot::channel();
             match handle.send_cmd.send(VmThreadCommand::Ping(send)) {
