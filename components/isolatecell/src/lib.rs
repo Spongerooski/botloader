@@ -7,6 +7,8 @@ use deno_core::{JsRuntime, RuntimeOptions};
 
 /// IsolateCell is a tracker for wether someone has entered a isolate or not
 /// this removed the need for manual unsafe management of the enter and exit states of isolates
+///
+/// WARNING: Holding guards across awaits will probably lead to collisions, and the below assertion will fail
 #[derive(Default)]
 pub struct IsolateCell {
     entered: Cell<bool>,
@@ -14,9 +16,7 @@ pub struct IsolateCell {
 
 impl IsolateCell {
     pub fn enter_isolate<'a, 'b>(&'a self, rt: &'b mut ManagedIsolate) -> IsolateGuard<'a, 'b> {
-        assert!(!self.entered.get());
-
-        self.entered.set(true);
+        self.enter();
 
         // SAFETY: we only allow a single isolate to be entered per the above guard
         // Also managed isolates are exited after creation
@@ -25,6 +25,18 @@ impl IsolateCell {
         }
 
         IsolateGuard { cell: self, rt }
+    }
+
+    fn enter(&self) {
+        assert!(!self.entered.get());
+
+        self.entered.set(true);
+    }
+
+    fn exit(&self) {
+        assert!(self.entered.get());
+
+        self.entered.set(false);
     }
 }
 
@@ -38,7 +50,7 @@ impl<'a, 'b> Drop for IsolateGuard<'a, 'b> {
         // SAFETY: there's no way to construct a guard without entering the isolate
         unsafe { self.rt.inner.v8_isolate().exit() };
 
-        self.cell.entered.set(false);
+        self.cell.exit();
     }
 }
 
@@ -57,7 +69,7 @@ impl DerefMut for IsolateGuard<'_, '_> {
 }
 
 /// ManagedIsolate is a isolate where the enter and exit state is managed by the IsolateCell
-/// this removed the need for manual unsafe management of the enter and exit states
+/// this removed the need for manualFutOutafe management of the enter and exit states
 pub struct ManagedIsolate {
     inner: JsRuntime,
 }
@@ -66,6 +78,20 @@ impl ManagedIsolate {
     pub fn new(opts: RuntimeOptions) -> Self {
         let mut rt = JsRuntime::new(opts);
         rt.sync_ops_cache();
+
+        // SAFETY: new enters the isolate
+        unsafe { rt.v8_isolate().exit() }
+
+        Self { inner: rt }
+    }
+
+    pub fn new_with_state<T: 'static>(opts: RuntimeOptions, initial_state: T) -> Self {
+        let mut rt = JsRuntime::new(opts);
+        rt.sync_ops_cache();
+        {
+            let op_state = rt.op_state();
+            op_state.borrow_mut().put(initial_state);
+        }
 
         // SAFETY: new enters the isolate
         unsafe { rt.v8_isolate().exit() }
