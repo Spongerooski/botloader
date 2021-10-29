@@ -1,23 +1,31 @@
 use crate::moduleloader::ModuleEntry;
 use crate::moduleloader::ModuleManager;
 use crate::AnyError;
+use anyhow::anyhow;
+use deno_core::op_async;
 use deno_core::Extension;
+use deno_core::OpState;
 use deno_core::RuntimeOptions;
 use deno_core::Snapshot;
 use futures::future::LocalBoxFuture;
+use futures::FutureExt;
 use isolatecell::IsolateCell;
 use isolatecell::ManagedIsolate;
-use rusty_v8::CreateParams;
 use rusty_v8::IsolateHandle;
 use serde::Serialize;
+use std::cell::RefCell;
 use std::fmt::Display;
+use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use std::task::Context;
 use std::task::Poll;
+use std::task::Wake;
+use std::task::Waker;
 use stores::config::Script;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tracing::{error, info};
 use twilight_model::id::GuildId;
 use url::Url;
@@ -60,6 +68,12 @@ pub enum VmRole {
 
 pub type GuildVmEvent = (GuildId, VmRole, VmEvent);
 
+#[derive(Serialize)]
+struct ScriptDispatchData {
+    name: String,
+    data: serde_json::Value,
+}
+
 pub struct Vm {
     ctx: VmContext,
     runtime: ManagedIsolate,
@@ -76,12 +90,18 @@ pub struct Vm {
 
     extension_factory: ExtensionFactory,
     module_manager: Rc<ModuleManager>,
+
+    script_dispatch_tx: UnboundedSender<ScriptDispatchData>,
 }
 
 #[derive(Debug, Clone)]
 pub struct VmContext {
     pub guild_id: GuildId,
     pub role: VmRole,
+}
+
+pub struct CoreCtxData {
+    rcv_events: UnboundedReceiver<ScriptDispatchData>,
 }
 
 impl Vm {
@@ -94,8 +114,16 @@ impl Vm {
             module_map: create_req.extension_modules,
         });
 
-        let sandbox =
-            Self::create_isolate(&create_req.extension_factory, module_manager.clone()).await;
+        let (script_dispatch_tx, script_dispatch_rx) = mpsc::unbounded_channel();
+
+        let sandbox = Self::create_isolate(
+            &create_req.extension_factory,
+            module_manager.clone(),
+            CoreCtxData {
+                rcv_events: script_dispatch_rx,
+            },
+        )
+        .await;
         // sandbox.add_state_data(create_req.ctx.clone());
 
         let mut rt = Self {
@@ -104,6 +132,8 @@ impl Vm {
             rx: create_req.rx,
             tx: create_req.tx,
             loaded_scripts: vec![],
+
+            script_dispatch_tx,
             timeout_handle,
             isolate_cell,
             runtime: sandbox,
@@ -123,8 +153,15 @@ impl Vm {
     async fn create_isolate(
         extension_factory: &ExtensionFactory,
         module_manager: Rc<ModuleManager>,
+        core_data: CoreCtxData,
     ) -> ManagedIsolate {
-        let extensions = extension_factory();
+        let mut extensions = extension_factory();
+        extensions.insert(
+            0,
+            Extension::builder()
+                .ops(vec![("op_botloader_rcv_event", op_async(op_rcv_event))])
+                .build(),
+        );
 
         let options = RuntimeOptions {
             extensions,
@@ -134,7 +171,7 @@ impl Vm {
             ..Default::default()
         };
 
-        ManagedIsolate::new(options)
+        ManagedIsolate::new_with_state(options, core_data)
     }
 
     fn emit_isolate_handle(&mut self) {
@@ -254,25 +291,38 @@ impl Vm {
 
         {
             let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
-            let id = rt
-                .load_module(
-                    &Url::parse(format!("file://guild/{}.js", script.name,).as_str()).unwrap(),
-                    Some(prepend_script_source_header(
-                        &script.compiled_js,
-                        Some(&script),
-                    )),
-                )
-                .await
-                .unwrap();
 
-            // TODO: should we also await the futures?
-            // with
-            let mut r = rt.mod_evaluate(id);
-            rt.run_event_loop(false).await.unwrap();
+            let parsed_uri =
+                Url::parse(format!("file://guild/{}.js", script.name).as_str()).unwrap();
 
-            if let Ok(Some(result)) = r.try_next() {
-                result.unwrap();
+            let fut = rt.load_module(
+                &parsed_uri,
+                Some(prepend_script_source_header(
+                    &script.compiled_js,
+                    Some(&script),
+                )),
+            );
+
+            // Yes this is very hacky, we should have a proper solution for this at some point.
+            //
+            // Why is this needed? because we can't hold the IsolateGuard across an await
+            // this future should resolve instantly because our module loader has no awaits in it
+            // and does no io.
+            //
+            // this might very well break in the future when we update to a newer version of deno
+            // but hopefully it's caught before production.
+            let id = {
+                let mut pinned = Box::pin(fut);
+                let waker: Waker = Arc::new(NoOpWaker).into();
+                let mut cx = Context::from_waker(&waker);
+                match pinned.poll_unpin(&mut cx) {
+                    Poll::Pending => panic!("Future should resolve instantly!"),
+                    Poll::Ready(v) => v.unwrap(),
+                }
             };
+
+            // TODO: handle error on receiver result
+            rt.mod_evaluate(id);
         }
 
         self.loaded_scripts.push(script);
@@ -301,38 +351,65 @@ impl Vm {
         P: Serialize,
     {
         info!("rt {} dispatching event: {}", self.ctx.guild_id, name);
-        match self.call_json(
-            "$jackGlobal.dispatchEvent",
-            &JackRTEvent {
+        let serialized = serde_json::to_value(args).unwrap();
+        self.script_dispatch_tx
+            .send(ScriptDispatchData {
                 name: name.to_string(),
-                data: args,
-            },
-        ) {
-            Ok(()) => {}
-            Err(e) => {
-                error!("failed calling dispatch: {}", e)
-            }
-        }
+                data: serialized,
+            })
+            .ok();
+
+        // match self.call_json(
+        //     "$jackGlobal.dispatchEvent",
+        //     &JackRTEvent {
+        //         name: name.to_string(),
+        //         data: args,
+        //     },
+        // ) {
+        //     Ok(()) => {}
+        //     Err(e) => {
+        //         error!("failed calling dispatch: {}", e)
+        //     }
+        // }
     }
 
     // Simply recreates the vm and loads the scripts in self.loaded_scripts
     async fn reset_sandbox(&mut self) {
         info!("rt {} resetting sandbox", self.ctx.guild_id,);
 
-        // complete the event loop
+        // TODO: more robust solution for this.
+        self.script_dispatch_tx
+            .send(ScriptDispatchData {
+                name: "STOP".to_string(),
+                data: serde_json::Value::Null,
+            })
+            .ok();
+
+        // complete the event loop and extract our core data (script event receiver)
         // TODO: we could potentially have some long running futures
         // so maybe call a function that cancels all long running futures or something?
-        {
+        let core_data: CoreCtxData = {
+            {
+                let fut = RunUntilCompletion {
+                    cell: &self.isolate_cell,
+                    rt: &mut self.runtime,
+                };
+                fut.await.ok();
+            }
+
             let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
-            rt.run_event_loop(false).await.unwrap()
+            let op_state = rt.op_state();
+            let val = op_state.borrow_mut().take();
+            val
         };
 
         // create a new sandbox
-        let new_rt =
-            Self::create_isolate(&self.extension_factory, self.module_manager.clone()).await;
-
-        // let mut sandbox = Self::create_isolate().await;
-        // sandbox.add_state_data(self.ctx.clone());
+        let new_rt = Self::create_isolate(
+            &self.extension_factory,
+            self.module_manager.clone(),
+            core_data,
+        )
+        .await;
 
         self.runtime = new_rt;
         self.emit_isolate_handle();
@@ -344,21 +421,26 @@ impl Vm {
             self.load_script(script).await;
         }
     }
+}
 
-    // TODO: capture return value
-    pub(crate) fn call_json<V: Serialize>(
-        &mut self,
-        fn_name: &str,
-        args: &V,
-    ) -> Result<(), AnyError> {
-        // undefined will cause JSON serialization error, so it needs to be treated as null
-        let js_code = format!("{f}({a});", f = fn_name, a = serde_json::to_value(args)?);
+async fn op_rcv_event(
+    state: Rc<RefCell<OpState>>,
+    _args: (),
+    _: (),
+) -> Result<ScriptDispatchData, AnyError> {
+    let cloned_state = state.clone();
+    return futures::future::poll_fn(move |ctx| {
+        println!("Polling...");
 
-        let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
-        rt.execute("call.js", &js_code)?;
-
-        Ok(())
-    }
+        let mut op_state = cloned_state.borrow_mut();
+        let core_data = op_state.borrow_mut::<CoreCtxData>();
+        match core_data.rcv_events.poll_recv(ctx) {
+            Poll::Ready(Some(v)) => Poll::Ready(Ok(v)),
+            Poll::Ready(None) => Poll::Ready(Err(anyhow!("no more events!"))),
+            Poll::Pending => Poll::Pending,
+        }
+    })
+    .await;
 }
 
 struct TickFuture<'a> {
@@ -387,6 +469,27 @@ impl<'a> core::future::Future for TickFuture<'a> {
         match self.rx.poll_recv(cx) {
             Poll::Ready(opt) => Poll::Ready(Ok(opt)),
             _ => Poll::Pending,
+        }
+    }
+}
+struct RunUntilCompletion<'a> {
+    rt: &'a mut ManagedIsolate,
+    cell: &'a IsolateCell,
+}
+
+// Future which drives the js event loop while at the same time retrieving commands
+impl<'a> core::future::Future for RunUntilCompletion<'a> {
+    type Output = Result<(), AnyError>;
+
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        let mut rt = self.cell.enter_isolate(self.rt);
+
+        match rt.poll_event_loop(cx, false) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(_) => Poll::Ready(Ok(())),
         }
     }
 }
@@ -489,4 +592,10 @@ impl Display for RtId {
 
 pub fn in_mem_source_load_fn(src: &'static str) -> Box<dyn Fn() -> Result<String, AnyError>> {
     Box::new(move || Ok(src.to_string()))
+}
+
+struct NoOpWaker;
+
+impl Wake for NoOpWaker {
+    fn wake(self: Arc<Self>) {}
 }

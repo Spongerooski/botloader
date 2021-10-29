@@ -43,7 +43,7 @@ export namespace InternalEventSystem {
 }
 
 if ((typeof $jackGlobal) !== "undefined") {
-    $jackGlobal.handleDispatch = InternalEventSystem.dispatchEvent;
+    $jackGlobal.runEventLoop(InternalEventSystem.dispatchEvent)
 }
 
 interface DispatchEvent {

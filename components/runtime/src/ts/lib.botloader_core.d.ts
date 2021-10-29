@@ -1,3 +1,3 @@
 declare let $jackGlobal: {
-    handleDispatch: (evt: { name: string, data: any }) => void;
+    runEventLoop: (cb: (evt: { name: string, data: any }) => void) => void;
 };

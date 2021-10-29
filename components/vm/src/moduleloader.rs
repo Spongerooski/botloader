@@ -1,7 +1,6 @@
 use deno_core::{ModuleLoader, ModuleSource, OpState};
 use futures::future::ready;
 use std::rc::Rc;
-use tracing::info;
 use url::Url;
 
 pub struct ModuleManager {
@@ -18,7 +17,7 @@ impl ModuleLoader for ModuleManager {
         referrer: &str,
         _is_main: bool,
     ) -> Result<deno_core::ModuleSpecifier, deno_core::error::AnyError> {
-        info!("resolving module: {} - {}", specifier, referrer);
+        // info!("resolving module: {} - {}", specifier, referrer);
         if let Ok(u) = Url::parse(specifier) {
             return Ok(u);
         };
@@ -44,7 +43,7 @@ impl ModuleLoader for ModuleManager {
         _maybe_referrer: Option<deno_core::ModuleSpecifier>,
         _is_dyn_import: bool,
     ) -> std::pin::Pin<Box<deno_core::ModuleSourceFuture>> {
-        info!("loading module: {}", module_specifier.to_string());
+        // info!("loading module: {}", module_specifier.to_string());
 
         let f = match self
             .module_map
