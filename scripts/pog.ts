@@ -7,6 +7,7 @@ let counter = 1;
 script.on("MESSAGE_CREATE", async evt => {
     if (!evt.author.bot && evt.content === "pog") {
         counter++;
+        counter++;
         await OpWrappers.createMessage({
             channelId: evt.channelId,
             content: "pog #" + counter,
@@ -20,10 +21,13 @@ script.registerCommand({
     options: {
         "a": { description: "first number", kind: "Number", required: true },
         "b": { description: "second number", kind: "Number", required: true },
-        "optional": { description: "optional number", kind: "Number" },
+        "optional num": { description: "optional number", kind: "Number" },
     },
     callback: async (ctx, args) => {
         let result = args.a + args.b;
+        if (args["optional num"]) {
+            result += args["optional num"];
+        }
         await ctx.sendResponse(`Result: ${result}`);
     }
 })
