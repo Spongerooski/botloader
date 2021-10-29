@@ -171,7 +171,8 @@ where
         Ok(())
     }
 
-    pub async fn create_new_guild_pack_rt(
+    // This function just loads all the guild scripts as a pack vm and is largely just used for bench marking atm
+    pub async fn create_guild_scripts_vm_as_pack(
         &self,
         guild_id: GuildId,
         pack_id: u64,

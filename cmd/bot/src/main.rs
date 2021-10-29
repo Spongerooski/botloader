@@ -130,6 +130,16 @@ async fn handle_events<CT: Clone + ConfigStore + Send + Sync + 'static>(
                     .await
                     .map_err(|err| error!(%err, "failed updating joined guild"))
                     .ok();
+
+                // Uncomment to spawn 1k vm's
+                //
+                // for i in 0..1000 {
+                //     vm_manager
+                //         .create_guild_scripts_vm_as_pack(gc.id, i as u64)
+                //         .await
+                //         .expect("failed creating vm");
+                //     info!("spawned extra vm!: {}", i)
+                // }
             }
             Event::MessageCreate(m) => {
                 if let Some(cmd) = commands::check_for_command(&ctx, *(m).clone()) {
