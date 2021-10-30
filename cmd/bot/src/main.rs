@@ -10,6 +10,7 @@ use tracing::{error, info};
 use twilight_cache_inmemory::{InMemoryCache, InMemoryCacheBuilder};
 use twilight_gateway::{Cluster, Event, Intents};
 use twilight_model::oauth::CurrentApplicationInfo;
+use vm::init_v8_flags;
 
 mod commands;
 
@@ -27,6 +28,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv::dotenv().expect("failed loading dotenv files");
     tracing_subscriber::fmt::init();
     // tracing_log::LogTracer::init().unwrap();
+
+    // helps memory usage, altough the improvements were very minor they're still improvements
+    // more testing needs to be done on larger scripts
+    init_v8_flags(&[
+        "--optimize_for_size".to_string(),
+        "--lazy_feedback_allocation".to_string(),
+    ]);
 
     let config = RunConfig::from_args();
 
