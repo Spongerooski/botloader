@@ -409,7 +409,6 @@ dependencies = [
  "futures-core",
  "redis",
  "runtime",
- "rusty_v8",
  "stores",
  "structopt",
  "tokio",
