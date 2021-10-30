@@ -358,19 +358,6 @@ impl Vm {
                 data: serialized,
             })
             .ok();
-
-        // match self.call_json(
-        //     "$jackGlobal.dispatchEvent",
-        //     &JackRTEvent {
-        //         name: name.to_string(),
-        //         data: args,
-        //     },
-        // ) {
-        //     Ok(()) => {}
-        //     Err(e) => {
-        //         error!("failed calling dispatch: {}", e)
-        //     }
-        // }
     }
 
     // Simply recreates the vm and loads the scripts in self.loaded_scripts
