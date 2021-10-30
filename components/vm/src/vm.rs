@@ -11,11 +11,12 @@ use futures::future::LocalBoxFuture;
 use futures::FutureExt;
 use isolatecell::IsolateCell;
 use isolatecell::ManagedIsolate;
+use rusty_v8::CreateParams;
+use rusty_v8::HeapStatistics;
 use rusty_v8::IsolateHandle;
 use serde::Serialize;
 use std::cell::RefCell;
 use std::fmt::Display;
-use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -166,7 +167,7 @@ impl Vm {
         let options = RuntimeOptions {
             extensions,
             module_loader: Some(module_manager),
-            // create_params: Some(CreateParams::default().heap_limits(64 * 8_000, 64 * 1_000_000)),
+            create_params: Some(CreateParams::default().heap_limits(512_000, 10_240_000)),
             startup_snapshot: Some(Snapshot::Static(crate::BOTLOADER_CORE_SNAPSHOT)),
             ..Default::default()
         };
@@ -350,6 +351,7 @@ impl Vm {
     where
         P: Serialize,
     {
+        // self._dump_heap_stats();
         info!("rt {} dispatching event: {}", self.ctx.guild_id, name);
         let serialized = serde_json::to_value(args).unwrap();
         self.script_dispatch_tx
@@ -358,6 +360,28 @@ impl Vm {
                 data: serialized,
             })
             .ok();
+        // self._dump_heap_stats();
+    }
+
+    fn _dump_heap_stats(&mut self) {
+        let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
+        let iso = rt.v8_isolate();
+        let mut stats = HeapStatistics::default();
+        iso.get_heap_statistics(&mut stats);
+        dbg!(stats.total_heap_size());
+        dbg!(stats.total_heap_size_executable());
+        dbg!(stats.total_physical_size());
+        dbg!(stats.total_available_size());
+        dbg!(stats.total_global_handles_size());
+        dbg!(stats.used_global_handles_size());
+        dbg!(stats.used_heap_size());
+        dbg!(stats.heap_size_limit());
+        dbg!(stats.malloced_memory());
+        dbg!(stats.external_memory());
+
+        let policy = iso.get_microtasks_policy();
+        dbg!(policy);
+        // iso.low_memory_notification();
     }
 
     // Simply recreates the vm and loads the scripts in self.loaded_scripts
@@ -417,8 +441,6 @@ async fn op_rcv_event(
 ) -> Result<ScriptDispatchData, AnyError> {
     let cloned_state = state.clone();
     return futures::future::poll_fn(move |ctx| {
-        println!("Polling...");
-
         let mut op_state = cloned_state.borrow_mut();
         let core_data = op_state.borrow_mut::<CoreCtxData>();
         match core_data.rcv_events.poll_recv(ctx) {
@@ -459,12 +481,13 @@ impl<'a> core::future::Future for TickFuture<'a> {
         }
     }
 }
+
+// future that drives the vm to completion, acquiring the isolate guard when needed
 struct RunUntilCompletion<'a> {
     rt: &'a mut ManagedIsolate,
     cell: &'a IsolateCell,
 }
 
-// Future which drives the js event loop while at the same time retrieving commands
 impl<'a> core::future::Future for RunUntilCompletion<'a> {
     type Output = Result<(), AnyError>;
 
