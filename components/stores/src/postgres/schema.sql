@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS guild_scripts (
     guild_id bigint NOT NULL,
     name text NOT NULL,
     original_source text NOT NULL,
-    compiled_js text NOT NULL,
     enabled boolean NOT NULL,
     UNIQUE (guild_id, name)
 );

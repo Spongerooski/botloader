@@ -91,7 +91,6 @@ pub struct Script {
     pub id: u64,
     pub name: String,
     pub original_source: String,
-    pub compiled_js: String,
     pub enabled: bool,
 }
 
@@ -99,7 +98,6 @@ pub struct Script {
 pub struct CreateScript {
     pub name: String,
     pub original_source: String,
-    pub compiled_js: String,
     pub enabled: bool,
 }
 

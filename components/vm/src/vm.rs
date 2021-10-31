@@ -39,13 +39,13 @@ use crate::prepend_script_source_header;
 #[derive(Debug, Clone)]
 pub enum VmCommand {
     DispatchEvent(&'static str, serde_json::Value),
-    LoadScript(Script),
+    LoadScript(ScriptLoad),
 
     // note that this also reloads the runtime, shutting it down and starting it again
     // we send a message when that has been accomplished
     UnloadScripts(Vec<Script>),
     UnloadAllScript(u64),
-    UpdateScript(Script),
+    UpdateScript(ScriptLoad),
     Terminate,
     Restart,
 }
@@ -82,7 +82,7 @@ pub struct Vm {
     rx: UnboundedReceiver<VmCommand>,
     tx: UnboundedSender<GuildVmEvent>,
 
-    loaded_scripts: Vec<Script>,
+    loaded_scripts: Vec<ScriptLoad>,
 
     timeout_handle: TimeoutHandle,
     error_reporter: Arc<dyn ErrorReporter>,
@@ -255,8 +255,8 @@ impl Vm {
                 let to_unload = self
                     .loaded_scripts
                     .iter()
-                    .filter(|e| e.id == id)
-                    .map(|e| (e.id))
+                    .filter(|e| e.inner.id == id)
+                    .map(|e| (e.inner.id))
                     .collect::<Vec<_>>();
 
                 self.unload_scripts(to_unload).await;
@@ -265,7 +265,7 @@ impl Vm {
             VmCommand::UpdateScript(script) => {
                 let mut need_reset = false;
                 for old in &mut self.loaded_scripts {
-                    if old.id == script.id {
+                    if old.inner.id == script.inner.id {
                         *old = script.clone();
                         need_reset = true;
                     }
@@ -278,13 +278,20 @@ impl Vm {
         }
     }
 
-    async fn load_script(&mut self, script: Script) {
-        info!("rt {} loading script: {}", self.ctx.guild_id, script.id);
+    async fn load_script(&mut self, script: ScriptLoad) {
+        info!(
+            "rt {} loading script: {}",
+            self.ctx.guild_id, script.inner.id
+        );
 
-        if self.loaded_scripts.iter().any(|sc| sc.id == script.id) {
+        if self
+            .loaded_scripts
+            .iter()
+            .any(|sc| sc.inner.id == script.inner.id)
+        {
             info!(
                 "rt {} loading script: {} was already loaded, skipping",
-                self.ctx.guild_id, script.id
+                self.ctx.guild_id, script.inner.id
             );
 
             return;
@@ -294,13 +301,13 @@ impl Vm {
             let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
 
             let parsed_uri =
-                Url::parse(format!("file://guild/{}.js", script.name).as_str()).unwrap();
+                Url::parse(format!("file://guild/{}.js", script.inner.name).as_str()).unwrap();
 
             let fut = rt.load_module(
                 &parsed_uri,
                 Some(prepend_script_source_header(
                     &script.compiled_js,
-                    Some(&script),
+                    Some(&script.inner),
                 )),
             );
 
@@ -339,7 +346,7 @@ impl Vm {
         let new_scripts = self
             .loaded_scripts
             .drain(..)
-            .filter(|e| scripts.iter().any(|x| e.id == *x))
+            .filter(|e| scripts.iter().any(|x| e.inner.id == *x))
             .collect::<Vec<_>>();
 
         self.loaded_scripts = new_scripts;
@@ -578,7 +585,7 @@ pub struct CreateRt {
     pub rx: UnboundedReceiver<VmCommand>,
     pub tx: UnboundedSender<GuildVmEvent>,
     pub ctx: VmContext,
-    pub load_scripts: Vec<Script>,
+    pub load_scripts: Vec<ScriptLoad>,
     pub extension_factory: ExtensionFactory,
     pub extension_modules: Vec<ModuleEntry>,
 }
@@ -608,4 +615,10 @@ struct NoOpWaker;
 
 impl Wake for NoOpWaker {
     fn wake(self: Arc<Self>) {}
+}
+
+#[derive(Clone, Debug)]
+pub struct ScriptLoad {
+    pub compiled_js: String,
+    pub inner: Script,
 }

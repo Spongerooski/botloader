@@ -42,20 +42,10 @@ pub async fn create_guild_script(
     Extension(current_guild): Extension<CurrentUserGuild>,
     Json(payload): Json<CreateRequestData>,
 ) -> ApiResult<impl IntoResponse> {
-    let compiled = tscompiler::compile_typescript(&payload.original_source).map_err(|err| {
-        let errs = err
-            .into_iter()
-            .map(|w| format!("{:?}\n", w))
-            .collect::<String>();
-        error!(%errs, "failed compiling typescript");
-        ApiErrorResponse::InternalError
-    })?;
-
     let script = config_store
         .create_script(
             current_guild.id,
             CreateScript {
-                compiled_js: compiled,
                 enabled: payload.enabled,
                 original_source: payload.original_source,
                 name: payload.name,
@@ -83,21 +73,11 @@ pub async fn update_guild_script(
     Path(GuildScriptPathParams { script_id }): Path<GuildScriptPathParams>,
     Json(payload): Json<UpdateRequestData>,
 ) -> ApiResult<impl IntoResponse> {
-    let compiled = tscompiler::compile_typescript(&payload.original_source).map_err(|err| {
-        let errs = err
-            .into_iter()
-            .map(|w| format!("{:?}\n", w))
-            .collect::<String>();
-        error!(%errs, "failed compiling typescript");
-        ApiErrorResponse::InternalError
-    })?;
-
     let script = config_store
         .update_script(
             current_guild.id,
             Script {
                 id: script_id,
-                compiled_js: compiled,
                 enabled: payload.enabled,
                 original_source: payload.original_source,
                 name: payload.name,

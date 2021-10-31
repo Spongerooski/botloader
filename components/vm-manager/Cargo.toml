@@ -10,6 +10,7 @@ stores = {path="../../components/stores"}
 runtime = {path="../../components/runtime"}
 vmthread = {path="../../components/vmthread"}
 vm = {path="../../components/vm"}
+tscompiler = {path="../../components/tscompiler"}
 
 tracing = "0.1"
 tracing-futures= "0.2" 

@@ -222,9 +222,7 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
     match &cmd.command {
         Command::AddScript(name, source) | Command::UpdateScript(name, source) => {
             let compiled = tscompiler::compile_typescript(source)
-                .map_err(|e| format!("failed compiling: {:?}", e))?;
-
-            println!("Compiled: {}", compiled);
+                .map_err(|e| format!("failed compiling: {:}", e))?;
 
             let _ = match runtime::validate_script(compiled.clone()).await {
                 Ok(h) => h,
@@ -245,7 +243,6 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                             cmd.m.guild_id.unwrap(),
                             Script {
                                 original_source: source.clone(),
-                                compiled_js: compiled,
                                 ..existing
                             },
                         )
@@ -267,7 +264,6 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                             CreateScript {
                                 name: name.clone(),
                                 original_source: source.clone(),
-                                compiled_js: compiled,
                                 enabled: true,
                             },
                         )
@@ -313,8 +309,8 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                 .map_err(|e| format!("unknown script: {}", e))?;
 
             Ok(Some(format!(
-                "Script {}:\nOriginal: ```ts\n{}\n```\nCompiled: ```js\n{}\n```",
-                script.name, script.original_source, script.compiled_js
+                "Script {}:\nSource: ```ts\n{}\n```",
+                script.name, script.original_source
             )))
         }
         Command::ListScripts => {

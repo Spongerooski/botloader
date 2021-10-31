@@ -33,6 +33,3 @@ scriptscheduler = {path="../../components/scriptscheduler"}
 
 [build-dependencies]
 tscompiler = {path="../../components/tscompiler"}
-
-# swc = "0.24"
-# swc_common = "0.10"

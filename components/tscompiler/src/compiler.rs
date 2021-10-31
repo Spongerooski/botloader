@@ -23,15 +23,11 @@ use swc_ecmascript::{
     visit::FoldWith,
 };
 
-pub fn compile_typescript(input: &str) -> Result<String, Vec<Diagnostic>> {
-    match compile_typescript_inner(input) {
-        Err(e) => Err(e),
-        Ok(str) => Ok(str),
-        // None => Ok(String::new()), // TODO: Proper error here? not sure how we can encounter this thoughhh
-    }
+pub fn compile_typescript(input: &str) -> Result<String, String> {
+    compile_typescript_inner(input)
 }
 
-fn compile_typescript_inner(input: &str) -> Result<String, Vec<Diagnostic>> {
+fn compile_typescript_inner(input: &str) -> Result<String, String> {
     let mut result_buf = Vec::new();
 
     swc_common::GLOBALS.set(&Globals::new(), || {
@@ -40,12 +36,11 @@ fn compile_typescript_inner(input: &str) -> Result<String, Vec<Diagnostic>> {
 
             let cm: Lrc<SourceMap> = Default::default();
 
-            // let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
-            let errs = Arc::new(Mutex::new(Vec::new()));
-            let err_collector = CollectingEmitter {
-                messages: errs.clone(),
-            };
-            let handler = Handler::with_emitter(true, false, Box::new(err_collector));
+            let buf = Arc::new(Mutex::new(Vec::new()));
+            let handler = Handler::with_emitter_writer(
+                Box::new(VecLocked { buf: buf.clone() }),
+                Some(cm.clone()),
+            );
 
             let fm = cm.new_source_file(FileName::Custom("script.ts".into()), input.into());
 
@@ -70,8 +65,8 @@ fn compile_typescript_inner(input: &str) -> Result<String, Vec<Diagnostic>> {
                 Ok(m) => m,
                 Err(e) => {
                     e.into_diagnostic(&handler).emit();
-                    let errs = errs.lock().unwrap();
-                    return Err(errs.clone());
+                    let errs = buf.lock().unwrap();
+                    return Err(String::from_utf8(errs.clone()).unwrap());
                 }
             };
 
@@ -119,4 +114,26 @@ impl Emitter for CollectingEmitter {
         messages.push((**db).clone());
         // println!("[SWC]: {:?}", db);
     }
+}
+
+struct VecLocked {
+    buf: Arc<Mutex<Vec<u8>>>,
+}
+
+impl std::io::Write for VecLocked {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let mut inner = self.buf.lock().unwrap();
+        std::io::Write::write(&mut *inner, buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        let mut inner = self.buf.lock().unwrap();
+        std::io::Write::flush(&mut *inner)
+    }
+    // fn emit(&mut self, db: &swc_common::errors::DiagnosticBuilder<'_>) {
+    //     let mut messages = self.messages.lock().unwrap();
+    //     // let mut_brw = self.messages.borrow_mut();
+    //     messages.push((**db).clone());
+    //     // println!("[SWC]: {:?}", db);
+    // }
 }

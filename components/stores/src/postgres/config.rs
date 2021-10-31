@@ -16,8 +16,8 @@ impl Postgres {
     ) -> StoreResult<DbScript, sqlx::Error> {
         match sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, original_source, compiled_js, name, enabled FROM guild_scripts \
-             WHERE guild_id = $1 AND name = $2;",
+            "SELECT id, guild_id, original_source, name, enabled FROM guild_scripts WHERE \
+             guild_id = $1 AND name = $2;",
             guild_id.0 as i64,
             script_name
         )
@@ -37,8 +37,8 @@ impl Postgres {
     ) -> StoreResult<DbScript, sqlx::Error> {
         Ok(sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, name, original_source, compiled_js, enabled FROM guild_scripts \
-             WHERE guild_id = $1 AND id = $2;",
+            "SELECT id, guild_id, name, original_source, enabled FROM guild_scripts WHERE \
+             guild_id = $1 AND id = $2;",
             guild_id.0 as i64,
             id
         )
@@ -81,14 +81,13 @@ impl crate::config::ConfigStore for Postgres {
         let res = sqlx::query_as!(
             DbScript,
             "
-                INSERT INTO guild_scripts (guild_id, name, original_source, compiled_js, enabled) 
-                VALUES ($1, $2, $3, $4, $5)
-                RETURNING id, guild_id, name, original_source, compiled_js, enabled;
+                INSERT INTO guild_scripts (guild_id, name, original_source, enabled) 
+                VALUES ($1, $2, $3, $4)
+                RETURNING id, guild_id, name, original_source, enabled;
             ",
             guild_id.0 as i64,
             script.name,
             script.original_source,
-            script.compiled_js,
             script.enabled,
         )
         .fetch_one(&self.pool)
@@ -107,15 +106,13 @@ impl crate::config::ConfigStore for Postgres {
             "
                 UPDATE guild_scripts SET
                 original_source = $3,
-                compiled_js = $4,
-                enabled = $5
+                enabled = $4
                 WHERE guild_id = $1 AND id=$2
-                RETURNING id, name, original_source, compiled_js, guild_id, enabled;
+                RETURNING id, name, original_source, guild_id, enabled;
             ",
             guild_id.0 as i64,
             script.id as i64,
             script.original_source,
-            script.compiled_js,
             script.enabled,
         )
         .fetch_one(&self.pool)
@@ -147,8 +144,8 @@ impl crate::config::ConfigStore for Postgres {
     async fn list_scripts(&self, guild_id: GuildId) -> StoreResult<Vec<Script>, Self::Error> {
         let res = sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, original_source, compiled_js, name, enabled FROM guild_scripts \
-             WHERE guild_id = $1",
+            "SELECT id, guild_id, original_source, name, enabled FROM guild_scripts WHERE \
+             guild_id = $1",
             guild_id.0 as i64,
         )
         .fetch_all(&self.pool)
@@ -250,7 +247,6 @@ struct DbScript {
     id: i64,
     guild_id: i64,
     original_source: String,
-    compiled_js: String,
     name: String,
     enabled: bool,
 }
@@ -260,7 +256,6 @@ impl From<DbScript> for Script {
         Self {
             id: script.id as u64,
             name: script.name,
-            compiled_js: script.compiled_js,
             original_source: script.original_source,
             enabled: script.enabled,
         }
