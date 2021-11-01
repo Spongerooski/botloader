@@ -30,7 +30,11 @@ pub struct RunConfig {
     #[structopt(long, env = "LISTEN_ADDR", default_value = "127.0.0.1:7447")]
     pub listen_addr: String,
 
-    #[structopt(long, env = "BOT_RPC_CONNECT_ADDR", default_value = "127.0.0.1:7448")]
+    #[structopt(
+        long,
+        env = "BOT_RPC_CONNECT_ADDR",
+        default_value = "http://127.0.0.1:7448"
+    )]
     pub bot_rpc_connect_addr: String,
 }
 
