@@ -1,7 +1,10 @@
 import { createHash } from 'crypto';
 import * as vscode from 'vscode';
-import { ApiClient } from './apiclient';
+import { ApiClient, ApiResult, isErrorResponse, Script } from './apiclient';
 import { relative } from 'path';
+import { IndexFile } from './models';
+
+export const CHANGED_FILES_SCM_GROUP = "changed";
 
 export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecorationProvider {
     folder: vscode.Uri;
@@ -21,7 +24,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
 
         this.scm = vscode.scm.createSourceControl("botloader", "BotLoader", this.folder);
         this.scm.inputBox.visible = false;
-        this.changedFilesGroup = this.scm.createResourceGroup("changed", "Changed scripts");
+        this.changedFilesGroup = this.scm.createResourceGroup(CHANGED_FILES_SCM_GROUP, "Changed scripts");
 
         const watcherPattern = new vscode.RelativePattern(this.folder, "*.ts");
         console.log("Watcing: ", watcherPattern);
@@ -51,8 +54,6 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
     }
 
     provideFileDecoration(uri: vscode.Uri, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FileDecoration> {
-        console.log("Checking file deco yooo", uri);
-
         const wsFolder = vscode.workspace.getWorkspaceFolder(uri);
         if (wsFolder?.uri.toString() !== this.folder.toString()) {
             return undefined;
@@ -69,9 +70,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
     }
 
     async provideOriginalResource(uri: vscode.Uri, cancel: vscode.CancellationToken) {
-
         const relative = vscode.workspace.asRelativePath(uri, false);
-        console.log("Checking file diff yooo", uri, relative);
         const indexPath = vscode.Uri.joinPath(this.folder, ".botloader/scripts/", relative + ".bloader");
         return indexPath;
     }
@@ -101,8 +100,23 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
     }
 
     async checkWorkingFile(name: string) {
-        console.log("Checking ", name);
+        let uri = vscode.Uri.joinPath(this.folder, "/" + name);
 
+        switch (await this.fileChangeState(name)) {
+            case ChangeState.created:
+                this.setFileCreated(uri);
+                break;
+            case ChangeState.modified:
+                this.setFileModified(uri);
+                break;
+            default:
+                this.removeFileResourceState(uri);
+                break;
+
+        }
+    }
+
+    async fileChangeState(name: string) {
         let uri = vscode.Uri.joinPath(this.folder, "/" + name);
         // let stat = await vscode.workspace.fs.stat(uri);
 
@@ -111,8 +125,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
         try {
             await vscode.workspace.fs.stat(uriIndex);
         } catch {
-            this.setFileCreated(uri);
-            return;
+            return ChangeState.created;
         }
 
 
@@ -123,10 +136,12 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
             // modified
             console.log(name, "Changed");
             this.setFileModified(uri);
+            return ChangeState.modified;
         } else {
             // unchanged
             console.log(name + " is unmodified");
             this.removeFileResourceState(uri);
+            return undefined;
         }
     }
 
@@ -223,6 +238,165 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
             case ChangeState.modified:
                 return this.themeColorModified;
         }
+    }
+
+    async pushUri(uri: vscode.Uri) {
+        let index = await this.readIndexFile();
+        await this.pushSingleChange(uri, index);
+
+        await this.syncWorkspace();
+    }
+
+    async pushScmGroup(group: vscode.SourceControlResourceGroup) {
+        let index = await this.readIndexFile();
+
+        for (let state of this.changedFilesGroup.resourceStates) {
+            await this.pushSingleChange(state.resourceUri, index);
+        }
+
+        await this.syncWorkspace();
+    }
+
+    async pushSingleChange(uri: vscode.Uri, index: IndexFile) {
+        const relativePath = relative(this.folder.path, uri.path);
+        let nameNoTs = relativePath.slice(0, relativePath.length - 3);
+
+        let resState = this.changedFilesGroup.resourceStates.find(e => e.resourceUri.toString() === uri.toString()) as ResourceState | undefined;
+        if (!resState) {
+            return;
+        }
+
+        let indexScript = index.openScripts.find(e => e.name === nameNoTs);
+
+        let resp: ApiResult<any> = null;
+        switch (resState.state) {
+            case ChangeState.created:
+                let contentsCreate = await vscode.workspace.fs.readFile(uri);
+                resp = await this.apiClient.createScript(index.guild.id, {
+                    enabled: true,
+                    name: nameNoTs,
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    original_source: contentsCreate.toString(),
+                });
+                break;
+            case ChangeState.deleted:
+                if (!indexScript) {
+                    return;
+                }
+
+                resp = await this.apiClient.delScript(index.guild.id, indexScript.id);
+                break;
+            case ChangeState.modified:
+                if (!indexScript) {
+                    return;
+                }
+
+                let contentsModify = await vscode.workspace.fs.readFile(uri);
+                resp = await this.apiClient.updateScript(index.guild.id, indexScript.id, {
+                    enabled: true,
+                    name: nameNoTs,
+                    // eslint-disable-next-line @typescript-eslint/naming-convention
+                    original_source: contentsModify.toString(),
+                });
+                break;
+        }
+
+        if (isErrorResponse(resp)) {
+            vscode.window.showErrorMessage("failed push:" + JSON.stringify(resp));
+        }
+    }
+
+    async readIndexFile() {
+        const indexPath = vscode.Uri.joinPath(this.folder, ".botloader/index.json");
+        let contents = await vscode.workspace.fs.readFile(indexPath);
+        let decoder = new TextDecoder("utf-8");
+        let parsedIndex: IndexFile = JSON.parse(decoder.decode(contents));
+        return parsedIndex;
+    }
+
+    // synchronizesa the workspaces with the remote scripts
+    // tries to be as non destructive as possible
+    // will only overwrite files unchaged against the old index 
+    async syncWorkspace() {
+        let index = await this.readIndexFile();
+
+        // first make a list of files identical to their index variant
+        let filesWorking = await vscode.workspace.fs.readDirectory(this.folder);
+        filesWorking = filesWorking.filter(f => f[0].endsWith(".ts"));
+
+        // holds the current working files identical to the index files
+        // will are safe to overwrite these
+        let identicalIndexFiles = await this.getIdenticalIndexFiles(filesWorking.map(e => e[0]));
+        // strip .ts suffix for convenience
+        let identicalIndexNames = identicalIndexFiles.map(e => e.slice(0, e.length - 3));
+
+        let resp = await this.apiClient.getAllScripts(index.guild.id);
+        if (isErrorResponse(resp)) {
+            throw new Error("failed fetching scripts");
+        }
+
+        // nuke old index
+        await vscode.workspace.fs.delete(vscode.Uri.joinPath(this.folder, "/.botloader/scripts"), {
+            recursive: true,
+            useTrash: false,
+        });
+
+        // create new scripts index
+        let textEncoder = new TextEncoder();
+        for (let script of resp) {
+            await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(this.folder, `/.botloader/scripts/${script.name}.ts.bloader`), textEncoder.encode(script.original_source));
+        }
+        let newOpenScripts = resp.map(s => {
+            return {
+                id: s.id,
+                name: s.name,
+            };
+        });
+
+        // write the new index
+        await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(this.folder, `/.botloader/index.json`), textEncoder.encode(JSON.stringify({
+            guild: index.guild,
+            openScripts: newOpenScripts,
+        })));
+
+        // create new files
+        let newScripts = resp.filter(e => !index.openScripts.some(os => e.id === os.id));
+        for (let script of newScripts) {
+            let uri = vscode.Uri.joinPath(this.folder, `/${script.name}.ts`);
+            try {
+                vscode.workspace.fs.stat(uri);
+            } catch {
+                await vscode.workspace.fs.writeFile(uri, textEncoder.encode(script.original_source));
+            }
+        }
+
+        // update previous identical files
+        let toUpdate = resp.filter(s => identicalIndexNames.some(os => s.name === os));
+        for (let script of toUpdate) {
+            let uri = vscode.Uri.joinPath(this.folder, `/${script.name}.ts`);
+            await vscode.workspace.fs.writeFile(uri, textEncoder.encode(script.original_source));
+        }
+
+        // AND FINALLY remove unchanged deleted files
+        let toDel = identicalIndexNames.filter(f => !(resp as Script[]).some(s => f === s.name));
+        for (let del of toDel) {
+            let uri = vscode.Uri.joinPath(this.folder, `/${del}.ts`);
+            await vscode.workspace.fs.delete(uri);
+        }
+
+        this.changedFilesGroup.resourceStates = [];
+        await this.initialScan();
+    }
+
+    async getIdenticalIndexFiles(files: string[]) {
+        let result = [];
+        for (let name of files) {
+            if (await this.fileChangeState(name) === undefined) {
+                result.push(name);
+            }
+        }
+
+        return result;
     }
 }
 

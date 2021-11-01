@@ -3,15 +3,15 @@ import fetch from 'node-fetch';
 
 export class ApiClient {
     token?: string;
-    base?: string;
+    base: string;
 
-    constructor(base?: string, token?: string) {
+    constructor(base: string, token?: string) {
         this.token = token;
         this.base = base;
     }
 
     async do<T>(method: string, path: string, body?: any): Promise<ApiResult<T>> {
-        let base = this.base || "http://127.0.0.1:7447";
+        let base = this.base;
 
         let headers = {};
         if (this.token) {
@@ -119,7 +119,7 @@ export class ApiClient {
     }
 }
 
-type ApiResult<T> = T | ApiError;
+export type ApiResult<T> = T | ApiError;
 
 export function isErrorResponse<T>(resp: ApiResult<T>): resp is ApiError {
     return (resp as ApiError).is_error !== undefined;

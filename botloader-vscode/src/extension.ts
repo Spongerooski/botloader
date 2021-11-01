@@ -7,13 +7,25 @@ import { tmpdir } from 'os';
 import { mkdtemp } from 'fs/promises';
 import { join } from 'path';
 import { WorkspaceManager } from './workspacemanager';
+import { BotloaderWS, WsLogItem, WsScriptLogItem } from './ws';
+import { CHANGED_FILES_SCM_GROUP } from './guildspace';
 
-
-// this method is called when your extension is activated
+const API_HOST_BASE = "127.0.0.1:7447";
+const API_BASE_URL = "http://" + API_HOST_BASE;
+const WS_BASE_URL = "ws://" + API_HOST_BASE;
+// this method is called when your extension is activated 
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
 
-	let apiClient = new ApiClient(undefined, await context.secrets.get("botloader-api-key"));
+	let outputChannel = vscode.window.createOutputChannel("botloader");
+	context.subscriptions.push(outputChannel);
+
+	let token = await context.secrets.get("botloader-api-key");
+	let ws = new BotloaderWS(WS_BASE_URL, handleLogMessage, token);
+	let apiClient = new ApiClient(API_BASE_URL, token);
+
+	let manager = new WorkspaceManager(apiClient, ws);
+	context.subscriptions.push(manager);
 
 	context.subscriptions.push(vscode.commands.registerCommand('botloader-vscode.setup-workspace', async () => {
 		// The code you place here will be executed every time your command is executed
@@ -47,26 +59,26 @@ export async function activate(context: vscode.ExtensionContext) {
 			title: "API key",
 		});
 
-		console.log("hmmm", "another", key);
-
-		let newClient = new ApiClient(undefined, key);
+		let newClient = new ApiClient(API_BASE_URL, key);
 		let resp = await newClient.getCurrentUser();
-		console.log("resp", resp);
 
 		if (isErrorResponse(resp)) {
 			vscode.window.showErrorMessage("Invalid token:" + JSON.stringify(resp));
 		} else {
 			vscode.window.showInformationMessage(`Logged in as ${resp.username}#${resp.discriminator}`);
 			apiClient.token = newClient.token;
+			ws.setToken(newClient.token!);
 			await context.secrets.store("botloader-api-key", key as string);
 		}
-	}), vscode.commands.registerCommand('botloader-vscode.push', async (f: vscode.Uri) => {
-		console.log("Need to push", f);
+	}), vscode.commands.registerCommand('botloader-vscode.push', async (f: any) => {
+		if ((f as { resourceUri: vscode.Uri }).resourceUri !== undefined) {
+			let { resourceUri } = f as { resourceUri: vscode.Uri };
+			await manager.pushUri(resourceUri);
+		} else if ((f as vscode.SourceControlResourceGroup).id === CHANGED_FILES_SCM_GROUP) {
+			let fScm = f as vscode.SourceControlResourceGroup;
+			await manager.pushScmGroup(fScm);
+		}
 	}));
-
-	console.log("gaming", context.extensionPath, context.extensionUri);
-
-	context.subscriptions.push(new WorkspaceManager(apiClient));
 
 	async function setupWorkspace(guild: UserGuild) {
 		let tmpDir = await mkdtemp(join(tmpdir(), "botloader"));
@@ -89,7 +101,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/.botloader/index.json`), textEncoder.encode(JSON.stringify({
 			guild: guild,
-			openScripts: scripts.map(script => script.id),
+			openScripts: scripts.map(script => { return { id: script.id, name: script.name }; }),
 		})));
 
 		await vscode.workspace.fs.copy(vscode.Uri.joinPath(context.extensionUri, "/out/typings/lib.deno_core.d.ts"), vscode.Uri.joinPath(dirUri, "/.botloader/lib.global.d.ts"));
@@ -100,7 +112,19 @@ export async function activate(context: vscode.ExtensionContext) {
 			uri: dirUri,
 			name: guild.name,
 		});
+	}
 
+	function handleLogMessage(msg: WsLogItem) {
+		let tag = msg.kind || "unknown";
+		let content = ": " + msg.message;
+		if (!msg.kind || msg.kind === "ScriptError" || msg.kind === "ScriptInfo") {
+			msg = msg as WsScriptLogItem;
+			content = `[${msg.filename}:${msg.linenumber}:${msg.column}]${content}`;
+		}
+
+		let full = `(${tag})${content}`;
+		outputChannel.appendLine(full);
+		outputChannel.show();
 	}
 }
 

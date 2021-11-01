@@ -1,15 +1,19 @@
 import * as vscode from 'vscode';
-import { ApiClient } from './apiclient';
+import { ApiClient, UserGuild } from './apiclient';
 import { GuildScriptWorkspace } from './guildspace';
+import { IndexFile } from './models';
+import { BotloaderWS } from './ws';
 
 export class WorkspaceManager implements vscode.Disposable {
     openGuildWorkspaces: GuildScriptWorkspace[] = [];
     apiClient: ApiClient;
+    ws: BotloaderWS;
 
     otherDisposables: vscode.Disposable[] = [];
 
-    constructor(apiClient: ApiClient) {
+    constructor(apiClient: ApiClient, ws: BotloaderWS) {
         this.apiClient = apiClient;
+        this.ws = ws;
 
         this.otherDisposables.push(vscode.workspace.onDidChangeWorkspaceFolders(this.workspaceFoldersChange.bind(this)));
 
@@ -33,15 +37,42 @@ export class WorkspaceManager implements vscode.Disposable {
         }
     }
 
-
     async checkFolder(folder: vscode.Uri) {
         try {
             // should throw an error if it dosen't exist
-            await vscode.workspace.fs.stat(vscode.Uri.joinPath(folder, "/.botloader/index.json"));
+            let indexFile = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(folder, "/.botloader/index.json"));
+            let decoder = new TextDecoder("utf-8");
+            let parsedIndex: IndexFile = JSON.parse(decoder.decode(indexFile));
+
+            this.ws.subscribeGuild(parsedIndex.guild.id);
+
             if (!this.openGuildWorkspaces.some(elem => elem.folder === folder)) {
                 this.openGuildWorkspaces.push(new GuildScriptWorkspace(folder, this.apiClient));
             }
         } catch { }
+    }
+
+    async pushUri(uri: vscode.Uri) {
+        let folder = vscode.workspace.getWorkspaceFolder(uri);
+        if (folder) {
+            let uriString = folder.uri.toString();
+            let guildSpace = this.openGuildWorkspaces.find(e => e.folder.toString() === uriString);
+            if (guildSpace) {
+                guildSpace.pushUri(uri);
+            }
+        }
+    }
+
+    async pushScmGroup(group: vscode.SourceControlResourceGroup) {
+        let aFile = group.resourceStates[0].resourceUri;
+        let folder = vscode.workspace.getWorkspaceFolder(aFile);
+        if (folder) {
+            let uriString = folder.uri.toString();
+            let guildSpace = this.openGuildWorkspaces.find(e => e.folder.toString() === uriString);
+            if (guildSpace) {
+                guildSpace.pushScmGroup(group);
+            }
+        }
     }
 
     dispose() {
@@ -54,3 +85,4 @@ export class WorkspaceManager implements vscode.Disposable {
         }
     }
 }
+
