@@ -21,6 +21,9 @@ pub struct RunConfig {
 
     #[structopt(long, env = "DATABASE_URL")]
     pub database_url: String,
+
+    #[structopt(long, env = "BOT_RPC_LISTEN_ADDR", default_value = "127.0.0.1:7448")]
+    pub bot_rpc_listen_addr: String,
 }
 
 #[tokio::main]
@@ -38,8 +41,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = RunConfig::from_args();
 
-    let token = config.discord_token;
-    let database_url = config.database_url;
+    let token = config.discord_token.clone();
+    let database_url = config.database_url.clone();
 
     let http = twilight_http::client::ClientBuilder::new()
         .token(token.clone())
@@ -74,6 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             state,
             application_info,
             config_store,
+            config,
         },
         events,
     )
@@ -84,6 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[derive(Clone)]
 pub struct BotContext<CT> {
+    config: RunConfig,
     http: twilight_http::Client,
     cluster: Cluster,
     state: InMemoryCache,
@@ -103,6 +108,11 @@ async fn handle_events<CT: Clone + ConfigStore + Send + Sync + 'static>(
         ctx.state.clone(),
         ctx.config_store.clone(),
     );
+
+    let bot_rpc_server =
+        botrpc::Server::new(vm_manager.clone(), ctx.config.bot_rpc_listen_addr.clone());
+
+    tokio::spawn(bot_rpc_server.run());
 
     let cmd_context = commands::CommandContext {
         http: ctx.http.clone(),

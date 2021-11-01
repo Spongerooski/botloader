@@ -9,6 +9,22 @@ use crate::proto;
 
 pub struct Server<CT> {
     vm_manager: vm_manager::Manager<CT>,
+    addr: String,
+}
+
+impl<CT: ConfigStore + Send + Sync + 'static> Server<CT> {
+    pub fn new(vm_manager: vm_manager::Manager<CT>, addr: String) -> Self {
+        Self { vm_manager, addr }
+    }
+
+    pub async fn run(self) {
+        let addr = self.addr.clone();
+        tonic::transport::Server::builder()
+            .add_service(proto::bot_service_server::BotServiceServer::new(self))
+            .serve(addr.parse().unwrap())
+            .await
+            .expect("failed starting botrpc");
+    }
 }
 
 type ResponseStream =

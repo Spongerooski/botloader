@@ -5,3 +5,4 @@ pub mod proto;
 pub mod server;
 
 pub use client::Client;
+pub use server::Server;

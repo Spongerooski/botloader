@@ -12,6 +12,7 @@ tscompiler = {path="../../components/tscompiler"}
 vmthread = {path="../../components/vmthread"}
 vm-manager = {path="../../components/vm-manager"}
 vm = {path="../../components/vm"}
+botrpc = {path="../../components/botrpc"}
 
 twilight-cache-inmemory = "0.6"
 twilight-gateway = "0.6"
