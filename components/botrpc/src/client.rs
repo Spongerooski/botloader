@@ -4,6 +4,8 @@ use twilight_model::id::GuildId;
 use crate::proto;
 
 type ClientConn = proto::bot_service_client::BotServiceClient<tonic::transport::Channel>;
+
+#[derive(Clone)]
 pub struct Client {
     inner: ClientConn,
 }

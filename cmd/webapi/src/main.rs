@@ -50,6 +50,9 @@ async fn main() {
     let postgres_store = Postgres::new_with_url(&conf.database_url).await.unwrap();
     let config_store: CurrentConfigStore = postgres_store.clone();
     let session_store: CurrentSessionStore = postgres_store.clone();
+    let bot_rpc_client = botrpc::Client::new(conf.bot_rpc_connect_addr.clone())
+        .await
+        .expect("failed connecting to bot rpc");
 
     let auth_handler: AuthHandlerData =
         routes::auth::AuthHandlers::new(session_store.clone(), InMemoryCsrfStore::default());
@@ -66,6 +69,7 @@ async fn main() {
             run_config: conf.clone(),
         }))
         .layer(TraceLayer::new_for_http())
+        .layer(AddExtensionLayer::new(bot_rpc_client))
         .layer(AddExtensionLayer::new(Arc::new(auth_handler)))
         .layer(AddExtensionLayer::new(config_store))
         .layer(AddExtensionLayer::new(session_store.clone()))
@@ -133,6 +137,10 @@ async fn main() {
     let public_routes = Router::new()
         .route("/error", get(routes::errortest::handle_errortest))
         .route("/login", get(AuthHandlerData::handle_login))
+        .route(
+            "/api/ws",
+            get(routes::ws::ws_headler::<CurrentSessionStore>),
+        )
         .route(
             "/api/confirm_login",
             post(AuthHandlerData::handle_confirm_login),

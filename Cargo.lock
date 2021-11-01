@@ -300,6 +300,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6eb8eeaec8dea1b26a8f6f2b7a5aff11465292023a91a3b045bf3fe2830a1944"
 dependencies = [
  "async-trait",
+ "base64 0.13.0",
  "bitflags",
  "bytes",
  "futures-util",
@@ -311,8 +312,10 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_urlencoded",
+ "sha-1",
  "sync_wrapper",
  "tokio",
+ "tokio-tungstenite 0.15.0",
  "tokio-util",
  "tower",
  "tower-http",
@@ -3246,9 +3249,22 @@ dependencies = [
  "rustls",
  "tokio",
  "tokio-rustls",
- "tungstenite",
+ "tungstenite 0.13.0",
  "webpki",
  "webpki-roots",
+]
+
+[[package]]
+name = "tokio-tungstenite"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "511de3f85caf1c98983545490c3d09685fa8eb634e57eec22bb4db271f46cbd8"
+dependencies = [
+ "futures-util",
+ "log",
+ "pin-project",
+ "tokio",
+ "tungstenite 0.14.0",
 ]
 
 [[package]]
@@ -3482,6 +3498,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "tungstenite"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0b2d8558abd2e276b0a8df5c05a2ec762609344191e5fd23e292c910e9165b5"
+dependencies = [
+ "base64 0.13.0",
+ "byteorder",
+ "bytes",
+ "http",
+ "httparse",
+ "log",
+ "rand 0.8.4",
+ "sha-1",
+ "thiserror",
+ "url",
+ "utf-8",
+]
+
+[[package]]
 name = "twilight-cache-inmemory"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3506,7 +3541,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "tokio-tungstenite",
+ "tokio-tungstenite 0.14.0",
  "tracing",
  "twilight-gateway-queue",
  "twilight-http",
@@ -3839,6 +3874,7 @@ dependencies = [
  "axum",
  "axum-debug",
  "base64 0.13.0",
+ "botrpc",
  "chrono",
  "dashmap",
  "discordoauthwrapper",
@@ -3853,6 +3889,7 @@ dependencies = [
  "structopt",
  "thiserror",
  "tokio",
+ "tonic",
  "tower",
  "tower-http",
  "tracing",
