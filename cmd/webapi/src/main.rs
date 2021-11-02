@@ -1,9 +1,9 @@
 use std::{convert::Infallible, sync::Arc};
 
 use axum::{
-    handler::{delete, get, patch, post},
+    error_handling::HandleErrorLayer,
     response::IntoResponse,
-    routing::BoxRoute,
+    routing::{delete, get, patch, post},
     AddExtensionLayer, BoxError, Router,
 };
 use config::RunConfig;
@@ -61,6 +61,7 @@ async fn main() {
     let require_auth_layer = session_layer.require_auth_layer();
 
     let common_middleware_stack = ServiceBuilder::new() // Process at most 100 requests concurrently
+        .layer(HandleErrorLayer::new(handle_mw_err_internal_err))
         .layer(AddExtensionLayer::new(ConfigData {
             oauth_client: oatuh_client,
             run_config: conf.clone(),
@@ -73,35 +74,29 @@ async fn main() {
         .layer(session_layer)
         .layer(CorsLayer {
             run_config: conf.clone(),
-        })
-        .into_inner();
+        });
 
-    // TODO: See about the removal of the boxed method
-    let script_routes: Router<BoxRoute> = Router::new()
-        .route(
-            "/:script_id",
-            patch(routes::scripts::update_guild_script)
-                .delete(routes::scripts::delete_guild_script),
-        )
-        .route(
-            "/",
-            get(routes::scripts::get_all_guild_scripts).put(routes::scripts::create_guild_script),
-        )
-        .boxed();
-
-    let authorized_api_guild_routes = Router::new()
-        .nest("/scripts", script_routes)
-        .boxed()
-        .layer(RequireCurrentGuildAuthLayer)
-        .handle_error(handle_mw_err_internal_err)
+    let auth_guild_mw_stack = ServiceBuilder::new()
+        .layer(HandleErrorLayer::new(handle_mw_err_internal_err))
         .layer(CurrentGuildLayer {
             session_store: session_store.clone(),
         })
-        .handle_error(handle_mw_err_internal_err)
-        .boxed();
+        .layer(RequireCurrentGuildAuthLayer);
+
+    let authorized_api_guild_routes = Router::new()
+        .route(
+            "/scripts",
+            get(routes::scripts::get_all_guild_scripts).put(routes::scripts::create_guild_script),
+        )
+        .route(
+            "/scripts/:script_id",
+            patch(routes::scripts::update_guild_script)
+                .delete(routes::scripts::delete_guild_script),
+        )
+        .layer(auth_guild_mw_stack);
 
     let authorized_api_routes = Router::new()
-        .nest("/guilds/:guild/", authorized_api_guild_routes)
+        .nest("/guilds/:guild", authorized_api_guild_routes)
         .route(
             "/guilds",
             get(routes::guilds::list_user_guilds_route::<CurrentSessionStore, CurrentConfigStore>),
@@ -120,15 +115,15 @@ async fn main() {
             "/current_user",
             get(routes::general::get_current_user::<CurrentSessionStore>),
         )
-        .route("/logout", post(AuthHandlerData::handle_logout))
-        .boxed();
+        .route("/logout", post(AuthHandlerData::handle_logout));
+
+    let auth_routes_mw_stack = ServiceBuilder::new()
+        .layer(HandleErrorLayer::new(handle_mw_err_no_auth))
+        .layer(require_auth_layer);
 
     let authorized_routes = Router::new()
         .nest("/api", authorized_api_routes)
-        .boxed()
-        .layer(require_auth_layer)
-        .handle_error(handle_mw_err_no_auth)
-        .boxed();
+        .layer(auth_routes_mw_stack);
 
     let public_routes = Router::new()
         .route("/error", get(routes::errortest::handle_errortest))
@@ -140,11 +135,10 @@ async fn main() {
         .route(
             "/api/confirm_login",
             post(AuthHandlerData::handle_confirm_login),
-        )
-        .boxed();
+        );
 
     let app = public_routes
-        .or(authorized_routes)
+        .merge(authorized_routes)
         .layer(common_middleware_stack.clone());
 
     let make_service = app.into_make_service();
