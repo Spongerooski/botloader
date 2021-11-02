@@ -29,11 +29,9 @@ tokio = { version = "1.5.0", features = ["full"] }
 futures-core = "0.3"
 futures = "0.3"
 
-redis = { version= "0.20.1", features = ["tokio-comp"]} 
 dashmap = "4.0"
 dotenv = "0.15"
 structopt = "0.3"
-
 
 [build]
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
