@@ -11,7 +11,7 @@ use std::{
     task::{Context, Poll},
 };
 use tower::{Layer, Service};
-use tracing::{info, Instrument};
+use tracing::{error, info, Instrument};
 
 use stores::web::{Session, SessionStore};
 
@@ -100,29 +100,44 @@ where
         Box::pin(async move {
             let auth_header = req.headers().get("Authorization");
 
-            let mut span = None;
-
             match auth_header.map(|e| e.to_str()) {
                 Some(Ok(t)) => {
                     if let Some(session) = store.get_session(t).await? {
                         info!("we are logged in!");
                         let extensions = req.extensions_mut();
 
-                        span = Some(tracing::debug_span!("session", user_id=%session.user.id));
+                        let span = tracing::debug_span!("session", user_id=%session.user.id);
 
-                        let logged_in_session = LoggedInSession::new(oauth_conf, session, store);
-                        extensions.insert(logged_in_session);
+                        let logged_in_session =
+                            LoggedInSession::new(oauth_conf, session, store.clone());
+                        extensions.insert(logged_in_session.clone());
+
+                        let resp = inner.call(req).instrument(span).await.map_err(|e| e.into());
+
+                        if logged_in_session.api_client.is_broken() {
+                            // remove from store if the refresh token is broken
+                            store
+                                .del_all_sessions(logged_in_session.session.user.id)
+                                .await
+                                .map_err(|err| {
+                                    error!(%err, "failed clearing sessiosn from broken token")
+                                }).ok();
+                        }
+
+                        resp
+                    } else {
+                        inner.call(req).await.map_err(|e| e.into())
                     }
                 }
-                Some(Err(e)) => return Err(e.into()),
-                None => {}
-            };
-
-            if let Some(s) = span {
-                inner.call(req).instrument(s).await.map_err(|e| e.into())
-            } else {
-                inner.call(req).await.map_err(|e| e.into())
+                Some(Err(e)) => Err(e.into()),
+                None => inner.call(req).await.map_err(|e| e.into()),
             }
+
+            // if let Some(s) = span {
+            //     inner.call(req).instrument(s).await.map_err(|e| e.into())
+            // } else {
+            //     inner.call(req).await.map_err(|e| e.into())
+            // }
         })
     }
 }

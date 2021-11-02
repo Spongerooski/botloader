@@ -1,14 +1,14 @@
 use std::{
     fmt::{Debug, Display},
     future::Future,
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
     time::Duration,
 };
 
 use oauth2::reqwest::async_http_client;
 use stores::web::{DiscordOauthToken, SessionStore};
 use tokio::sync::RwLock; // use async rwlock as were holding them across http requests
-use twilight_http::api_error::{ApiError, ErrorCode, GeneralApiError, RatelimitedApiError};
+use twilight_http::api_error::{ApiError, RatelimitedApiError};
 use twilight_model::{
     id::UserId,
     user::{CurrentUser, CurrentUserGuild},
@@ -21,6 +21,9 @@ struct ApiClientInner<T, TU, ST> {
     api_provider: T,
     token_refresher: TU,
     session_store: ST,
+
+    // if the refresh token is no longer valid
+    broken: AtomicBool,
 }
 
 pub struct DiscordOauthApiClient<T, TU, ST> {
@@ -57,6 +60,7 @@ where
                 user_id,
                 token_refresher,
                 session_store,
+                broken: AtomicBool::new(false),
             }),
         }
     }
@@ -76,6 +80,7 @@ where
                 api_provider,
                 token_refresher,
                 session_store,
+                broken: AtomicBool::new(false),
             }),
         }
     }
@@ -102,10 +107,20 @@ where
                 Ok(v) => return Ok(v),
                 Err(ApiProviderError::InvalidToken) => {
                     if updated_token {
+                        self.inner
+                            .broken
+                            .store(true, std::sync::atomic::Ordering::SeqCst);
+
                         return Err(anyhow::anyhow!("invalid token twice").into());
                     }
 
-                    self.update_token().await?;
+                    if let Err(err) = self.update_token().await {
+                        self.inner
+                            .broken
+                            .store(true, std::sync::atomic::Ordering::SeqCst);
+
+                        return Err(err);
+                    }
                     updated_token = true;
                 }
                 Err(ApiProviderError::Ratelimit(dur)) => {
@@ -137,6 +152,10 @@ where
         self.inner.api_provider.update_token(access_token).await;
 
         Ok(())
+    }
+
+    pub fn is_broken(&self) -> bool {
+        self.inner.broken.load(std::sync::atomic::Ordering::SeqCst)
     }
 }
 
