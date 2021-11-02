@@ -7,14 +7,17 @@ use std::{
 
 use oauth2::reqwest::async_http_client;
 use stores::web::{DiscordOauthToken, SessionStore};
-use tokio::sync::RwLock; // use async rwlock as were holding them across http requests
-use twilight_http::api_error::{ApiError, RatelimitedApiError};
 use twilight_model::{
     id::UserId,
     user::{CurrentUser, CurrentUserGuild},
 };
 
 pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
+
+mod cache;
+mod twilight_api_provider;
+pub use cache::ClientCache;
+pub use twilight_api_provider::TwilightApiProvider;
 
 struct ApiClientInner<T, TU, ST> {
     user_id: UserId,
@@ -51,12 +54,10 @@ where
     ) -> Self {
         Self {
             inner: Arc::new(ApiClientInner {
-                api_provider: TwilightApiProvider {
-                    client: RwLock::new(twilight_http::Client::new(format!(
-                        "Bearer {}",
-                        bearer_token
-                    ))),
-                },
+                api_provider: TwilightApiProvider::new(twilight_http::Client::new(format!(
+                    "Bearer {}",
+                    bearer_token
+                ))),
                 user_id,
                 token_refresher,
                 session_store,
@@ -195,63 +196,6 @@ pub trait DiscordOauthApiProvider {
         &self,
     ) -> Result<Vec<CurrentUserGuild>, ApiProviderError<Self::OtherError>>;
     async fn update_token(&self, access_token: String);
-}
-
-pub struct TwilightApiProvider {
-    client: RwLock<twilight_http::Client>,
-}
-
-#[async_trait::async_trait]
-impl DiscordOauthApiProvider for TwilightApiProvider {
-    type OtherError = twilight_http::Error;
-
-    async fn get_current_user(&self) -> Result<CurrentUser, ApiProviderError<Self::OtherError>> {
-        let client = self.client.read().await;
-        Ok(client.current_user().exec().await?.model().await.unwrap())
-    }
-
-    async fn get_user_guilds(
-        &self,
-    ) -> Result<Vec<CurrentUserGuild>, ApiProviderError<Self::OtherError>> {
-        let client = self.client.read().await;
-        Ok(client
-            .current_user_guilds()
-            .exec()
-            .await?
-            .model()
-            .await
-            .unwrap())
-    }
-
-    async fn update_token(&self, access_token: String) {
-        let new_client = twilight_http::Client::new(format!("Bearer {}", access_token));
-        let mut client = self.client.write().await;
-        *client = new_client;
-    }
-}
-
-impl From<twilight_http::Error> for ApiProviderError<twilight_http::Error> {
-    fn from(te: twilight_http::Error) -> Self {
-        match te.kind() {
-            twilight_http::error::ErrorType::Response {
-                status,
-                // The below seems to be broken
-                // TODO: Debug the below
-                // workaround works for now
-                // error:
-                //     ApiError::General(GeneralApiError {
-                //         code: ErrorCode::UnknownToken | ErrorCode::InvalidOAuthAccessToken,
-                //         ..
-                //     }),
-                ..
-            } if status.raw() == 401 => Self::InvalidToken,
-            twilight_http::error::ErrorType::Response {
-                error: ApiError::Ratelimited(RatelimitedApiError { retry_after, .. }),
-                ..
-            } => Self::Ratelimit(Duration::from_millis(*retry_after as u64)),
-            _ => Self::Other(te),
-        }
-    }
 }
 
 #[async_trait::async_trait]

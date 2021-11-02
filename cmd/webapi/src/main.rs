@@ -1,7 +1,7 @@
 use std::{convert::Infallible, sync::Arc};
 
 use axum::{
-    handler::{delete, get, patch, post, put},
+    handler::{delete, get, patch, post},
     response::IntoResponse,
     routing::BoxRoute,
     AddExtensionLayer, BoxError, Router,
@@ -57,10 +57,7 @@ async fn main() {
     let auth_handler: AuthHandlerData =
         routes::auth::AuthHandlers::new(session_store.clone(), InMemoryCsrfStore::default());
 
-    let session_layer = SessionLayer {
-        session_store: session_store.clone(),
-        oauth_conf: oatuh_client.clone(),
-    };
+    let session_layer = SessionLayer::new(session_store.clone(), oatuh_client.clone());
     let require_auth_layer = session_layer.require_auth_layer();
 
     let common_middleware_stack = ServiceBuilder::new() // Process at most 100 requests concurrently
@@ -83,9 +80,8 @@ async fn main() {
     let script_routes: Router<BoxRoute> = Router::new()
         .route(
             "/:script_id",
-            get(routes::scripts::delete_guild_script)
-                .patch(routes::scripts::update_guild_script)
-                .delete(routes::scripts::update_guild_script),
+            patch(routes::scripts::update_guild_script)
+                .delete(routes::scripts::delete_guild_script),
         )
         .route(
             "/",

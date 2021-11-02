@@ -8,6 +8,7 @@ use axum::{
     response::IntoResponse,
 };
 use botrpc::proto::ScriptLogItem;
+use discordoauthwrapper::DiscordOauthApiClient;
 use futures::{stream::SelectAll, Stream, StreamExt};
 use oauth2::basic::BasicClient;
 use serde::{Deserialize, Serialize};
@@ -190,11 +191,14 @@ impl<ST: SessionStore + Clone + 'static> WsConn<ST> {
             .await
             .map_err(|_| WsCloseReason::InternalError)?
         {
-            let logged_in_session = LoggedInSession::new(
+            let api_client = DiscordOauthApiClient::new_twilight(
+                session.user.id,
+                session.oauth_token.access_token.clone(),
                 self.oauth_client.clone(),
-                session,
                 self.session_store.clone(),
             );
+
+            let logged_in_session = LoggedInSession::new(session, api_client);
 
             self.send_event(WsEvent::AuthSuccess(logged_in_session.session.user.clone()))
                 .await?;

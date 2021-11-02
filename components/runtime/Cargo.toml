@@ -10,7 +10,7 @@ vmthread = {path="../../components/vmthread"}
 vm = {path="../../components/vm"}
 
 twilight-cache-inmemory = "0.7"
-twilight-http = "0.7"
+twilight-http = {version = "0.7", features = ["tracing"]}
 twilight-model = "0.7"
 
 tracing = "0.1"

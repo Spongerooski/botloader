@@ -1,4 +1,4 @@
-use discordoauthwrapper::{DiscordOauthApiClient, TwilightApiProvider};
+use discordoauthwrapper::{ClientCache, DiscordOauthApiClient, TwilightApiProvider};
 
 use axum::{
     http::{Request, Response},
@@ -7,17 +7,21 @@ use axum::{
 use core::fmt;
 use futures::future::BoxFuture;
 use std::{
+    convert::Infallible,
     marker::PhantomData,
     task::{Context, Poll},
 };
 use tower::{Layer, Service};
-use tracing::{error, info, Instrument};
+use tracing::{error, Instrument};
 
 use stores::web::{Session, SessionStore};
 
+type OAuthApiClientWrapper<ST> =
+    DiscordOauthApiClient<TwilightApiProvider, oauth2::basic::BasicClient, ST>;
+
 #[derive(Clone)]
 pub struct LoggedInSession<ST> {
-    pub api_client: DiscordOauthApiClient<TwilightApiProvider, oauth2::basic::BasicClient, ST>,
+    pub api_client: OAuthApiClientWrapper<ST>,
     pub session: Session,
 }
 
@@ -25,14 +29,9 @@ impl<T> LoggedInSession<T>
 where
     T: SessionStore + 'static,
 {
-    pub fn new(oauth_client: oauth2::basic::BasicClient, session: Session, store: T) -> Self {
+    pub fn new(session: Session, api_client: OAuthApiClientWrapper<T>) -> Self {
         Self {
-            api_client: DiscordOauthApiClient::new_twilight(
-                session.user.id,
-                session.oauth_token.access_token.clone(),
-                oauth_client,
-                store,
-            ),
+            api_client,
             session,
         }
     }
@@ -42,9 +41,18 @@ where
 pub struct SessionLayer<ST> {
     pub session_store: ST,
     pub oauth_conf: oauth2::basic::BasicClient,
+    pub oauth_api_client_cache: ClientCache<TwilightApiProvider, oauth2::basic::BasicClient, ST>,
 }
 
 impl<ST> SessionLayer<ST> {
+    pub fn new(session_store: ST, oauth_conf: oauth2::basic::BasicClient) -> Self {
+        Self {
+            session_store,
+            oauth_conf,
+            oauth_api_client_cache: Default::default(),
+        }
+    }
+
     pub fn require_auth_layer(&self) -> RequireAuthLayer<ST> {
         RequireAuthLayer {
             _phantom: PhantomData,
@@ -59,6 +67,7 @@ impl<ST: Clone, S> Layer<S> for SessionLayer<ST> {
         SessionMiddleware {
             session_store: self.session_store.clone(),
             oauth_conf: self.oauth_conf.clone(),
+            oauth_api_client_cache: self.oauth_api_client_cache.clone(),
             inner,
         }
     }
@@ -69,6 +78,7 @@ pub struct SessionMiddleware<S, ST> {
     pub inner: S,
     pub session_store: ST,
     pub oauth_conf: oauth2::basic::BasicClient,
+    pub oauth_api_client_cache: ClientCache<TwilightApiProvider, oauth2::basic::BasicClient, ST>,
 }
 
 impl<S, ST, ReqBody, ResBody> Service<Request<ReqBody>> for SessionMiddleware<S, ST>
@@ -96,6 +106,7 @@ where
 
         let store = self.session_store.clone();
         let oauth_conf = self.oauth_conf.clone();
+        let cache = self.oauth_api_client_cache.clone();
 
         Box::pin(async move {
             let auth_header = req.headers().get("Authorization");
@@ -103,13 +114,22 @@ where
             match auth_header.map(|e| e.to_str()) {
                 Some(Ok(t)) => {
                     if let Some(session) = store.get_session(t).await? {
-                        info!("we are logged in!");
                         let extensions = req.extensions_mut();
 
                         let span = tracing::debug_span!("session", user_id=%session.user.id);
 
-                        let logged_in_session =
-                            LoggedInSession::new(oauth_conf, session, store.clone());
+                        let api_client = cache
+                            .fetch(session.user.id, || {
+                                Result::<_, Infallible>::Ok(OAuthApiClientWrapper::new_twilight(
+                                    session.user.id,
+                                    session.oauth_token.access_token.clone(),
+                                    oauth_conf,
+                                    store.clone(),
+                                ))
+                            })
+                            .unwrap();
+
+                        let logged_in_session = LoggedInSession::new(session, api_client);
                         extensions.insert(logged_in_session.clone());
 
                         let resp = inner.call(req).instrument(span).await.map_err(|e| e.into());
@@ -186,8 +206,6 @@ where
         // see https://github.com/tower-rs/tower/issues/547 for details
         let clone = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);
-
-        info!("Running");
 
         Box::pin(async move {
             let extensions = req.extensions();

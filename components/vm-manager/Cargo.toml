@@ -19,5 +19,5 @@ async-trait = "0.1"
 
 twilight-gateway = "0.7"
 twilight-model = "0.7"
-twilight-http = "0.7"
+twilight-http = {version = "0.7", features = ["tracing"]}
 twilight-cache-inmemory = "0.7"

@@ -16,7 +16,7 @@ botrpc = {path="../../components/botrpc"}
 
 twilight-cache-inmemory = "0.7"
 twilight-gateway = "0.7"
-twilight-http = "0.7"
+twilight-http = {version = "0.7", features = ["tracing"]}
 twilight-model = "0.7"
 twilight-util = {version = "0.7", features=["permission-calculator"]}
  
