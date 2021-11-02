@@ -6,7 +6,7 @@ use twilight_model::id::UserId;
 pub struct User {
     pub avatar: Option<String>,
     pub bot: bool,
-    pub discriminator: String,
+    pub discriminator: u16,
     pub email: Option<String>,
     pub id: UserId,
     pub locale: Option<String>,
@@ -37,6 +37,8 @@ impl From<User> for twilight_model::user::User {
             system: v.system,
             verified: v.verified,
             flags: None,
+            accent_color: None,
+            banner: None,
         }
     }
 }

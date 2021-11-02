@@ -3,6 +3,7 @@ use super::user::User;
 use serde::{Deserialize, Serialize};
 use twilight_model::{
     channel::message::sticker::{StickerId, StickerPackId},
+    datetime::Timestamp,
     id::{
         ApplicationId, AttachmentId, ChannelId, EmojiId, GuildId, MessageId, RoleId, UserId,
         WebhookId,
@@ -18,7 +19,7 @@ pub struct Message {
     pub author: User,
     pub channel_id: ChannelId,
     pub content: String,
-    pub edited_timestamp: Option<String>,
+    pub edited_timestamp: Option<u64>,
     pub embeds: Vec<Embed>,
     pub flags: Option<u64>,
     pub guild_id: Option<GuildId>,
@@ -33,7 +34,7 @@ pub struct Message {
     pub reactions: Vec<MessageReaction>,
     pub reference: Option<MessageReference>,
     pub referenced_message: Option<Box<Message>>,
-    pub timestamp: String,
+    pub timestamp: u64,
     pub tts: bool,
     pub webhook_id: Option<WebhookId>,
 }
@@ -47,7 +48,7 @@ impl From<twilight_model::channel::Message> for Message {
             author: v.author.into(),
             channel_id: v.channel_id,
             content: v.content,
-            edited_timestamp: v.edited_timestamp,
+            edited_timestamp: v.edited_timestamp.map(|ts| ts.as_secs()),
             embeds: v.embeds.into_iter().map(From::from).collect(),
             flags: v.flags.map(|f| f.bits()),
             guild_id: v.guild_id,
@@ -62,7 +63,7 @@ impl From<twilight_model::channel::Message> for Message {
             reactions: v.reactions.into_iter().map(From::from).collect(),
             reference: v.reference.map(From::from),
             referenced_message: v.referenced_message.map(|e| Box::new((*e).into())),
-            timestamp: v.timestamp,
+            timestamp: v.timestamp.as_secs(),
             tts: v.tts,
             webhook_id: v.webhook_id,
         }
@@ -176,6 +177,9 @@ pub enum MessageType {
     Reply,
     GuildInviteReminder,
     ApplicationCommand,
+    ThreadCreated,
+    ThreadStarterMessage,
+    ContextMenuCommand,
 }
 
 impl From<twilight_model::channel::message::MessageType> for MessageType {
@@ -207,6 +211,9 @@ impl From<twilight_model::channel::message::MessageType> for MessageType {
             TwilightMessageType::Reply => Self::Reply,
             TwilightMessageType::GuildInviteReminder => Self::GuildInviteReminder,
             TwilightMessageType::ApplicationCommand => Self::ApplicationCommand,
+            TwilightMessageType::ThreadCreated => Self::ThreadCreated,
+            TwilightMessageType::ThreadStarterMessage => Self::ThreadStarterMessage,
+            TwilightMessageType::ContextMenuCommand => Self::ContextMenuCommand,
         }
     }
 }
@@ -215,10 +222,10 @@ impl From<twilight_model::channel::message::MessageType> for MessageType {
 #[serde(rename_all = "camelCase")]
 pub struct PartialMember {
     pub deaf: bool,
-    pub joined_at: Option<String>,
+    pub joined_at: Option<u64>,
     pub mute: bool,
     pub nick: Option<String>,
-    pub premium_since: Option<String>,
+    pub premium_since: Option<u64>,
     pub roles: Vec<RoleId>,
 }
 
@@ -226,10 +233,10 @@ impl From<twilight_model::guild::PartialMember> for PartialMember {
     fn from(v: twilight_model::guild::PartialMember) -> Self {
         Self {
             deaf: v.deaf,
-            joined_at: v.joined_at,
+            joined_at: v.joined_at.map(|ts| ts.as_secs()),
             mute: v.mute,
             nick: v.nick,
-            premium_since: v.premium_since,
+            premium_since: v.premium_since.map(|ts| ts.as_secs()),
             roles: v.roles,
         }
     }
@@ -238,10 +245,10 @@ impl From<PartialMember> for twilight_model::guild::PartialMember {
     fn from(v: PartialMember) -> Self {
         Self {
             deaf: v.deaf,
-            joined_at: v.joined_at,
+            joined_at: v.joined_at.map(Timestamp::from_secs).flatten(),
             mute: v.mute,
             nick: v.nick,
-            premium_since: v.premium_since,
+            premium_since: v.premium_since.map(Timestamp::from_secs).flatten(),
             roles: v.roles,
             permissions: None, // TODO
             user: None,        // TODO
@@ -279,6 +286,9 @@ pub enum ChannelType {
     GuildNews,
     GuildStore,
     GuildStageVoice,
+    GuildNewsThread,
+    GuildPublicThread,
+    GuildPrivateThread,
 }
 
 impl From<twilight_model::channel::ChannelType> for ChannelType {
@@ -292,6 +302,9 @@ impl From<twilight_model::channel::ChannelType> for ChannelType {
             twilight_model::channel::ChannelType::GuildNews => Self::GuildNews,
             twilight_model::channel::ChannelType::GuildStore => Self::GuildStore,
             twilight_model::channel::ChannelType::GuildStageVoice => Self::GuildStageVoice,
+            twilight_model::channel::ChannelType::GuildNewsThread => Self::GuildNewsThread,
+            twilight_model::channel::ChannelType::GuildPublicThread => Self::GuildPublicThread,
+            twilight_model::channel::ChannelType::GuildPrivateThread => Self::GuildPrivateThread,
         }
     }
 }
@@ -310,7 +323,7 @@ pub struct Mention {
     /// The discriminator field can be deserialized from either a string or an
     /// integer. The field will always serialize into a string due to that being
     /// the type Discord's API uses.
-    pub discriminator: String,
+    pub discriminator: u16,
     /// Unique ID of the user.
     pub id: UserId,
     /// Member object for the user in the guild, if available.
@@ -439,12 +452,40 @@ impl From<twilight_model::channel::message::MessageReference> for MessageReferen
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum StickerType {
+    /// Official sticker in a pack.
+    ///
+    /// Part of nitro or in a removed purchasable pack.
+    Standard = 1,
+    /// Sticker uploaded to a boosted guild for the guild's members.
+    Guild = 2,
+}
+
+impl From<twilight_model::channel::message::sticker::StickerType> for StickerType {
+    fn from(v: twilight_model::channel::message::sticker::StickerType) -> Self {
+        match v {
+            twilight_model::channel::message::sticker::StickerType::Standard => Self::Standard,
+            twilight_model::channel::message::sticker::StickerType::Guild => Self::Guild,
+        }
+    }
+}
+
+impl From<StickerType> for twilight_model::channel::message::sticker::StickerType {
+    fn from(v: StickerType) -> Self {
+        match v {
+            StickerType::Standard => Self::Standard,
+            StickerType::Guild => Self::Guild,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Sticker {
     /// Whether the sticker is available.
     pub available: bool,
     /// Description of the sticker.
-    pub description: String,
+    pub description: Option<String>,
     /// Format type.
     pub format_type: StickerFormatType,
     /// ID of the guild that owns the sticker.
@@ -461,6 +502,8 @@ pub struct Sticker {
     pub tags: String,
     /// ID of the user that uploaded the sticker.
     pub user: Option<User>,
+
+    pub kind: StickerType,
 }
 
 impl From<twilight_model::channel::message::Sticker> for Sticker {
@@ -476,6 +519,7 @@ impl From<twilight_model::channel::message::Sticker> for Sticker {
             guild_id: v.guild_id,
             sort_value: v.sort_value,
             user: v.user.map(|u| u.into()),
+            kind: v.kind.into(),
         }
     }
 }
@@ -492,6 +536,7 @@ impl From<Sticker> for twilight_model::channel::message::Sticker {
             guild_id: v.guild_id,
             sort_value: v.sort_value,
             user: v.user.map(|u| u.into()),
+            kind: v.kind.into(),
         }
     }
 }
@@ -532,8 +577,8 @@ pub struct MessageDelete {
     pub id: MessageId,
 }
 
-impl From<twilight_model::gateway::payload::MessageDelete> for MessageDelete {
-    fn from(v: twilight_model::gateway::payload::MessageDelete) -> Self {
+impl From<twilight_model::gateway::payload::incoming::MessageDelete> for MessageDelete {
+    fn from(v: twilight_model::gateway::payload::incoming::MessageDelete) -> Self {
         Self {
             channel_id: v.channel_id,
             guild_id: v.guild_id,

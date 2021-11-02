@@ -1,12 +1,13 @@
 use std::{
     fmt::{Debug, Display},
     future::Future,
-    sync::{Arc, RwLock},
+    sync::Arc,
     time::Duration,
 };
 
 use oauth2::reqwest::async_http_client;
 use stores::web::{DiscordOauthToken, SessionStore};
+use tokio::sync::RwLock; // use async rwlock as were holding them across http requests
 use twilight_http::api_error::{ApiError, ErrorCode, GeneralApiError, RatelimitedApiError};
 use twilight_model::{
     id::UserId,
@@ -181,25 +182,19 @@ pub struct TwilightApiProvider {
     client: RwLock<twilight_http::Client>,
 }
 
-impl TwilightApiProvider {
-    fn clone_client(&self) -> twilight_http::Client {
-        let client = self.client.read().unwrap();
-        client.clone()
-    }
-}
-
 #[async_trait::async_trait]
 impl DiscordOauthApiProvider for TwilightApiProvider {
     type OtherError = twilight_http::Error;
 
     async fn get_current_user(&self) -> Result<CurrentUser, ApiProviderError<Self::OtherError>> {
-        let client = self.clone_client();
+        let client = self.client.read().await;
         Ok(client.current_user().exec().await?.model().await.unwrap())
     }
+
     async fn get_user_guilds(
         &self,
     ) -> Result<Vec<CurrentUserGuild>, ApiProviderError<Self::OtherError>> {
-        let client = self.clone_client();
+        let client = self.client.read().await;
         Ok(client
             .current_user_guilds()
             .exec()
@@ -211,7 +206,7 @@ impl DiscordOauthApiProvider for TwilightApiProvider {
 
     async fn update_token(&self, access_token: String) {
         let new_client = twilight_http::Client::new(format!("Bearer {}", access_token));
-        let mut client = self.client.write().unwrap();
+        let mut client = self.client.write().await;
         *client = new_client;
     }
 }

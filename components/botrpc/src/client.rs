@@ -25,7 +25,7 @@ impl Client {
         let mut conn = self.get_conn();
 
         conn.reload_vm(proto::GuildScriptSpecifier {
-            guild_id: guild_id.0,
+            guild_id: guild_id.get(),
             script: None,
         })
         .await?;
@@ -41,7 +41,7 @@ impl Client {
 
         let stream = conn
             .stream_vm_logs(proto::GuildScriptSpecifier {
-                guild_id: guild_id.0,
+                guild_id: guild_id.get(),
                 script: None,
             })
             .await?

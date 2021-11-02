@@ -172,7 +172,9 @@ mod tests {
     use chrono::prelude::*;
     use twilight_model::id::GuildId;
 
-    const TEST_GUILD: GuildId = GuildId(1);
+    fn test_guild_id() -> GuildId {
+        GuildId::new(1).unwrap()
+    }
 
     #[tokio::test]
     async fn test_task_sngle() {
@@ -186,7 +188,7 @@ mod tests {
         let task = ScheduledTask {
             data: serde_json::Value::Null,
             exec_at,
-            guild_id: TEST_GUILD,
+            guild_id: test_guild_id(),
             id: "a".to_string(),
             name: "test".to_string(),
         };
@@ -195,7 +197,7 @@ mod tests {
 
         // get next task
         let next_time = storage
-            .get_next_task_run_time(TEST_GUILD)
+            .get_next_task_run_time(test_guild_id())
             .await
             .unwrap()
             .unwrap();
@@ -204,7 +206,7 @@ mod tests {
 
         // triggered tasks
         let triggered = storage
-            .get_triggered_tasks(TEST_GUILD, exec_at_after)
+            .get_triggered_tasks(test_guild_id(), exec_at_after)
             .await
             .unwrap();
 
@@ -212,13 +214,13 @@ mod tests {
 
         // del the task
         storage
-            .del_task(TEST_GUILD, "test".to_string(), "a".to_string())
+            .del_task(test_guild_id(), "test".to_string(), "a".to_string())
             .await
             .unwrap();
 
         // ensure it was deleted
         let triggered_new = storage
-            .get_triggered_tasks(TEST_GUILD, exec_at_after)
+            .get_triggered_tasks(test_guild_id(), exec_at_after)
             .await
             .unwrap();
 
@@ -240,7 +242,7 @@ mod tests {
         let task_1 = ScheduledTask {
             data: serde_json::Value::Null,
             exec_at: exec_at_1,
-            guild_id: TEST_GUILD,
+            guild_id: test_guild_id(),
             id: "a".to_string(),
             name: "test".to_string(),
         };
@@ -248,7 +250,7 @@ mod tests {
         let task_2 = ScheduledTask {
             data: serde_json::Value::Null,
             exec_at: exec_at_2,
-            guild_id: TEST_GUILD,
+            guild_id: test_guild_id(),
             id: "b".to_string(),
             name: "test".to_string(),
         };
@@ -258,7 +260,7 @@ mod tests {
 
         // get next task
         let next_time = storage
-            .get_next_task_run_time(TEST_GUILD)
+            .get_next_task_run_time(test_guild_id())
             .await
             .unwrap()
             .unwrap();
@@ -268,7 +270,7 @@ mod tests {
         // triggered tasks
         {
             let triggered = storage
-                .get_triggered_tasks(TEST_GUILD, exec_at_after_1)
+                .get_triggered_tasks(test_guild_id(), exec_at_after_1)
                 .await
                 .unwrap();
 
@@ -277,7 +279,7 @@ mod tests {
 
         {
             let triggered = storage
-                .get_triggered_tasks(TEST_GUILD, exec_at_after_2)
+                .get_triggered_tasks(test_guild_id(), exec_at_after_2)
                 .await
                 .unwrap();
 
@@ -286,14 +288,14 @@ mod tests {
 
         // del the task
         storage
-            .del_task(TEST_GUILD, "test".to_string(), "a".to_string())
+            .del_task(test_guild_id(), "test".to_string(), "a".to_string())
             .await
             .unwrap();
 
         // ensure it was deleted
         {
             let triggered_new = storage
-                .get_triggered_tasks(TEST_GUILD, exec_at_after_2)
+                .get_triggered_tasks(test_guild_id(), exec_at_after_2)
                 .await
                 .unwrap();
 
@@ -301,7 +303,7 @@ mod tests {
 
             // get next task
             let next_time_new = storage
-                .get_next_task_run_time(TEST_GUILD)
+                .get_next_task_run_time(test_guild_id())
                 .await
                 .unwrap()
                 .unwrap();
@@ -323,7 +325,7 @@ mod tests {
         let mut task = ScheduledTask {
             data: serde_json::Value::Null,
             exec_at: exec_at_1,
-            guild_id: TEST_GUILD,
+            guild_id: test_guild_id(),
             id: "a".to_string(),
             name: "test".to_string(),
         };
@@ -333,7 +335,7 @@ mod tests {
         // get next task
         {
             let next_time = storage
-                .get_next_task_run_time(TEST_GUILD)
+                .get_next_task_run_time(test_guild_id())
                 .await
                 .unwrap()
                 .unwrap();
@@ -344,7 +346,7 @@ mod tests {
         // triggered tasks
         {
             let triggered = storage
-                .get_triggered_tasks(TEST_GUILD, exec_at_after_1)
+                .get_triggered_tasks(test_guild_id(), exec_at_after_1)
                 .await
                 .unwrap();
 
@@ -358,7 +360,7 @@ mod tests {
         // verify that it updated
         {
             let next_time = storage
-                .get_next_task_run_time(TEST_GUILD)
+                .get_next_task_run_time(test_guild_id())
                 .await
                 .unwrap()
                 .unwrap();
@@ -369,7 +371,7 @@ mod tests {
         // triggered tasks
         {
             let triggered = storage
-                .get_triggered_tasks(TEST_GUILD, exec_at_after_1)
+                .get_triggered_tasks(test_guild_id(), exec_at_after_1)
                 .await
                 .unwrap();
 
@@ -385,13 +387,13 @@ mod tests {
         let exec_at_1 = Utc.from_utc_datetime(&NaiveDate::from_ymd(2020, 6, 1).and_hms(16, 0, 0));
 
         storage
-            .set_next_interval_exec(TEST_GUILD, "test".to_string(), exec_at_1)
+            .set_next_interval_exec(test_guild_id(), "test".to_string(), exec_at_1)
             .await
             .unwrap();
 
         {
             let inervals = storage
-                .get_all_intervals_next_exec(TEST_GUILD)
+                .get_all_intervals_next_exec(test_guild_id())
                 .await
                 .unwrap();
 
@@ -401,13 +403,13 @@ mod tests {
 
         // fake del them
         storage
-            .del_interval(TEST_GUILD, "none".to_string())
+            .del_interval(test_guild_id(), "none".to_string())
             .await
             .unwrap();
 
         {
             let inervals = storage
-                .get_all_intervals_next_exec(TEST_GUILD)
+                .get_all_intervals_next_exec(test_guild_id())
                 .await
                 .unwrap();
 
@@ -416,13 +418,13 @@ mod tests {
         }
 
         storage
-            .del_interval(TEST_GUILD, "test".to_string())
+            .del_interval(test_guild_id(), "test".to_string())
             .await
             .unwrap();
 
         {
             let inervals = storage
-                .get_all_intervals_next_exec(TEST_GUILD)
+                .get_all_intervals_next_exec(test_guild_id())
                 .await
                 .unwrap();
 

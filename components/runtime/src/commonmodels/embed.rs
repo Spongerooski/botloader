@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use twilight_model::datetime::Timestamp;
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -12,7 +13,7 @@ pub struct Embed {
     pub kind: String,
     pub provider: Option<EmbedProvider>,
     pub thumbnail: Option<EmbedThumbnail>,
-    pub timestamp: Option<String>,
+    pub timestamp: Option<u64>,
     pub title: Option<String>,
     pub url: Option<String>,
     pub video: Option<EmbedVideo>,
@@ -29,7 +30,7 @@ impl From<Embed> for twilight_model::channel::embed::Embed {
             kind: v.kind,
             provider: v.provider.map(From::from),
             thumbnail: v.thumbnail.map(From::from),
-            timestamp: v.timestamp,
+            timestamp: v.timestamp.map(Timestamp::from_secs).flatten(),
             title: v.title,
             url: v.url,
             video: v.video.map(From::from),
@@ -49,7 +50,7 @@ impl From<twilight_model::channel::embed::Embed> for Embed {
             kind: v.kind,
             provider: v.provider.map(From::from),
             thumbnail: v.thumbnail.map(From::from),
-            timestamp: v.timestamp,
+            timestamp: v.timestamp.map(|ts| ts.as_secs()),
             title: v.title,
             url: v.url,
             video: v.video.map(From::from),

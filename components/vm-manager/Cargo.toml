@@ -17,7 +17,7 @@ tracing-futures= "0.2"
 tokio = { version = "1.5.0", features = ["full"] }
 async-trait = "0.1"
 
-twilight-gateway = "0.6"
-twilight-model = "0.6"
-twilight-http = "0.6"
-twilight-cache-inmemory = "0.6"
+twilight-gateway = "0.7"
+twilight-model = "0.7"
+twilight-http = "0.7"
+twilight-cache-inmemory = "0.7"

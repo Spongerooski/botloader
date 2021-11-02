@@ -9,9 +9,9 @@ edition = "2018"
 vmthread = {path="../../components/vmthread"}
 isolatecell = {path="../../components/isolatecell"}
 
-twilight-cache-inmemory = "0.6"
-twilight-http = "0.6"
-twilight-model = "0.6"
+twilight-cache-inmemory = "0.7"
+twilight-http = "0.7"
+twilight-model = "0.7"
 
 tracing = "0.1"
 tracing-futures= "0.2"

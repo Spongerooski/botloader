@@ -77,11 +77,13 @@ where
             let mut span = None;
 
             if let (Some(s), Ok(gp)) = (session, guild_path) {
-                if let Some(g) = fetch_guild(s, GuildId(gp.guild)).await? {
-                    span = Some(tracing::debug_span!("guild", guild_id=%g.id));
+                if let Some(guild_id) = GuildId::new(gp.guild) {
+                    if let Some(g) = fetch_guild(s, guild_id).await? {
+                        span = Some(tracing::debug_span!("guild", guild_id=%g.id));
 
-                    let extensions_mut = req_parts.extensions_mut().unwrap();
-                    extensions_mut.insert(g);
+                        let extensions_mut = req_parts.extensions_mut().unwrap();
+                        extensions_mut.insert(g);
+                    }
                 }
             }
 

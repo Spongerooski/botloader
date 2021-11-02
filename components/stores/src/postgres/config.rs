@@ -18,7 +18,7 @@ impl Postgres {
             DbScript,
             "SELECT id, guild_id, original_source, name, enabled FROM guild_scripts WHERE \
              guild_id = $1 AND name = $2;",
-            guild_id.0 as i64,
+            guild_id.get() as i64,
             script_name
         )
         .fetch_one(&self.pool)
@@ -39,7 +39,7 @@ impl Postgres {
             DbScript,
             "SELECT id, guild_id, name, original_source, enabled FROM guild_scripts WHERE \
              guild_id = $1 AND id = $2;",
-            guild_id.0 as i64,
+            guild_id.0.get() as i64,
             id
         )
         .fetch_one(&self.pool)
@@ -85,7 +85,7 @@ impl crate::config::ConfigStore for Postgres {
                 VALUES ($1, $2, $3, $4)
                 RETURNING id, guild_id, name, original_source, enabled;
             ",
-            guild_id.0 as i64,
+            guild_id.0.get() as i64,
             script.name,
             script.original_source,
             script.enabled,
@@ -110,7 +110,7 @@ impl crate::config::ConfigStore for Postgres {
                 WHERE guild_id = $1 AND id=$2
                 RETURNING id, name, original_source, guild_id, enabled;
             ",
-            guild_id.0 as i64,
+            guild_id.0.get() as i64,
             script.id as i64,
             script.original_source,
             script.enabled,
@@ -128,7 +128,7 @@ impl crate::config::ConfigStore for Postgres {
     ) -> StoreResult<(), Self::Error> {
         let res = sqlx::query!(
             "DELETE FROM guild_scripts WHERE guild_id = $1 AND name = $2;",
-            guild_id.0 as i64,
+            guild_id.0.get() as i64,
             script_name
         )
         .execute(&self.pool)
@@ -146,7 +146,7 @@ impl crate::config::ConfigStore for Postgres {
             DbScript,
             "SELECT id, guild_id, original_source, name, enabled FROM guild_scripts WHERE \
              guild_id = $1",
-            guild_id.0 as i64,
+            guild_id.0.get() as i64,
         )
         .fetch_all(&self.pool)
         .await?;
@@ -162,7 +162,7 @@ impl crate::config::ConfigStore for Postgres {
             DbGuildMetaConfig,
             "SELECT guild_id, error_channel_id FROM guild_meta_configs
         WHERE guild_id = $1;",
-            guild_id.0 as i64,
+            guild_id.0.get() as i64,
         )
         .fetch_one(&self.pool)
         .await
@@ -183,9 +183,9 @@ impl crate::config::ConfigStore for Postgres {
             ON CONFLICT (guild_id) DO UPDATE SET
             error_channel_id = $2
             RETURNING guild_id, error_channel_id;",
-            conf.guild_id.0 as i64,
+            conf.guild_id.0.get() as i64,
             conf.error_channel_id
-                .map(|e| e.0 as i64)
+                .map(|e| e.0.get() as i64)
                 .unwrap_or_default(),
         )
         .fetch_one(&self.pool)
@@ -204,10 +204,10 @@ impl crate::config::ConfigStore for Postgres {
             ON CONFLICT (id) DO UPDATE SET 
             name = $2, icon = $3, owner_id = $4
             RETURNING id, name, icon, owner_id;",
-            guild.id.0 as i64,
+            guild.id.0.get() as i64,
             &guild.name,
             &guild.icon,
-            guild.owner_id.0 as i64,
+            guild.owner_id.0.get() as i64,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -218,7 +218,7 @@ impl crate::config::ConfigStore for Postgres {
     async fn remove_joined_guild(&self, guild_id: GuildId) -> StoreResult<bool, Self::Error> {
         let res = sqlx::query!(
             "DELETE FROM joined_guilds WHERE id = $1;",
-            guild_id.0 as i64,
+            guild_id.0.get() as i64,
         )
         .execute(&self.pool)
         .await?;
@@ -233,7 +233,9 @@ impl crate::config::ConfigStore for Postgres {
         let guilds = sqlx::query_as!(
             DbJoinedGuild,
             "SELECT id, name, icon, owner_id FROM joined_guilds WHERE id = ANY ($1)",
-            &ids.into_iter().map(|e| e.0 as i64).collect::<Vec<_>>(),
+            &ids.into_iter()
+                .map(|e| e.0.get() as i64)
+                .collect::<Vec<_>>(),
         )
         .fetch_all(&self.pool)
         .await?;
@@ -270,9 +272,9 @@ struct DbGuildMetaConfig {
 impl From<DbGuildMetaConfig> for GuildMetaConfig {
     fn from(mc: DbGuildMetaConfig) -> Self {
         Self {
-            guild_id: GuildId(mc.guild_id as u64),
+            guild_id: GuildId::new(mc.guild_id as u64).unwrap(),
             error_channel_id: if mc.error_channel_id != 0 {
-                Some(ChannelId(mc.error_channel_id as u64))
+                Some(ChannelId::new(mc.error_channel_id as u64).unwrap())
             } else {
                 None
             },
@@ -290,10 +292,10 @@ pub struct DbJoinedGuild {
 impl From<DbJoinedGuild> for JoinedGuild {
     fn from(g: DbJoinedGuild) -> Self {
         Self {
-            id: GuildId(g.id as u64),
+            id: GuildId::new(g.id as u64).unwrap(),
             name: g.name,
             icon: g.icon,
-            owner_id: UserId(g.owner_id as u64),
+            owner_id: UserId::new(g.owner_id as u64).unwrap(),
         }
     }
 }

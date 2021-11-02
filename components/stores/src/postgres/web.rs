@@ -32,7 +32,7 @@ impl crate::web::SessionStore for Postgres {
             discord_token_expires_at = $4
             RETURNING user_id, discord_bearer_token, discord_refresh_token, \
              discord_token_expires_at;",
-            oauth2_token.user_id.0 as i64,
+            oauth2_token.user_id.get() as i64,
             oauth2_token.access_token,
             oauth2_token.refresh_token,
             oauth2_token.token_expires,
@@ -61,7 +61,7 @@ impl crate::web::SessionStore for Postgres {
             DbOauthToken,
             "SELECT user_id, discord_bearer_token, discord_refresh_token, discord_token_expires_at
             FROM discord_oauth_tokens WHERE user_id = $1",
-            user.id.0 as i64,
+            user.id.get() as i64,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -75,8 +75,8 @@ impl crate::web::SessionStore for Postgres {
             RETURNING token, kind, user_id, discriminator, username, avatar, created_at;",
             &token,
             i16::from(kind),
-            user.id.0 as i64,
-            user.discriminator.parse::<i16>().unwrap_or_default(),
+            user.id.get() as i64,
+            user.discriminator as i16,
             user.name,
             user.avatar,
         )
@@ -97,7 +97,7 @@ impl crate::web::SessionStore for Postgres {
             DbOauthToken,
             "SELECT user_id, discord_bearer_token, discord_refresh_token, discord_token_expires_at
             FROM discord_oauth_tokens WHERE user_id = $1",
-            user_id.0 as i64,
+            user_id.get() as i64,
         )
         .fetch_one(&self.pool)
         .await?
@@ -141,7 +141,7 @@ impl crate::web::SessionStore for Postgres {
             DbOauthToken,
             "SELECT user_id, discord_bearer_token, discord_refresh_token, discord_token_expires_at
             FROM discord_oauth_tokens WHERE user_id = $1",
-            user_id.0 as i64,
+            user_id.get() as i64,
         )
         .fetch_one(&self.pool)
         .await?
@@ -151,7 +151,7 @@ impl crate::web::SessionStore for Postgres {
             DbSession,
             "SELECT token, kind, user_id, discriminator, username, avatar, created_at FROM \
              web_sessions WHERE user_id = $1",
-            user_id.0 as i64,
+            user_id.get() as i64,
         )
         .fetch_all(&self.pool)
         .await?;
@@ -179,7 +179,7 @@ impl crate::web::SessionStore for Postgres {
     async fn del_all_sessions(&self, user_id: UserId) -> Result<(), Self::Error> {
         sqlx::query!(
             "DELETE FROM discord_oauth_tokens WHERE user_id= $1",
-            user_id.0 as i64
+            user_id.get() as i64
         )
         .execute(&self.pool)
         .await?;
@@ -201,7 +201,7 @@ impl From<DbOauthToken> for DiscordOauthToken {
             access_token: db_t.discord_bearer_token,
             refresh_token: db_t.discord_refresh_token,
             token_expires: db_t.discord_token_expires_at,
-            user_id: UserId(db_t.user_id as u64),
+            user_id: UserId::new(db_t.user_id as u64).unwrap(),
         }
     }
 }
@@ -225,16 +225,18 @@ impl From<DbSession> for CurrentUser {
                 None
             },
             bot: false,
-            discriminator: db_u.discriminator.to_string(),
+            discriminator: db_u.discriminator as u16,
             email: None,
             flags: None,
-            id: UserId(db_u.user_id as u64),
+            id: UserId::new(db_u.user_id as u64).unwrap(),
             locale: None,
             mfa_enabled: false,
             name: db_u.username,
             premium_type: None,
             public_flags: None,
             verified: None,
+            accent_color: None,
+            banner: None,
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use twilight_model::id::GuildId;
 use vm::{error_reporter::ErrorReporter, AnyError};
@@ -10,11 +12,11 @@ use vm::{error_reporter::ErrorReporter, AnyError};
 #[derive(Debug)]
 pub struct DiscordErrorReporter<CT> {
     config_storage: CT,
-    discord_client: twilight_http::Client,
+    discord_client: Arc<twilight_http::Client>,
 }
 
 impl<CT> DiscordErrorReporter<CT> {
-    pub fn new(config_storage: CT, discord_client: twilight_http::Client) -> Self {
+    pub fn new(config_storage: CT, discord_client: Arc<twilight_http::Client>) -> Self {
         Self {
             config_storage,
             discord_client,

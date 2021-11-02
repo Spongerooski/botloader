@@ -36,7 +36,7 @@ impl<CT: ConfigStore + Send + Sync + 'static> proto::bot_service_server::BotServ
         &self,
         request: tonic::Request<proto::GuildScriptSpecifier>,
     ) -> Result<Response<proto::Empty>, Status> {
-        let guild_id = GuildId(request.into_inner().guild_id);
+        let guild_id = GuildId::new(request.into_inner().guild_id).unwrap();
 
         match self.vm_manager.restart_guild_vm(guild_id).await {
             Ok(()) => Ok(Response::new(proto::Empty {})),
@@ -50,7 +50,7 @@ impl<CT: ConfigStore + Send + Sync + 'static> proto::bot_service_server::BotServ
         &self,
         request: tonic::Request<proto::GuildScriptSpecifier>,
     ) -> Result<Response<Self::StreamVmLogsStream>, Status> {
-        let guild_id = GuildId(request.into_inner().guild_id);
+        let guild_id = GuildId::new(request.into_inner().guild_id).unwrap();
 
         if let Some(mut rx) = self.vm_manager.subscribe_to_guild_logs(guild_id).await {
             Ok(Response::new(Box::pin(futures::stream::poll_fn(

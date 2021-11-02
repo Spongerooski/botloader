@@ -44,12 +44,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let token = config.discord_token.clone();
     let database_url = config.database_url.clone();
 
-    let http = twilight_http::client::ClientBuilder::new()
-        .token(token.clone())
-        .build();
+    let http = Arc::new(
+        twilight_http::client::ClientBuilder::new()
+            .token(token.clone())
+            .build(),
+    );
 
     let intents = Intents::GUILD_MESSAGES | Intents::GUILDS | Intents::GUILD_VOICE_STATES;
     let (cluster, events) = Cluster::new(token, intents).await?;
+    let cluster = Arc::new(cluster);
 
     let cluster_spawn = cluster.clone();
 
@@ -59,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         cluster_spawn.up().await;
     });
 
-    let state = InMemoryCacheBuilder::new().build();
+    let state = Arc::new(InMemoryCacheBuilder::new().build());
 
     let config_store = Postgres::new_with_url(&database_url).await?;
 
@@ -89,9 +92,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[derive(Clone)]
 pub struct BotContext<CT> {
     config: RunConfig,
-    http: twilight_http::Client,
-    cluster: Cluster,
-    state: InMemoryCache,
+    http: Arc<twilight_http::Client>,
+    cluster: Arc<Cluster>,
+    state: Arc<InMemoryCache>,
     application_info: CurrentApplicationInfo,
     config_store: CT,
 }

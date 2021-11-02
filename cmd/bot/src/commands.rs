@@ -1,17 +1,19 @@
+use std::sync::Arc;
+
 use stores::config::{ConfigStore, CreateScript, Script};
 use tracing::{error, info, instrument};
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Cluster;
-use twilight_model::{gateway::payload::MessageCreate, guild::Permissions, id::RoleId};
+use twilight_model::{gateway::payload::incoming::MessageCreate, guild::Permissions, id::RoleId};
 use twilight_util::permission_calculator::PermissionCalculator;
 
 use crate::BotContext;
 
 #[derive(Clone)]
 pub struct CommandContext<CT> {
-    pub(crate) http: twilight_http::Client,
-    pub(crate) cluster: Cluster,
-    pub(crate) state: InMemoryCache,
+    pub(crate) http: Arc<twilight_http::Client>,
+    pub(crate) cluster: Arc<Cluster>,
+    pub(crate) state: Arc<InMemoryCache>,
     pub(crate) config_store: CT,
     pub(crate) vm_manager: vm_manager::Manager<CT>,
 }

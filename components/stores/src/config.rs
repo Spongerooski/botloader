@@ -65,10 +65,7 @@ pub trait ConfigStore: Clone + Sync {
     ) -> StoreResult<GuildMetaConfig, Self::Error> {
         match self.get_guild_meta_config(guild_id).await {
             Ok(Some(conf)) => Ok(conf),
-            Ok(None) => Ok(GuildMetaConfig {
-                guild_id,
-                ..Default::default()
-            }),
+            Ok(None) => Ok(GuildMetaConfig::guild_default(guild_id)),
             Err(e) => Err(e),
         }
     }
@@ -101,10 +98,19 @@ pub struct CreateScript {
     pub enabled: bool,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GuildMetaConfig {
     pub guild_id: GuildId,
     pub error_channel_id: Option<ChannelId>,
+}
+
+impl GuildMetaConfig {
+    pub fn guild_default(guild_id: GuildId) -> Self {
+        Self {
+            guild_id,
+            error_channel_id: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

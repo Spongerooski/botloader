@@ -26,8 +26,8 @@ pub struct InnerManager<CT> {
     guilds: RwLock<GuildMap>,
     worker_thread: VmThreadHandle<Vm>,
 
-    http: twilight_http::Client,
-    state: InMemoryCache,
+    http: Arc<twilight_http::Client>,
+    state: Arc<InMemoryCache>,
     config_store: CT,
     rt_evt_tx: UnboundedSender<GuildVmEvent>,
     error_reporter: Arc<dyn ErrorReporter + Send + Sync>,
@@ -45,8 +45,8 @@ where
 {
     pub fn new(
         error_reporter: Arc<dyn ErrorReporter + Send + Sync>,
-        twilight_http_client: twilight_http::Client,
-        state: InMemoryCache,
+        twilight_http_client: Arc<twilight_http::Client>,
+        state: Arc<InMemoryCache>,
         config_store: CT,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
