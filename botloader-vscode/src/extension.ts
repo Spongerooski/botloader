@@ -84,28 +84,16 @@ export async function activate(context: vscode.ExtensionContext) {
 		let tmpDir = await mkdtemp(join(tmpdir(), "botloader"));
 		let dirUri = vscode.Uri.parse("file:/" + tmpDir);
 
-
-		let scripts = await apiClient.getAllScripts(guild.id);
-		if (isErrorResponse(scripts)) {
-			throw new Error("failed fetching scripts: " + JSON.stringify(scripts));
-		}
-
 		await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(dirUri, "/.botloader"));
 		await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(dirUri, "/.botloader/scripts"));
 
 		let textEncoder = new TextEncoder();
-		for (let script of scripts) {
-			await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/${script.name}.ts`), textEncoder.encode(script.original_source));
-			await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/.botloader/scripts/${script.name}.ts.bloader`), textEncoder.encode(script.original_source));
-		}
-
 		await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/.botloader/index.json`), textEncoder.encode(JSON.stringify({
 			guild: guild,
-			openScripts: scripts.map(script => { return { id: script.id, name: script.name }; }),
+			openScripts: [],
 		})));
 
 		await vscode.workspace.fs.copy(vscode.Uri.joinPath(context.extensionUri, "/out/typings/lib.deno_core.d.ts"), vscode.Uri.joinPath(dirUri, "/.botloader/lib.global.d.ts"));
-
 		await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/tsconfig.json`), textEncoder.encode(JSON.stringify(generateTsConfig(context.extensionPath), undefined, 4)));
 
 		vscode.workspace.updateWorkspaceFolders(0, 0, {

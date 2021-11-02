@@ -46,7 +46,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
         watcher.onDidCreate(this.onFileDidCreate.bind(this));
         watcher.onDidDelete(this.onFileDidDelete.bind(this));
 
-        this.initialScan();
+        this.syncWorkspace();
     }
 
     get onDidChangeFileDecorations(): vscode.Event<vscode.Uri | vscode.Uri[] | undefined> | undefined {
@@ -364,7 +364,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
         for (let script of newScripts) {
             let uri = vscode.Uri.joinPath(this.folder, `/${script.name}.ts`);
             try {
-                vscode.workspace.fs.stat(uri);
+                await vscode.workspace.fs.stat(uri);
             } catch {
                 await vscode.workspace.fs.writeFile(uri, textEncoder.encode(script.original_source));
             }
