@@ -105,8 +105,8 @@ pub async fn delete_guild_script(
             ApiErrorResponse::InternalError
         })?;
 
-    let script = config_store
-        .del_script(current_guild.id, script.name)
+    config_store
+        .del_script(current_guild.id, script.name.clone())
         .await
         .map_err(|err| {
             error!(%err, "failed deleting guild script");
