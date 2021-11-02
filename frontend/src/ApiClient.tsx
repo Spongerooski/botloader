@@ -119,7 +119,7 @@ export class ApiClient {
     }
 }
 
-type ApiResult<T> = T | ApiError;
+export type ApiResult<T> = T | ApiError;
 
 export function isErrorResponse<T>(resp: ApiResult<T>): resp is ApiError {
     return (resp as ApiError).is_error !== undefined;

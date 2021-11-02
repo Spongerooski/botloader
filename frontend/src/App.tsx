@@ -12,6 +12,7 @@ import { TopNav } from './components/TopNav';
 import { ConfirmLoginPage } from './pages/ConfirmLogin';
 import { SelectServerPage } from './pages/SelectServer';
 import { UserSettingsPage } from './pages/UserSettings';
+import { GuildPage } from './pages/GuildPage';
 
 function App() {
   return (
@@ -34,7 +35,7 @@ function App() {
                   <Switch>
                     <Route path="/servers/:guildId">
                       <RequireLoggedInSession>
-                        <GuildPage />
+                        <OuterGuildPage />
                       </RequireLoggedInSession>
                     </Route>
                     <Route path="/servers">
@@ -58,16 +59,15 @@ function App() {
   );
 }
 
-function GuildPage() {
+function OuterGuildPage() {
   let { guildId }: { guildId: string } = useParams();
 
   return <CurrentGuildProvider guildId={guildId}>
     <TopNav />
     <div className="page-wrapper">
-      <p>Current guild page for {guildId}</p>
+      <GuildPage />
     </div>
   </CurrentGuildProvider>
-
 }
 
 export default App;
