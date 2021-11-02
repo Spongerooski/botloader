@@ -215,13 +215,17 @@ impl From<twilight_http::Error> for ApiProviderError<twilight_http::Error> {
     fn from(te: twilight_http::Error) -> Self {
         match te.kind() {
             twilight_http::error::ErrorType::Response {
-                error:
-                    ApiError::General(GeneralApiError {
-                        code: ErrorCode::UnknownToken | ErrorCode::InvalidOAuthAccessToken,
-                        ..
-                    }),
+                status,
+                // The below seems to be broken
+                // TODO: Debug the below
+                // workaround works for now
+                // error:
+                //     ApiError::General(GeneralApiError {
+                //         code: ErrorCode::UnknownToken | ErrorCode::InvalidOAuthAccessToken,
+                //         ..
+                //     }),
                 ..
-            } => Self::InvalidToken,
+            } if status.raw() == 401 => Self::InvalidToken,
             twilight_http::error::ErrorType::Response {
                 error: ApiError::Ratelimited(RatelimitedApiError { retry_after, .. }),
                 ..
