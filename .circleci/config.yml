@@ -1,0 +1,45 @@
+version: 2.1
+executors:
+  postgres-alongside:
+    docker:
+      - image: rust:1.56.1-bullseye
+      - image: cimg/postgres:14.0
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+
+jobs:
+  build:
+    environment:
+      DATABASE_URL: postgres://postgres@localhost/circle_test
+
+    executor: postgres-alongside
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+              - cargo-{{ checksum "Cargo.lock" }}
+      - run:
+          name: Install sqlx-cli 
+          command: cargo install sqlx-cli
+      - run:
+          name: Create database
+          command: cargo sqlx database create
+      - run:
+          name: Apply db migrations
+          command: cargo sqlx migrate --source components/stores/migrations run
+      - run:
+          name: Add rustfmt
+          command: rustup component add rustfmt
+      - run: 
+          name: Build
+          command: cargo build --release
+      - save_cache:
+          key: cargo-{{ checksum "Cargo.lock" }}
+          paths:
+              - ~/.cargo
+
+workflows:
+  build:
+    jobs:
+      - build
