@@ -18,7 +18,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-              - cargo-{{ checksum "Cargo.lock" }}
+              - cargo-2-{{ checksum "Cargo.lock" }}
       - run:
           name: Install sqlx-cli 
           command: cargo install sqlx-cli
@@ -35,9 +35,9 @@ jobs:
           name: Build
           command: cargo build --release
       - save_cache:
-          key: cargo-{{ checksum "Cargo.lock" }}
+          key: cargo-2-{{ checksum "Cargo.lock" }}
           paths:
-              - ~/.cargo
+              - /usr/local/cargo
 
 workflows:
   build:
