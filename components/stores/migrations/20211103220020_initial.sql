@@ -1,3 +1,4 @@
+-- Add migration script here
 CREATE TABLE IF NOT EXISTS joined_guilds (
     id bigint PRIMARY KEY,
     name text NOT NULL,
