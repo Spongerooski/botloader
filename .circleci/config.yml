@@ -49,8 +49,42 @@ jobs:
             - target/release/gn_out
             - target/release/.fingerprint
             - target/release/.cargo-lock
-
+  build-docker-images:
+    docker:
+      - image: docker:17.05.0-ce-git
+    steps:
+      - checkout
+      - setup_remote_docker
+      - restore_cache:
+          keys:
+            - v1-{{ .Branch }}
+      - run:
+          name: Load Docker image layer cache
+          command: |
+            set +o pipefail
+            docker load -i /caches/app.tar | true
+      - run:
+          name: Build base Docker image
+          command: |
+            docker build --cache-from=app -t botloader-base .
+      - run:
+          name: Build bot
+          command: |
+            docker build --cache-from=app -t app -f cmd/bot/Dockerfile .
+      - run:
+          name: Build webapi
+          command: |
+            docker build --cache-from=app -t app -f cmd/webapi/Dockerfile .
+      - run:
+          name: Save Docker image layer cache
+          command: |
+            mkdir -p /caches
+            docker save -o /caches/app.tar app
+      - save_cache:
+          key: v1-{{ .Branch }}-{{ epoch }}
+          paths:
+            - /caches/app.tar
 workflows:
   build:
     jobs:
-      - build
+      - build-docker-images
