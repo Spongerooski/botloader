@@ -57,7 +57,7 @@ jobs:
       - setup_remote_docker
       - restore_cache:
           keys:
-            - v4-{{ .Branch }}
+            - v5-{{ .Branch }}
       - run:
           name: Load Docker image layer cache
           command: |
@@ -96,9 +96,9 @@ jobs:
             docker save -o ~/caches/botloader-bot.tar jonas747/botloader-bot
             docker save -o ~/caches/botloader-webapi.tar jonas747/botloader-webapi
       - save_cache:
-          key: v4-{{ .Branch }}-{{ epoch }}
+          key: v5-{{ .Branch }}-{{ epoch }}
           paths:
-            - /caches
+            - ~/caches
   publish-images:
     docker:
       - image: cimg/base:2021.04
