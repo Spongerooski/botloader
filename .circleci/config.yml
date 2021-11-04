@@ -51,7 +51,7 @@ jobs:
             - target/release/.cargo-lock
   build-docker-images:
     docker:
-      - image: docker:17.05.0-ce-git
+      - image: cimg/base:2021.04
     steps:
       - checkout
       - setup_remote_docker
@@ -70,11 +70,21 @@ jobs:
       - run:
           name: Build bot
           command: |
-            docker build --cache-from=app -t app -f cmd/bot/Dockerfile .
+            docker build --cache-from=app -t botloader-bot -f cmd/bot/Dockerfile .
       - run:
           name: Build webapi
           command: |
-            docker build --cache-from=app -t app -f cmd/webapi/Dockerfile .
+            docker build --cache-from=app -t botloader-webapi -f cmd/webapi/Dockerfile .
+      - run:
+          name: Archive images
+          command: |
+            docker save -o image-webapi.tar botloader-webapi
+            docker save -o image-bot.tar botloader-bot
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./image-webapi.tar
+            - ./image-bot.tar
       - run:
           name: Save Docker image layer cache
           command: |
@@ -84,7 +94,29 @@ jobs:
           key: v1-{{ .Branch }}-{{ epoch }}
           paths:
             - /caches/app.tar
+  publish-images:
+    docker:
+      - image: cimg/base:2021.04
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - setup_remote_docker
+      - run:
+          name: Load archived images
+          command: |
+            docker load -i /tmp/workspace/image-webapi.tar
+            docker load -i /tmp/workspace/image-bot.tar
+      - run:
+          name: Docker login
+          command: |
+            echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - run:
+          name: Publish Docker Image to Docker Hub
+          command: |
+            docker push image-webapi:latest
+            docker push image-bot:latest
 workflows:
   build:
     jobs:
       - build-docker-images
+      - publish-images
