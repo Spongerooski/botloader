@@ -32,6 +32,3 @@ futures = "0.3"
 dashmap = "4.0"
 dotenv = "0.15"
 structopt = "0.3"
-
-[build]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
