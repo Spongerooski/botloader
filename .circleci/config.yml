@@ -1,5 +1,8 @@
 version: 2.1
 executors:
+  main:
+    docker:
+      - image: rust:1.56.1-bullseye
   postgres-alongside:
     docker:
       - image: rust:1.56.1-bullseye
@@ -10,34 +13,42 @@ executors:
 
 jobs:
   build:
-    environment:
-      DATABASE_URL: postgres://postgres@localhost/circle_test
+    # environment:
+    #   DATABASE_URL: postgres://postgres@localhost/circle_test
 
-    executor: postgres-alongside
+    executor: main
     steps:
       - checkout
       - restore_cache:
           keys:
-              - cargo-2-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Install sqlx-cli 
-          command: cargo install sqlx-cli
-      - run:
-          name: Create database
-          command: cargo sqlx database create
-      - run:
-          name: Apply db migrations
-          command: cargo sqlx migrate --source components/stores/migrations run
+            # Note, we shouldn't need to invalidate the cache, cargo will handle that itself
+            # this does create the problem of the cache constantly growing, but its probably fine
+            # if we update the key on each new rust version
+            - cargo-3-rust.1.56
+      # - run:
+      #     name: Install sqlx-cli
+      #     command: cargo install sqlx-cli
+      # - run:
+      #     name: Create database
+      #     command: cargo sqlx database create
+      # - run:
+      #     name: Apply db migrations
+      #     command: cargo sqlx migrate --source components/stores/migrations run
       - run:
           name: Add rustfmt
           command: rustup component add rustfmt
-      - run: 
+      - run:
           name: Build
           command: cargo build --release
       - save_cache:
-          key: cargo-2-{{ checksum "Cargo.lock" }}
+          key: cargo-3-rust.1.56
           paths:
-              - /usr/local/cargo
+            - target/release/build
+            - target/release/deps
+            - target/release/incremental
+            - target/release/gn_out
+            - target/release/.fingerprint
+            - target/release/.cargo-lock
 
 workflows:
   build:
