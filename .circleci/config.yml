@@ -57,7 +57,12 @@ jobs:
       - setup_remote_docker
       - restore_cache:
           keys:
-            - v2-{{ .Branch }}
+            - v3-{{ .Branch }}
+      - run:
+          name: Test
+          command: |
+            set +o pipefail
+            mkdir /caches
       - run:
           name: Load Docker image layer cache
           command: |
@@ -90,14 +95,15 @@ jobs:
       - run:
           name: Save Docker image layer cache
           command: |
+            set +o pipefail
             mkdir -p /caches
             docker save -o /caches/botloader-base.tar botloader-base
             docker save -o /caches/botloader-bot.tar jonas747/botloader-bot
             docker save -o /caches/botloader-webapi.tar jonas747/botloader-webapi
       - save_cache:
-          key: v2-{{ .Branch }}-{{ epoch }}
+          key: v3-{{ .Branch }}-{{ epoch }}
           paths:
-            - /caches/app.tar
+            - /caches
   publish-images:
     docker:
       - image: cimg/base:2021.04
