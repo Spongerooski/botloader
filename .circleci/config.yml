@@ -70,16 +70,16 @@ jobs:
       - run:
           name: Build bot
           command: |
-            docker build --cache-from=app -t botloader-bot -f cmd/bot/Dockerfile .
+            docker build --cache-from=app -t jonas747/botloader-bot -f cmd/bot/Dockerfile .
       - run:
           name: Build webapi
           command: |
-            docker build --cache-from=app -t botloader-webapi -f cmd/webapi/Dockerfile .
+            docker build --cache-from=app -t jonas747/botloader-webapi -f cmd/webapi/Dockerfile .
       - run:
           name: Archive images
           command: |
-            docker save -o image-webapi.tar botloader-webapi
-            docker save -o image-bot.tar botloader-bot
+            docker save -o image-bot.tar jonas747/botloader-bot
+            docker save -o image-webapi.tar jonas747/botloader-webapi
       - persist_to_workspace:
           root: .
           paths:
@@ -113,10 +113,12 @@ jobs:
       - run:
           name: Publish Docker Image to Docker Hub
           command: |
-            docker push image-webapi:latest
-            docker push image-bot:latest
+            docker push jonas747/botloader-webapi:latest
+            docker push jonas747/botloader-bot:latest
 workflows:
   build:
     jobs:
       - build-docker-images
-      - publish-images
+      - publish-images:
+          requires:
+            - build-docker-images
