@@ -348,6 +348,12 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
         for (let script of resp) {
             await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(this.folder, `/.botloader/scripts/${script.name}.ts.bloader`), textEncoder.encode(script.original_source));
         }
+
+        if (resp.length < 1) {
+            // ensure the script folder is there
+            await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.folder, "/.botloader/scripts"));
+        }
+
         let newOpenScripts = resp.map(s => {
             return {
                 id: s.id,
