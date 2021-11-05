@@ -2,6 +2,7 @@ use crate::moduleloader::{ModuleEntry, ModuleManager};
 use crate::{prepend_script_source_header, AnyError};
 use anyhow::anyhow;
 use deno_core::{op_async, Extension, OpState, RuntimeOptions, Snapshot};
+use futures::StreamExt;
 use futures::{future::LocalBoxFuture, FutureExt};
 use guild_logger::{GuildLogger, LogEntry};
 use isolatecell::{IsolateCell, ManagedIsolate};
@@ -279,7 +280,7 @@ impl Vm {
             return;
         }
 
-        {
+        let rcv = {
             let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
 
             let parsed_uri =
@@ -311,9 +312,10 @@ impl Vm {
                 }
             };
 
-            // TODO: handle error on receiver result
-            rt.mod_evaluate(id);
-        }
+            rt.mod_evaluate(id)
+        };
+
+        self.complete_module_eval(rcv).await;
 
         self.loaded_scripts.push(script);
     }
@@ -390,11 +392,7 @@ impl Vm {
         // so maybe call a function that cancels all long running futures or something?
         let core_data: CoreCtxData = {
             {
-                let fut = RunUntilCompletion {
-                    cell: &self.isolate_cell,
-                    rt: &mut self.runtime,
-                };
-                fut.await.ok();
+                self.run_until_completion().await;
             }
 
             let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
@@ -420,6 +418,39 @@ impl Vm {
         for script in initial_scripts {
             self.load_script(script).await;
         }
+    }
+
+    async fn run_until_completion(&mut self) {
+        let fut = RunUntilCompletion {
+            cell: &self.isolate_cell,
+            rt: &mut self.runtime,
+        };
+
+        if let Err(err) = fut.await {
+            self.log_guild_err(err);
+        }
+    }
+
+    async fn complete_module_eval(
+        &mut self,
+        rcv: futures::channel::mpsc::Receiver<Result<(), AnyError>>,
+    ) {
+        let fut = CompleteModuleEval {
+            cell: &self.isolate_cell,
+            rt: &mut self.runtime,
+            rcv,
+        };
+
+        if let Err(err) = fut.await {
+            self.log_guild_err(err);
+        }
+    }
+
+    fn log_guild_err(&self, err: AnyError) {
+        self.guild_logger.log(LogEntry::error(
+            self.ctx.guild_id,
+            format!("Script error occured: {}", err),
+        ));
     }
 }
 
@@ -484,6 +515,34 @@ impl<'a> core::future::Future for RunUntilCompletion<'a> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
+        let mut rt = self.cell.enter_isolate(self.rt);
+
+        match rt.poll_event_loop(cx, false) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(_) => Poll::Ready(Ok(())),
+        }
+    }
+}
+
+// future that drives the vm to completion, acquiring the isolate guard when needed
+struct CompleteModuleEval<'a> {
+    rt: &'a mut ManagedIsolate,
+    cell: &'a IsolateCell,
+    rcv: futures::channel::mpsc::Receiver<Result<(), AnyError>>,
+}
+
+impl<'a> core::future::Future for CompleteModuleEval<'a> {
+    type Output = Result<(), AnyError>;
+
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        match self.rcv.poll_next_unpin(cx) {
+            Poll::Ready(_) => return Poll::Ready(Ok(())),
+            Poll::Pending => {}
+        }
+
         let mut rt = self.cell.enter_isolate(self.rt);
 
         match rt.poll_event_loop(cx, false) {
