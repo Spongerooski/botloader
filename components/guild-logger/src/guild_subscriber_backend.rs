@@ -1,9 +1,8 @@
 use std::{collections::HashMap, sync::RwLock};
 
+use crate::LogEntry;
 use tokio::sync::broadcast::{self, Receiver};
 use twilight_model::id::GuildId;
-
-use crate::LogEntry;
 
 pub struct GuildSubscriberBackend {
     subscriptions: RwLock<HashMap<GuildId, broadcast::Sender<LogEntry>>>,
