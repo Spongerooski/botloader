@@ -11,6 +11,7 @@ runtime = {path="../../components/runtime"}
 vmthread = {path="../../components/vmthread"}
 vm = {path="../../components/vm"}
 tscompiler = {path="../../components/tscompiler"}
+guild-logger = {path="../../components/guild-logger"}
 
 tracing = "0.1"
 tracing-futures= "0.2" 

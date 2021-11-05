@@ -7,7 +7,6 @@ use vm::{vm::VmRole, AnyError, JsValue};
 
 mod commonmodels;
 pub mod dispatchevents;
-pub mod error_reporter;
 pub mod jsmodules;
 mod sendmessage;
 pub mod validator;

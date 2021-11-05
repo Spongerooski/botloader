@@ -9,6 +9,7 @@ edition = "2018"
 stores = {path="../../components/stores"}
 discordoauthwrapper = {path="../../components/discordoauthwrapper"}
 botrpc = {path="../../components/botrpc"}
+guild-logger = {path="../../components/guild-logger"}
 
 oauth2 = "4.1"
 anyhow = "1.0"

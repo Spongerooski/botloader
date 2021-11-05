@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
+use serde::{Deserialize, Serialize};
 use twilight_model::id::GuildId;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct LogEntry {
     pub guild_id: GuildId,
     pub message: String,
@@ -94,10 +95,10 @@ impl LogEntry {
 
 pub type LineCol = (u32, u32);
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ScriptContext {
-    filename: String,
-    line_col: Option<LineCol>,
+    pub filename: String,
+    pub line_col: Option<LineCol>,
 }
 
 impl Display for ScriptContext {
@@ -111,7 +112,7 @@ impl Display for ScriptContext {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum LogLevel {
     Critical,
     Error,

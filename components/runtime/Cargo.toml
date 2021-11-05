@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 vmthread = {path="../../components/vmthread"}
 vm = {path="../../components/vm"}
+guild-logger = {path="../../components/guild-logger"}
 
 twilight-cache-inmemory = "0.7"
 twilight-http = {version = "0.7", features = ["tracing"]}

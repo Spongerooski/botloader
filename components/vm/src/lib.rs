@@ -1,4 +1,3 @@
-pub mod error_reporter;
 pub mod moduleloader;
 use deno_core::v8_set_flags;
 use stores::config::Script;

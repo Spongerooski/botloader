@@ -1,10 +1,21 @@
+use std::sync::Arc;
+
 use crate::{LogEntry, LogLevel};
 use stores::config::ConfigStore;
 use tracing::error;
 
 pub struct DiscordLogger<CT> {
-    discord_client: twilight_http::Client,
+    discord_client: Arc<twilight_http::Client>,
     config_store: CT,
+}
+
+impl<CT> DiscordLogger<CT> {
+    pub fn new(discord_client: Arc<twilight_http::Client>, config_store: CT) -> Self {
+        Self {
+            config_store,
+            discord_client,
+        }
+    }
 }
 
 #[async_trait::async_trait]

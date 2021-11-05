@@ -2,10 +2,10 @@
 
 use std::{collections::HashMap, sync::Arc};
 
+use guild_logger::{GuildLogger, LogEntry};
 use stores::config::{ConfigStore, Script};
 
 use runtime::RuntimeContext;
-// use swc_common::errors::Diagnostic;
 use tokio::sync::{
     mpsc::{self, UnboundedReceiver, UnboundedSender},
     RwLock,
@@ -14,11 +14,7 @@ use tracing::info;
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Event;
 use twilight_model::id::GuildId;
-use vm::{
-    error_reporter::ErrorReporter,
-    vm::{CreateRt, GuildVmEvent, ScriptLoad, Vm, VmCommand, VmContext, VmEvent, VmRole},
-    AnyError,
-};
+use vm::vm::{CreateRt, GuildVmEvent, ScriptLoad, Vm, VmCommand, VmContext, VmEvent, VmRole};
 use vmthread::{VmThreadCommand, VmThreadFuture, VmThreadHandle};
 
 type GuildMap = HashMap<GuildId, GuildState>;
@@ -30,7 +26,7 @@ pub struct InnerManager<CT> {
     state: Arc<InMemoryCache>,
     config_store: CT,
     rt_evt_tx: UnboundedSender<GuildVmEvent>,
-    error_reporter: Arc<dyn ErrorReporter + Send + Sync>,
+    guild_logger: GuildLogger,
 }
 
 #[derive(Clone)]
@@ -44,7 +40,7 @@ where
     CT: ConfigStore + Send + 'static + Sync,
 {
     pub fn new(
-        error_reporter: Arc<dyn ErrorReporter + Send + Sync>,
+        guild_logger: guild_logger::GuildLogger,
         twilight_http_client: Arc<twilight_http::Client>,
         state: Arc<InMemoryCache>,
         config_store: CT,
@@ -58,7 +54,7 @@ where
 
                 http: twilight_http_client,
                 rt_evt_tx: tx,
-                error_reporter,
+                guild_logger,
                 config_store,
                 state,
             }),
@@ -103,7 +99,6 @@ where
                         id: guild_id,
                         main_vm: VmState::Stopped,
                         pack_vms: Vec::new(),
-                        log_subscribers: Vec::new(),
                     },
                 );
                 self.crate_new_guild_rt(&mut guilds, guild_id).await
@@ -140,7 +135,7 @@ where
             .worker_thread
             .send_cmd
             .send(VmThreadCommand::StartVM(CreateRt {
-                error_reporter: self.inner.clone(),
+                guild_logger: self.inner.guild_logger.clone(),
                 rx,
                 tx: self.inner.rt_evt_tx.clone(),
                 ctx: VmContext {
@@ -164,7 +159,6 @@ where
                 id: guild_id,
                 main_vm: VmState::Running(VmRunningState { tx }),
                 pack_vms: Vec::new(),
-                log_subscribers: Vec::new(),
             },
         );
 
@@ -222,7 +216,7 @@ where
                 .worker_thread
                 .send_cmd
                 .send(VmThreadCommand::StartVM(CreateRt {
-                    error_reporter: self.inner.clone(),
+                    guild_logger: self.inner.guild_logger.clone(),
                     rx,
                     tx: self.inner.rt_evt_tx.clone(),
                     ctx: VmContext {
@@ -265,20 +259,14 @@ where
                 .ok();
 
                 // report the shutdown to the guild
-                let err_reporter = self.inner.clone();
-                tokio::spawn(async move {
-                    err_reporter
-                        .report_error(
-                            guild_id,
-                            format!(
-                                "Runtime for your guild has shut down. (use the command `!jack \
-                                 startvm` to start again)\nReason: {:?}",
-                                reason
-                            ),
-                        )
-                        .await
-                        .ok();
-                });
+                self.inner.guild_logger.log(LogEntry::critical(
+                    guild_id,
+                    format!(
+                        "Runtime for your guild has shut down. (use the command `!jack startvm` \
+                         to start again)\nReason: {:?}",
+                        reason
+                    ),
+                ));
             }
         }
     }
@@ -336,15 +324,11 @@ where
     }
 
     fn handle_script_compilcation_errors(&self, guild_id: GuildId, msg: String) -> String {
-        let cloned = msg.clone();
-        let error_reporter = self.inner.error_reporter.clone();
-        tokio::spawn(async move {
-            error_reporter
-                .report_error(guild_id, format!("script compilation failed: {}", msg))
-                .await
-        });
-
-        cloned
+        self.inner.guild_logger.log(LogEntry::error(
+            guild_id,
+            format!("Script compilation failed: {}", msg),
+        ));
+        msg
     }
 
     pub async fn handle_discord_event(&self, evt: Event) {
@@ -452,28 +436,12 @@ where
         })
         .await
     }
-
-    pub async fn subscribe_to_guild_logs(
-        &self,
-        guild_id: GuildId,
-    ) -> Option<UnboundedReceiver<String>> {
-        let (tx, rx) = mpsc::unbounded_channel();
-
-        let mut guilds = self.inner.guilds.write().await;
-        if let Some(guild) = guilds.get_mut(&guild_id) {
-            guild.log_subscribers.push(tx);
-            Some(rx)
-        } else {
-            None
-        }
-    }
 }
 
 struct GuildState {
     id: GuildId,
     main_vm: VmState,
     pack_vms: Vec<(u64, VmState)>,
-    log_subscribers: Vec<UnboundedSender<String>>,
 }
 
 impl GuildState {
@@ -487,8 +455,6 @@ impl GuildState {
     fn iter(&self) -> impl Iterator<Item = &VmState> {
         GuildStateIter(self, 0)
     }
-
-    // fn broadcast_command()
 }
 
 struct GuildStateIter<'a>(&'a GuildState, usize);
@@ -518,21 +484,4 @@ enum VmState {
 /// The state of a vm, the details are set by an event from the runtime so it's set after the fact
 struct VmRunningState {
     tx: UnboundedSender<VmCommand>,
-}
-
-#[async_trait::async_trait]
-impl<CT: Send + Sync> ErrorReporter for InnerManager<CT> {
-    async fn report_error(&self, guild_id: GuildId, error: String) -> Result<(), AnyError> {
-        {
-            let mut guilds = self.guilds.write().await;
-            if let Some(guild) = guilds.get_mut(&guild_id) {
-                // if the send failed then the subscription is no longer active
-                guild
-                    .log_subscribers
-                    .retain(|gs| gs.send(error.clone()).is_ok());
-            }
-        }
-
-        self.error_reporter.report_error(guild_id, error).await
-    }
 }

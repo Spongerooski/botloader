@@ -1,6 +1,7 @@
-use std::{pin::Pin, task::Poll};
+use std::{pin::Pin, sync::Arc};
 
 use futures::Stream;
+use guild_logger::guild_subscriber_backend::GuildSubscriberBackend;
 use stores::config::ConfigStore;
 use tonic::{Response, Status};
 use twilight_model::id::GuildId;
@@ -8,13 +9,22 @@ use twilight_model::id::GuildId;
 use crate::proto;
 
 pub struct Server<CT> {
-    vm_manager: vm_manager::Manager<CT>,
     addr: String,
+    log_subscriber: Arc<GuildSubscriberBackend>,
+    vm_manager: vm_manager::Manager<CT>,
 }
 
 impl<CT: ConfigStore + Send + Sync + 'static> Server<CT> {
-    pub fn new(vm_manager: vm_manager::Manager<CT>, addr: String) -> Self {
-        Self { vm_manager, addr }
+    pub fn new(
+        log_subscriber: Arc<GuildSubscriberBackend>,
+        vm_manager: vm_manager::Manager<CT>,
+        addr: String,
+    ) -> Self {
+        Self {
+            log_subscriber,
+            addr,
+            vm_manager,
+        }
     }
 
     pub async fn run(self) {
@@ -28,7 +38,7 @@ impl<CT: ConfigStore + Send + Sync + 'static> Server<CT> {
 }
 
 type ResponseStream =
-    Pin<Box<dyn Stream<Item = Result<proto::ScriptLogItem, Status>> + Send + Sync>>;
+    Pin<Box<dyn Stream<Item = Result<proto::GuildLogItem, Status>> + Send + Sync>>;
 
 #[tonic::async_trait]
 impl<CT: ConfigStore + Send + Sync + 'static> proto::bot_service_server::BotService for Server<CT> {
@@ -44,30 +54,21 @@ impl<CT: ConfigStore + Send + Sync + 'static> proto::bot_service_server::BotServ
         }
     }
 
-    type StreamVmLogsStream = ResponseStream;
+    type StreamGuildLogsStream = ResponseStream;
 
-    async fn stream_vm_logs(
+    async fn stream_guild_logs(
         &self,
-        request: tonic::Request<proto::GuildScriptSpecifier>,
-    ) -> Result<Response<Self::StreamVmLogsStream>, Status> {
+        request: tonic::Request<proto::GuildSpecifier>,
+    ) -> Result<Response<Self::StreamGuildLogsStream>, Status> {
         let guild_id = GuildId::new(request.into_inner().guild_id).unwrap();
 
-        if let Some(mut rx) = self.vm_manager.subscribe_to_guild_logs(guild_id).await {
-            Ok(Response::new(Box::pin(futures::stream::poll_fn(
-                move |ctx| match rx.poll_recv(ctx) {
-                    Poll::Pending => Poll::Pending,
-                    Poll::Ready(Some(v)) => Poll::Ready(Some(Ok(proto::ScriptLogItem {
-                        filename: "todo".to_string(),
-                        linenumber: 0,
-                        column: 0,
-                        kind: "".to_string(),
-                        message: v,
-                    }))),
-                    Poll::Ready(None) => Poll::Ready(None),
-                },
-            ))))
-        } else {
-            Err(Status::not_found("unknown guild"))
-        }
+        let mut rx = self.log_subscriber.subscribe(guild_id);
+        let out = async_stream::try_stream! {
+            while let Ok(next) = rx.recv().await{
+                yield proto::GuildLogItem::from(next);
+            }
+        };
+
+        Ok(Response::new(Box::pin(out)))
     }
 }

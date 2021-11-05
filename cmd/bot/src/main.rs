@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use futures::StreamExt;
 use futures_core::Stream;
-use runtime::error_reporter::DiscordErrorReporter;
 use stores::config::{ConfigStore, JoinedGuild};
 use stores::postgres::Postgres;
 use structopt::StructOpt;
@@ -103,17 +102,28 @@ async fn handle_events<CT: Clone + ConfigStore + Send + Sync + 'static>(
     ctx: BotContext<CT>,
     mut stream: impl Stream<Item = (u64, Event)> + Unpin,
 ) {
-    let script_err_reporter = DiscordErrorReporter::new(ctx.config_store.clone(), ctx.http.clone());
+    let guild_log_sub_backend =
+        Arc::new(guild_logger::guild_subscriber_backend::GuildSubscriberBackend::default());
+    let logger = guild_logger::GuildLoggerBuilder::new()
+        .add_backend(Arc::new(guild_logger::discord_backend::DiscordLogger::new(
+            ctx.http.clone(),
+            ctx.config_store.clone(),
+        )))
+        .add_backend(guild_log_sub_backend.clone())
+        .run();
 
     let vm_manager = vm_manager::Manager::new(
-        Arc::new(script_err_reporter),
+        logger.clone(),
         ctx.http.clone(),
         ctx.state.clone(),
         ctx.config_store.clone(),
     );
 
-    let bot_rpc_server =
-        botrpc::Server::new(vm_manager.clone(), ctx.config.bot_rpc_listen_addr.clone());
+    let bot_rpc_server = botrpc::Server::new(
+        guild_log_sub_backend,
+        vm_manager.clone(),
+        ctx.config.bot_rpc_listen_addr.clone(),
+    );
 
     tokio::spawn(bot_rpc_server.run());
 

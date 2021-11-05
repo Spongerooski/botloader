@@ -52,8 +52,12 @@ impl GuildLoggerBuilder {
         }
     }
 
-    pub fn add_backend<T: GuildLoggerBackend + Send + Sync + 'static>(&mut self, backend: Arc<T>) {
+    pub fn add_backend<T: GuildLoggerBackend + Send + Sync + 'static>(
+        mut self,
+        backend: Arc<T>,
+    ) -> Self {
         self.backends.push(backend);
+        self
     }
 
     pub fn run(self) -> GuildLogger {
@@ -72,6 +76,7 @@ impl GuildLoggerBuilder {
     }
 }
 
+#[derive(Clone)]
 pub struct GuildLogger {
     tx: UnboundedSender<LogEntry>,
 }

@@ -7,13 +7,12 @@ use axum::{
     },
     response::IntoResponse,
 };
-use botrpc::proto::ScriptLogItem;
 use discordoauthwrapper::DiscordOauthApiClient;
 use futures::{stream::SelectAll, Stream, StreamExt};
+use guild_logger::LogEntry;
 use oauth2::basic::BasicClient;
 use serde::{Deserialize, Serialize};
 use stores::web::SessionStore;
-use tonic::Streaming;
 use twilight_model::{guild::Permissions, id::GuildId, user::CurrentUser};
 
 use crate::{middlewares::LoggedInSession, ConfigData};
@@ -99,21 +98,16 @@ impl<ST: SessionStore + Clone + 'static> WsConn<ST> {
 
     async fn handle_log_stream_item(
         &mut self,
-        item: Option<(GuildId, Result<ScriptLogItem, tonic::Status>)>,
+        item: Option<Result<LogEntry, tonic::Status>>,
     ) -> bool {
         match item {
-            Some((guild_id, Ok(item))) => self.handle_inner_log_item(guild_id, item).await,
+            Some(Ok(item)) => self.handle_inner_log_item(item).await,
             _ => true, // TODO: handle tonic errors? There can't be a none since we have the is_empty check in the caller
         }
     }
 
-    async fn handle_inner_log_item(&mut self, guild_id: GuildId, item: ScriptLogItem) -> bool {
-        if let Err(reason) = self
-            .send_event(WsEvent::ScriptLogMessage(WsScriptLogItem::new(
-                guild_id, item,
-            )))
-            .await
-        {
+    async fn handle_inner_log_item(&mut self, item: LogEntry) -> bool {
+        if let Err(reason) = self.send_event(WsEvent::ScriptLogMessage(item)).await {
             self.close(reason).await;
             false
         } else {
@@ -244,7 +238,7 @@ impl<ST: SessionStore + Clone + 'static> WsConn<ST> {
 
         self.active_log_streams.push(GuildLogStream {
             guild_id,
-            inner: stream,
+            inner: Box::pin(stream),
         });
 
         self.emit_subscriptions().await
@@ -322,31 +316,8 @@ struct AuthorizedWsState<ST> {
 enum WsEvent {
     AuthSuccess(CurrentUser),
     SubscriptionsUpdated(Vec<GuildId>),
-    ScriptLogMessage(WsScriptLogItem),
+    ScriptLogMessage(LogEntry),
     // GeneralLogMEssage(String)
-}
-
-#[derive(Serialize)]
-struct WsScriptLogItem {
-    guild_id: GuildId,
-    filename: String,
-    linenumber: i32,
-    column: i32,
-    message: String,
-    kind: String,
-}
-
-impl WsScriptLogItem {
-    fn new(guild_id: GuildId, item: ScriptLogItem) -> Self {
-        Self {
-            guild_id,
-            filename: item.filename,
-            linenumber: item.linenumber,
-            column: item.column,
-            message: item.message,
-            kind: item.kind,
-        }
-    }
 }
 
 /// Command is something that is from client -> server
@@ -422,18 +393,16 @@ impl WsCloseReason {
 
 struct GuildLogStream {
     guild_id: GuildId,
-    inner: Streaming<ScriptLogItem>,
+    inner: Pin<Box<dyn Stream<Item = Result<LogEntry, tonic::Status>> + Send>>,
 }
 
 impl Stream for GuildLogStream {
-    type Item = (GuildId, Result<ScriptLogItem, tonic::Status>);
+    type Item = Result<LogEntry, tonic::Status>;
 
     fn poll_next(
         mut self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
-        self.inner
-            .poll_next_unpin(cx)
-            .map(|item| item.map(|inner| (self.guild_id, inner)))
+        self.inner.poll_next_unpin(cx)
     }
 }

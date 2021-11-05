@@ -1,4 +1,5 @@
-use tonic::Streaming;
+use futures::{Stream, StreamExt};
+use guild_logger::LogEntry;
 use twilight_model::id::GuildId;
 
 use crate::proto;
@@ -36,17 +37,16 @@ impl Client {
     pub async fn guild_log_stream(
         &self,
         guild_id: GuildId,
-    ) -> Result<Streaming<proto::ScriptLogItem>, tonic::Status> {
+    ) -> Result<impl Stream<Item = Result<LogEntry, tonic::Status>>, tonic::Status> {
         let mut conn = self.get_conn();
 
         let stream = conn
-            .stream_vm_logs(proto::GuildScriptSpecifier {
+            .stream_guild_logs(proto::GuildSpecifier {
                 guild_id: guild_id.get(),
-                script: None,
             })
             .await?
             .into_inner();
 
-        Ok(stream)
+        Ok(stream.map(|item| item.map(Into::into)))
     }
 }

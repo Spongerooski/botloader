@@ -1,40 +1,25 @@
-use crate::moduleloader::ModuleEntry;
-use crate::moduleloader::ModuleManager;
-use crate::AnyError;
+use crate::moduleloader::{ModuleEntry, ModuleManager};
+use crate::{prepend_script_source_header, AnyError};
 use anyhow::anyhow;
-use deno_core::op_async;
-use deno_core::Extension;
-use deno_core::OpState;
-use deno_core::RuntimeOptions;
-use deno_core::Snapshot;
-use futures::future::LocalBoxFuture;
-use futures::FutureExt;
-use isolatecell::IsolateCell;
-use isolatecell::ManagedIsolate;
-use rusty_v8::CreateParams;
-use rusty_v8::HeapStatistics;
-use rusty_v8::IsolateHandle;
+use deno_core::{op_async, Extension, OpState, RuntimeOptions, Snapshot};
+use futures::{future::LocalBoxFuture, FutureExt};
+use guild_logger::{GuildLogger, LogEntry};
+use isolatecell::{IsolateCell, ManagedIsolate};
+use rusty_v8::{CreateParams, HeapStatistics, IsolateHandle};
 use serde::Serialize;
-use std::cell::RefCell;
-use std::fmt::Display;
-use std::rc::Rc;
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
-use std::task::Context;
-use std::task::Poll;
-use std::task::Wake;
-use std::task::Waker;
+use std::{
+    cell::RefCell,
+    fmt::Display,
+    rc::Rc,
+    sync::{atomic::AtomicBool, Arc, RwLock as StdRwLock},
+    task::{Context, Poll, Wake, Waker},
+};
 use stores::config::Script;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
-use tracing::{error, info};
+use tracing::info;
 use twilight_model::id::GuildId;
 use url::Url;
-use vmthread::CreateVmSuccess;
-use vmthread::VmInterface;
-
-use crate::error_reporter::ErrorReporter;
-use crate::prepend_script_source_header;
+use vmthread::{CreateVmSuccess, VmInterface};
 
 #[derive(Debug, Clone)]
 pub enum VmCommand {
@@ -85,7 +70,7 @@ pub struct Vm {
     loaded_scripts: Vec<ScriptLoad>,
 
     timeout_handle: TimeoutHandle,
-    error_reporter: Arc<dyn ErrorReporter>,
+    guild_logger: GuildLogger,
 
     isolate_cell: Rc<IsolateCell>,
 
@@ -128,7 +113,7 @@ impl Vm {
         // sandbox.add_state_data(create_req.ctx.clone());
 
         let mut rt = Self {
-            error_reporter: create_req.error_reporter,
+            guild_logger: create_req.guild_logger,
             ctx: create_req.ctx,
             rx: create_req.rx,
             tx: create_req.tx,
@@ -200,13 +185,10 @@ impl Vm {
                 Ok(Some(cmd)) => self.handle_cmd(cmd).await,
                 Ok(None) => {}
                 Err(e) => {
-                    if let Err(e) = self
-                        .error_reporter
-                        .report_script_error(self.ctx.guild_id, e)
-                        .await
-                    {
-                        error!(err = %e, "failed reporting script error");
-                    }
+                    self.guild_logger.log(LogEntry::error(
+                        self.ctx.guild_id,
+                        format!("Script error occured: {}", e),
+                    ));
                 }
             }
         }
@@ -581,7 +563,7 @@ struct TimeoutHandleInner {
 }
 
 pub struct CreateRt {
-    pub error_reporter: Arc<dyn ErrorReporter + Send>,
+    pub guild_logger: GuildLogger,
     pub rx: UnboundedReceiver<VmCommand>,
     pub tx: UnboundedSender<GuildVmEvent>,
     pub ctx: VmContext,
