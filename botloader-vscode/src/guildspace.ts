@@ -245,6 +245,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
         await this.pushSingleChange(uri, index);
 
         await this.syncWorkspace();
+        await this.apiClient.reloadGuildVm(index.guild.id);
     }
 
     async pushScmGroup(group: vscode.SourceControlResourceGroup) {
@@ -255,6 +256,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
         }
 
         await this.syncWorkspace();
+        await this.apiClient.reloadGuildVm(index.guild.id);
     }
 
     async pushSingleChange(uri: vscode.Uri, index: IndexFile) {

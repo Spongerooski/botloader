@@ -179,6 +179,32 @@ export interface MessageUpdate {
     timestamp?: string;
     tts?: boolean;
 }
+export interface ScriptMeta {
+    description: string;
+    commands: Command[];
+    commandGroups: CommandGroup[];
+}
+export interface CommandGroup {
+    name: string;
+    description: string;
+    subGroups: CommandSubGroup[];
+}
+export interface CommandSubGroup {
+    name: string;
+    description: string;
+}
+export interface Command {
+    name: string;
+    description: string;
+    options: CommandOption[];
+}
+export declare type CommandOptionType = "String" | "Integer" | "Boolean" | "User" | "Channel" | "Role" | "Mentionable" | "Number";
+export interface CommandOption {
+    name: string;
+    description: string;
+    kind: CommandOptionType;
+    required: boolean;
+}
 export interface User {
     avatar?: string;
     bot: boolean;

@@ -117,12 +117,20 @@ export class ApiClient {
     async delScript(guildId: string, id: number): Promise<ApiResult<{}>> {
         return await this.delete(`/api/guilds/${guildId}/scripts/${id}`);
     }
+
+    async reloadGuildVm(guildId: string): Promise<ApiResult<{}>> {
+        return await this.post(`/api/guilds/${guildId}/reload_vm`);
+    }
 }
 
 export type ApiResult<T> = T | ApiError;
 
 export function isErrorResponse<T>(resp: ApiResult<T>): resp is ApiError {
-    return (resp as ApiError).is_error !== undefined;
+    if (resp) {
+        return (resp as ApiError).is_error !== undefined;
+    } else {
+        return false;
+    }
 }
 
 export interface ApiError {
