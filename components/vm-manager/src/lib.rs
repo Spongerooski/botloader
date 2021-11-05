@@ -81,7 +81,17 @@ where
                 main_vm: VmState::Running(ref rs),
                 ..
             }) => {
-                rs.tx.send(VmCommand::Restart).unwrap();
+                let scripts = self
+                    .inner
+                    .config_store
+                    .list_scripts(guild_id)
+                    .await
+                    .unwrap();
+
+                // start all the runtimes!
+                let to_load = self.filter_load_scripts(guild_id, scripts);
+
+                rs.tx.send(VmCommand::Restart(to_load)).unwrap();
                 Ok(())
             }
 

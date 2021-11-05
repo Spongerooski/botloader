@@ -2,8 +2,7 @@ use crate::moduleloader::{ModuleEntry, ModuleManager};
 use crate::{prepend_script_source_header, AnyError};
 use anyhow::anyhow;
 use deno_core::{op_async, Extension, OpState, RuntimeOptions, Snapshot};
-use futures::StreamExt;
-use futures::{future::LocalBoxFuture, FutureExt};
+use futures::{future::LocalBoxFuture, FutureExt, StreamExt};
 use guild_logger::{GuildLogger, LogEntry};
 use isolatecell::{IsolateCell, ManagedIsolate};
 use rusty_v8::{CreateParams, HeapStatistics, IsolateHandle};
@@ -33,7 +32,7 @@ pub enum VmCommand {
     UnloadAllScript(u64),
     UpdateScript(ScriptLoad),
     Terminate,
-    Restart,
+    Restart(Vec<ScriptLoad>),
 }
 
 #[derive(Debug)]
@@ -175,6 +174,11 @@ impl Vm {
         self.emit_isolate_handle();
 
         info!("rt {} running runtime", self.ctx.guild_id);
+        self.guild_logger.log(LogEntry::info(
+            self.ctx.guild_id,
+            "starting guild vm".to_string(),
+        ));
+
         while !self.check_terminated() {
             let fut = TickFuture {
                 rx: &mut self.rx,
@@ -227,7 +231,9 @@ impl Vm {
     async fn handle_cmd(&mut self, cmd: VmCommand) {
         match cmd {
             VmCommand::Terminate => todo!(),
-            VmCommand::Restart => self.reset_sandbox().await,
+            VmCommand::Restart(new_scripts) => {
+                self.restart(new_scripts).await;
+            }
             VmCommand::DispatchEvent(name, evt) => self.dispatch_event(name, &evt),
             VmCommand::LoadScript(script) => self.load_script(script).await,
             VmCommand::UnloadScripts(scripts) => {
@@ -375,10 +381,8 @@ impl Vm {
         // iso.low_memory_notification();
     }
 
-    // Simply recreates the vm and loads the scripts in self.loaded_scripts
-    async fn reset_sandbox(&mut self) {
-        info!("rt {} resetting sandbox", self.ctx.guild_id,);
-
+    async fn stop_vm(&mut self) -> CoreCtxData {
+        info!("rt {} stopping sandbox", self.ctx.guild_id,);
         // TODO: more robust solution for this.
         self.script_dispatch_tx
             .send(ScriptDispatchData {
@@ -390,16 +394,21 @@ impl Vm {
         // complete the event loop and extract our core data (script event receiver)
         // TODO: we could potentially have some long running futures
         // so maybe call a function that cancels all long running futures or something?
-        let core_data: CoreCtxData = {
-            {
-                self.run_until_completion().await;
-            }
+        {
+            self.run_until_completion().await;
+        }
 
-            let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
-            let op_state = rt.op_state();
-            let val = op_state.borrow_mut().take();
-            val
-        };
+        let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
+        let op_state = rt.op_state();
+        let val = op_state.borrow_mut().take();
+        val
+    }
+
+    // Simply recreates the vm and loads the scripts in self.loaded_scripts
+    async fn reset_sandbox(&mut self) {
+        info!("rt {} resetting sandbox", self.ctx.guild_id,);
+
+        let core_data = self.stop_vm().await;
 
         // create a new sandbox
         let new_rt = Self::create_isolate(
@@ -451,6 +460,33 @@ impl Vm {
             self.ctx.guild_id,
             format!("Script error occured: {}", err),
         ));
+    }
+
+    async fn restart(&mut self, new_scripts: Vec<ScriptLoad>) {
+        info!("rt {} restarting with new scripts", self.ctx.guild_id,);
+        self.guild_logger.log(LogEntry::info(
+            self.ctx.guild_id,
+            "restarting guild vm with new scripts".to_string(),
+        ));
+
+        let core_data = self.stop_vm().await;
+
+        // create a new sandbox
+        let new_rt = Self::create_isolate(
+            &self.extension_factory,
+            self.module_manager.clone(),
+            core_data,
+        )
+        .await;
+
+        self.runtime = new_rt;
+        self.emit_isolate_handle();
+
+        self.loaded_scripts = Vec::new();
+
+        for script in new_scripts {
+            self.load_script(script).await;
+        }
     }
 }
 
