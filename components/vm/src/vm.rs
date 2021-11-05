@@ -78,6 +78,7 @@ pub struct Vm {
     module_manager: Rc<ModuleManager>,
 
     script_dispatch_tx: UnboundedSender<ScriptDispatchData>,
+    js_polling_events: Arc<AtomicBool>,
 }
 
 #[derive(Debug, Clone)]
@@ -88,6 +89,7 @@ pub struct VmContext {
 
 pub struct CoreCtxData {
     rcv_events: UnboundedReceiver<ScriptDispatchData>,
+    is_polling: Arc<AtomicBool>,
 }
 
 impl Vm {
@@ -102,11 +104,14 @@ impl Vm {
 
         let (script_dispatch_tx, script_dispatch_rx) = mpsc::unbounded_channel();
 
+        let is_polling = Arc::new(AtomicBool::new(false));
+
         let sandbox = Self::create_isolate(
             &create_req.extension_factory,
             module_manager.clone(),
             CoreCtxData {
                 rcv_events: script_dispatch_rx,
+                is_polling: is_polling.clone(),
             },
         )
         .await;
@@ -125,6 +130,7 @@ impl Vm {
             runtime: sandbox,
             extension_factory: create_req.extension_factory,
             module_manager,
+            js_polling_events: is_polling,
         };
 
         rt.emit_isolate_handle();
@@ -348,6 +354,10 @@ impl Vm {
     where
         P: Serialize,
     {
+        if self.loaded_scripts.len() < 1 {
+            return;
+        }
+
         // self._dump_heap_stats();
         info!("rt {} dispatching event: {}", self.ctx.guild_id, name);
         let serialized = serde_json::to_value(args).unwrap();
@@ -384,12 +394,17 @@ impl Vm {
     async fn stop_vm(&mut self) -> CoreCtxData {
         info!("rt {} stopping sandbox", self.ctx.guild_id,);
         // TODO: more robust solution for this.
-        self.script_dispatch_tx
-            .send(ScriptDispatchData {
-                name: "STOP".to_string(),
-                data: serde_json::Value::Null,
-            })
-            .ok();
+        if self
+            .js_polling_events
+            .load(std::sync::atomic::Ordering::SeqCst)
+        {
+            self.script_dispatch_tx
+                .send(ScriptDispatchData {
+                    name: "STOP".to_string(),
+                    data: serde_json::Value::Null,
+                })
+                .ok();
+        }
 
         // complete the event loop and extract our core data (script event receiver)
         // TODO: we could potentially have some long running futures
@@ -499,6 +514,11 @@ async fn op_rcv_event(
     return futures::future::poll_fn(move |ctx| {
         let mut op_state = cloned_state.borrow_mut();
         let core_data = op_state.borrow_mut::<CoreCtxData>();
+
+        core_data
+            .is_polling
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+
         match core_data.rcv_events.poll_recv(ctx) {
             Poll::Ready(Some(v)) => Poll::Ready(Ok(v)),
             Poll::Ready(None) => Poll::Ready(Err(anyhow!("no more events!"))),
