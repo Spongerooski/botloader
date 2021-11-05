@@ -7,7 +7,7 @@ import { tmpdir } from 'os';
 import { mkdtemp } from 'fs/promises';
 import { join } from 'path';
 import { WorkspaceManager } from './workspacemanager';
-import { BotloaderWS, WsLogItem, WsScriptLogItem } from './ws';
+import { BotloaderWS, LogItem } from './ws';
 import { CHANGED_FILES_SCM_GROUP } from './guildspace';
 
 const API_HOST_BASE = "127.0.0.1:7447";
@@ -102,15 +102,20 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 	}
 
-	function handleLogMessage(msg: WsLogItem) {
-		let tag = msg.kind || "unknown";
-		let content = ": " + msg.message;
-		if (!msg.kind || msg.kind === "ScriptError" || msg.kind === "ScriptInfo") {
-			msg = msg as WsScriptLogItem;
-			content = `[${msg.filename}:${msg.linenumber}:${msg.column}]${content}`;
+	function handleLogMessage(item: LogItem) {
+		let tag = item.level;
+		if (item.guild_id) {
+			tag += " " + item.guild_id;
+		}
+		if (item.script_context) {
+			tag += ` ${item.script_context.filename}.ts`;
+			if (item.script_context.line_col) {
+				const [line, col] = item.script_context.line_col;
+				tag += `:${line}:${col}`;
+			}
 		}
 
-		let full = `(${tag})${content}`;
+		let full = `[${tag}] ${item.message}`;
 		outputChannel.appendLine(full);
 		outputChannel.show();
 	}

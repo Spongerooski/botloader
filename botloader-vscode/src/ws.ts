@@ -8,11 +8,11 @@ export class BotloaderWS {
     baseUrl: string;
     token?: string;
     auth = false;
-    onLogMessage: (msg: WsLogItem) => void;
+    onLogMessage: (msg: LogItem) => void;
 
     subQueue: string[] = [];
 
-    constructor(baseUrl: string, onLogMessage: (msg: WsLogItem) => void, token?: string) {
+    constructor(baseUrl: string, onLogMessage: (msg: LogItem) => void, token?: string) {
         this.token = token;
         this.baseUrl = baseUrl;
         this.onLogMessage = onLogMessage;
@@ -22,7 +22,7 @@ export class BotloaderWS {
     }
 
     setToken(token: string) {
-        this.logToOutput("updated token");
+        this.logToOutput("updated token", "Client");
         this.token = token;
         if (this.ws) {
             this.ws.onclose = () => { };
@@ -33,7 +33,7 @@ export class BotloaderWS {
 
     open() {
         let url = this.baseUrl + "/api/ws";
-        this.logToOutput("opening ws to " + url);
+        this.logToOutput("opening ws to " + url, "Client");
         this.ws = new WebSocket(url);
         this.ws.onopen = this.wsOnOpen.bind(this);
         this.ws.onclose = this.wsOnClose.bind(this);
@@ -48,12 +48,12 @@ export class BotloaderWS {
 
     subscribeGuild(guildId: string) {
         if (!this.auth) {
-            this.logToOutput("not authorized yet, pushing to queue... " + guildId);
+            this.logToOutput("not authorized yet, pushing to queue... " + guildId, "Client");
             this.subQueue.push(guildId);
             return;
         }
 
-        this.logToOutput("subscribing to " + guildId);
+        this.logToOutput("subscribing to " + guildId, "Client");
         this.send({
             t: "SubscribeLogs",
             d: guildId,
@@ -61,7 +61,7 @@ export class BotloaderWS {
     }
 
     sendAuth() {
-        this.logToOutput("authorizing ws...");
+        this.logToOutput("authorizing ws...", "Client");
         this.send({
             t: "Authorize",
             d: this.token!,
@@ -79,7 +79,7 @@ export class BotloaderWS {
         switch (decoded.t) {
             case "AuthSuccess":
                 this.auth = true;
-                this.logToOutput("successfully authorized");
+                this.logToOutput("successfully authorized", "Client");
 
                 for (let g of this.subQueue) {
                     this.subscribeGuild(g);
@@ -91,13 +91,13 @@ export class BotloaderWS {
                 this.handleScriptLogMessage(decoded);
                 break;
             case "SubscriptionsUpdated":
-                this.logToOutput("sbuscriptions updated successfully: " + decoded.d);
+                this.logToOutput("sbuscriptions updated successfully: " + decoded.d, "Client");
                 break;
         }
     }
 
     wsOnClose(ev: CloseEvent) {
-        this.logToOutput("ws closed :( " + ev.reason);
+        this.logToOutput("ws closed :( " + ev.reason, "Client");
 
         let that = this;
         setTimeout(() => {
@@ -110,9 +110,10 @@ export class BotloaderWS {
         this.onLogMessage(msg.d);
     }
 
-    logToOutput(msg: string) {
+    logToOutput(msg: string, level: LogLevel, guild_id?: string) {
         this.onLogMessage({
-            kind: "WS",
+            guild_id,
+            level,
             message: msg,
         });
     }
@@ -135,25 +136,8 @@ interface WsEventSubscriptionsUpdated {
 
 interface WsEventScriptLogMessage {
     t: "ScriptLogMessage",
-    d: WsScriptLogItem,
+    d: LogItem,
 }
-
-export type WsLogItem = SimpleWsLogItem | WsScriptLogItem;
-
-export interface SimpleWsLogItem {
-    kind: "WS" | "Info",
-    message: string,
-}
-
-export interface WsScriptLogItem {
-    guild_id: string,
-    filename: string,
-    linenumber: number,
-    column: number,
-    message: string,
-    kind?: "ScriptError" | "ScriptInfo",
-}
-
 
 type WsCommandType = "Authorize" | "SubscribeLogs" | "UnSubscribeLogs";
 
@@ -174,6 +158,20 @@ interface WsCommandUnSubscribe {
     d: string,
 }
 
+export interface LogItem {
+    guild_id?: string,
+    message: string,
+    script_context?: ScriptContext,
+    level: LogLevel,
+}
 
-// int*
-// interface Auth
+export type LogLevel = "Critical" |
+    "Error" |
+    "Warn" |
+    "Info" |
+    "ConsoleLog" | "Client";
+
+export interface ScriptContext {
+    filename: String,
+    line_col?: [number, number],
+}
