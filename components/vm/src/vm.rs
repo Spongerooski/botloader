@@ -354,7 +354,7 @@ impl Vm {
     where
         P: Serialize,
     {
-        if self.loaded_scripts.len() < 1 {
+        if self.loaded_scripts.is_empty() {
             return;
         }
 
