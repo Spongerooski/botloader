@@ -11,6 +11,7 @@ export class BotloaderWS {
     onLogMessage: (msg: LogItem) => void;
 
     subQueue: string[] = [];
+    activeSubs: string[] = [];
 
     constructor(baseUrl: string, onLogMessage: (msg: LogItem) => void, token?: string) {
         this.token = token;
@@ -34,7 +35,9 @@ export class BotloaderWS {
     open() {
         let url = this.baseUrl + "/api/ws";
         this.logToOutput("opening ws to " + url, "Client");
-        this.ws = new WebSocket(url);
+        this.ws = new WebSocket(url, {
+            timeout: 10,
+        });
         this.ws.onopen = this.wsOnOpen.bind(this);
         this.ws.onclose = this.wsOnClose.bind(this);
         this.ws.onmessage = this.wsOnMessage.bind(this);
@@ -92,17 +95,19 @@ export class BotloaderWS {
                 break;
             case "SubscriptionsUpdated":
                 this.logToOutput("sbuscriptions updated successfully: " + decoded.d, "Client");
+                this.activeSubs = decoded.d;
                 break;
         }
     }
 
     wsOnClose(ev: CloseEvent) {
-        this.logToOutput("ws closed :( " + ev.reason, "Client");
+        this.logToOutput(`ws closed ${ev.reason}, reconnecting in 5 sec...`, "Client");
+        this.subQueue = this.activeSubs;
 
         let that = this;
         setTimeout(() => {
             that.open();
-        }, 1000);
+        }, 5000);
     }
 
     handleScriptLogMessage(msg: WsEventScriptLogMessage) {
