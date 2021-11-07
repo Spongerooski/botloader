@@ -241,22 +241,26 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
     }
 
     async pushUri(uri: vscode.Uri) {
-        let index = await this.readIndexFile();
-        await this.pushSingleChange(uri, index);
+        vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, async progress => {
+            let index = await this.readIndexFile();
+            await this.pushSingleChange(uri, index);
 
-        await this.syncWorkspace();
-        await this.apiClient.reloadGuildVm(index.guild.id);
+            await this.syncWorkspace();
+            await this.apiClient.reloadGuildVm(index.guild.id);
+        });
     }
 
     async pushScmGroup(group: vscode.SourceControlResourceGroup) {
-        let index = await this.readIndexFile();
+        vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, async progress => {
+            let index = await this.readIndexFile();
 
-        for (let state of this.changedFilesGroup.resourceStates) {
-            await this.pushSingleChange(state.resourceUri, index);
-        }
+            for (let state of this.changedFilesGroup.resourceStates) {
+                await this.pushSingleChange(state.resourceUri, index);
+            }
 
-        await this.syncWorkspace();
-        await this.apiClient.reloadGuildVm(index.guild.id);
+            await this.syncWorkspace();
+            await this.apiClient.reloadGuildVm(index.guild.id);
+        });
     }
 
     async pushSingleChange(uri: vscode.Uri, index: IndexFile) {
