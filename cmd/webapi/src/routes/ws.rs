@@ -1,4 +1,4 @@
-use std::{borrow::Cow, pin::Pin, task::Poll};
+use std::{borrow::Cow, convert::Infallible, pin::Pin, task::Poll};
 
 use axum::{
     extract::{
@@ -7,7 +7,7 @@ use axum::{
     },
     response::IntoResponse,
 };
-use discordoauthwrapper::DiscordOauthApiClient;
+use discordoauthwrapper::{ClientCache, DiscordOauthApiClient, TwilightApiProvider};
 use futures::{stream::SelectAll, Stream, StreamExt};
 use guild_logger::LogEntry;
 use oauth2::basic::BasicClient;
@@ -22,9 +22,18 @@ pub async fn ws_headler<ST: SessionStore + Clone + Send + Sync + 'static>(
     Extension(session_store): Extension<ST>,
     Extension(config_data): Extension<ConfigData>,
     Extension(bot_rpc): Extension<botrpc::Client>,
+    Extension(client_cache): Extension<
+        ClientCache<TwilightApiProvider, oauth2::basic::BasicClient, ST>,
+    >,
 ) -> impl IntoResponse {
     ws.on_upgrade(|socket| {
-        handle_socket_upgrade(socket, session_store, config_data.oauth_client, bot_rpc)
+        handle_socket_upgrade(
+            socket,
+            session_store,
+            config_data.oauth_client,
+            bot_rpc,
+            client_cache,
+        )
     })
 }
 
@@ -33,8 +42,9 @@ async fn handle_socket_upgrade<ST: SessionStore + Send + Clone + 'static>(
     session_store: ST,
     oauth_client: BasicClient,
     bot_rpc: botrpc::Client,
+    client_cache: ClientCache<TwilightApiProvider, oauth2::basic::BasicClient, ST>,
 ) {
-    WsConn::new(socket, session_store, oauth_client, bot_rpc)
+    WsConn::new(socket, session_store, oauth_client, bot_rpc, client_cache)
         .run()
         .await;
 }
@@ -44,6 +54,7 @@ struct WsConn<ST> {
     socket: WebSocket,
     oauth_client: BasicClient,
     bot_rpc: botrpc::Client,
+    client_cache: ClientCache<TwilightApiProvider, oauth2::basic::BasicClient, ST>,
 
     active_log_streams: SelectAll<GuildLogStream>,
 
@@ -58,12 +69,14 @@ impl<ST: SessionStore + Clone + 'static> WsConn<ST> {
         session_store: ST,
         oauth_client: BasicClient,
         bot_rpc: botrpc::Client,
+        client_cache: ClientCache<TwilightApiProvider, oauth2::basic::BasicClient, ST>,
     ) -> Self {
         Self {
             socket,
             session_store,
             oauth_client,
             bot_rpc,
+            client_cache,
             active_log_streams: SelectAll::new(),
             state: WsState::UnAuth,
         }
@@ -189,12 +202,17 @@ impl<ST: SessionStore + Clone + 'static> WsConn<ST> {
             .await
             .map_err(|_| WsCloseReason::InternalError)?
         {
-            let api_client = DiscordOauthApiClient::new_twilight(
-                session.user.id,
-                session.oauth_token.access_token.clone(),
-                self.oauth_client.clone(),
-                self.session_store.clone(),
-            );
+            let api_client = self
+                .client_cache
+                .fetch(session.user.id, || {
+                    Result::<_, Infallible>::Ok(DiscordOauthApiClient::new_twilight(
+                        session.user.id,
+                        session.oauth_token.access_token.clone(),
+                        self.oauth_client.clone(),
+                        self.session_store.clone(),
+                    ))
+                })
+                .unwrap();
 
             let logged_in_session = LoggedInSession::new(session, api_client);
 

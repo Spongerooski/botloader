@@ -60,6 +60,7 @@ async fn main() {
 
     let session_layer = SessionLayer::new(session_store.clone(), oatuh_client.clone());
     let require_auth_layer = session_layer.require_auth_layer();
+    let client_cache = session_layer.oauth_api_client_cache.clone();
 
     let common_middleware_stack = ServiceBuilder::new() // Process at most 100 requests concurrently
         .layer(HandleErrorLayer::new(handle_mw_err_internal_err))
@@ -72,6 +73,7 @@ async fn main() {
         .layer(AddExtensionLayer::new(Arc::new(auth_handler)))
         .layer(AddExtensionLayer::new(config_store))
         .layer(AddExtensionLayer::new(session_store.clone()))
+        .layer(AddExtensionLayer::new(client_cache))
         .layer(session_layer)
         .layer(CorsLayer {
             run_config: conf.clone(),
