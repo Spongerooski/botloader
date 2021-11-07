@@ -14,6 +14,7 @@ vm-manager = {path="../../components/vm-manager"}
 vm = {path="../../components/vm"}
 botrpc = {path="../../components/botrpc"}
 guild-logger = {path="../../components/guild-logger"}
+validation = {path="../../components/validation"}
 
 twilight-cache-inmemory = "0.7"
 twilight-gateway = "0.7"

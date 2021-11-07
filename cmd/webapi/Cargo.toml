@@ -10,6 +10,7 @@ stores = {path="../../components/stores"}
 discordoauthwrapper = {path="../../components/discordoauthwrapper"}
 botrpc = {path="../../components/botrpc"}
 guild-logger = {path="../../components/guild-logger"}
+validation = {path="../../components/validation"}
 
 oauth2 = "4.1"
 anyhow = "1.0"

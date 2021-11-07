@@ -4,6 +4,7 @@ use axum::{
     response::IntoResponse,
 };
 use serde_json::json;
+use validation::ValidationError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiErrorResponse {
@@ -13,19 +14,25 @@ pub enum ApiErrorResponse {
     #[error("Session expired")]
     SessionExpired,
 
+    #[error("validation failed")]
+    ValidationFailed(Vec<ValidationError>),
+
     #[error("Internal server error")]
     InternalError,
 }
 
 impl ApiErrorResponse {
     pub fn public_desc(&self) -> (StatusCode, u32, String) {
-        let (resp_code, err_code) = match &self {
-            Self::SessionExpired => (StatusCode::BAD_REQUEST, 1),
-            Self::BadCsrfToken => (StatusCode::BAD_REQUEST, 2),
-            Self::InternalError => (StatusCode::INTERNAL_SERVER_ERROR, 3),
-        };
-
-        (resp_code, err_code, format!("{}", self))
+        match &self {
+            Self::SessionExpired => (StatusCode::BAD_REQUEST, 1, self.to_string()),
+            Self::BadCsrfToken => (StatusCode::BAD_REQUEST, 2, self.to_string()),
+            Self::InternalError => (StatusCode::INTERNAL_SERVER_ERROR, 3, self.to_string()),
+            Self::ValidationFailed(verr) => (
+                StatusCode::BAD_REQUEST,
+                4,
+                serde_json::to_string(verr).unwrap_or_default(),
+            ),
+        }
     }
 }
 

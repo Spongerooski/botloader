@@ -6,6 +6,7 @@ use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Cluster;
 use twilight_model::{gateway::payload::incoming::MessageCreate, guild::Permissions, id::RoleId};
 use twilight_util::permission_calculator::PermissionCalculator;
+use validation::{validate, ValidationError};
 
 use crate::BotContext;
 
@@ -239,15 +240,20 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                 .await
             {
                 Ok(existing) => {
+                    let script = Script {
+                        original_source: source.clone(),
+                        ..existing
+                    };
+                    if let Err(verr) = validate(&script) {
+                        return Ok(Some(format!(
+                            "failed validating script: {}",
+                            format_validation_err(verr)
+                        )));
+                    }
+
                     let script = ctx
                         .config_store
-                        .update_script(
-                            cmd.m.guild_id.unwrap(),
-                            Script {
-                                original_source: source.clone(),
-                                ..existing
-                            },
-                        )
+                        .update_script(cmd.m.guild_id.unwrap(), script)
                         .await
                         .map_err(|e| format!("failed updating script :( {}", e))?;
 
@@ -259,16 +265,22 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                 }
 
                 Err(_) => {
+                    let create = CreateScript {
+                        name: name.clone(),
+                        original_source: source.clone(),
+                        enabled: true,
+                    };
+
+                    if let Err(verr) = validate(&create) {
+                        return Ok(Some(format!(
+                            "failed validating script: {}",
+                            format_validation_err(verr)
+                        )));
+                    }
+
                     let script = ctx
                         .config_store
-                        .create_script(
-                            cmd.m.guild_id.unwrap(),
-                            CreateScript {
-                                name: name.clone(),
-                                original_source: source.clone(),
-                                enabled: true,
-                            },
-                        )
+                        .create_script(cmd.m.guild_id.unwrap(), create)
                         .await
                         .map_err(|e| format!("failed creating script :( {}", e))?;
 
@@ -422,4 +434,11 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
             }))
         }
     }
+}
+
+fn format_validation_err(errs: Vec<ValidationError>) -> String {
+    errs.iter()
+        .map(|e| e.to_string())
+        .collect::<Vec<String>>()
+        .join(", ")
 }
