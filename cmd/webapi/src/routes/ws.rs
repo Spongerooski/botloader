@@ -102,7 +102,11 @@ impl<ST: SessionStore + Clone + 'static> WsConn<ST> {
     ) -> bool {
         match item {
             Some(Ok(item)) => self.handle_inner_log_item(item).await,
-            _ => true, // TODO: handle tonic errors? There can't be a none since we have the is_empty check in the caller
+            Some(Err(_)) => {
+                self.close(WsCloseReason::BotRpcError).await;
+                false
+            }
+            _ => true, // There can't be a none since we have the is_empty check in the caller
         }
     }
 
@@ -227,14 +231,13 @@ impl<ST: SessionStore + Clone + 'static> WsConn<ST> {
             return Ok(());
         }
 
-        // let user
         self.check_guild_acces(guild_id).await?;
 
         let stream = self
             .bot_rpc
             .guild_log_stream(guild_id)
             .await
-            .map_err(|_| WsCloseReason::InternalError)?;
+            .map_err(|_| WsCloseReason::BotRpcError)?;
 
         self.active_log_streams.push(GuildLogStream {
             guild_id,
@@ -359,6 +362,9 @@ enum WsCloseReason {
 
     // missing access to the guild
     GuildMissingAccess,
+
+    // an error occured cummincating with the bot
+    BotRpcError,
 }
 
 impl WsCloseReason {
@@ -373,6 +379,7 @@ impl WsCloseReason {
             WsCloseReason::AuthWhenAuthorized => 4002,
             WsCloseReason::UnknownGuild => 4003,
             WsCloseReason::GuildMissingAccess => 4004,
+            WsCloseReason::BotRpcError => 4006,
         }
     }
 
@@ -387,6 +394,7 @@ impl WsCloseReason {
             WsCloseReason::AuthWhenAuthorized => "already authorized",
             WsCloseReason::UnknownGuild => "unknown guild",
             WsCloseReason::GuildMissingAccess => "missing access to guild",
+            WsCloseReason::BotRpcError => "error on communication with bot",
         }
     }
 }
