@@ -17,7 +17,7 @@ const WS_BASE_URL = "ws://" + API_HOST_BASE;
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
 
-	let outputChannel = vscode.window.createOutputChannel("botloader");
+	let outputChannel = vscode.window.createOutputChannel("Botloader");
 	context.subscriptions.push(outputChannel);
 
 	let token = await context.secrets.get("botloader-api-key");
@@ -117,7 +117,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		let full = `[${tag}] ${item.message}`;
 		outputChannel.appendLine(full);
-		outputChannel.show();
+		// TODO: remove this?
+		outputChannel.show(true);
 	}
 }
 
