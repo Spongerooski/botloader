@@ -12,7 +12,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
 
     disposables: vscode.Disposable[] = [];
 
-    scm: vscode.SourceControl;
+    scm: BotloaderSourceControl;
     changedFilesGroup: vscode.SourceControlResourceGroup;
 
     onChangeFileDecosEmitter: vscode.EventEmitter<vscode.Uri>;
@@ -22,7 +22,9 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
         this.folder = folder;
         this.apiClient = apiClient;
 
-        this.scm = vscode.scm.createSourceControl("botloader", "BotLoader", this.folder);
+        this.scm = vscode.scm.createSourceControl("botloader", "BotLoader", this.folder) as BotloaderSourceControl;
+        this.scm.isBotloaderSourceControl = true;
+
         this.scm.inputBox.visible = false;
         this.changedFilesGroup = this.scm.createResourceGroup(CHANGED_FILES_SCM_GROUP, "Changed scripts");
 
@@ -82,18 +84,17 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
     }
 
     async initialScan() {
+        console.log("performing full scan");
         let filesWorking = await vscode.workspace.fs.readDirectory(this.folder);
         filesWorking = filesWorking.filter(f => f[0].endsWith(".ts"));
 
-
-        let filesIndex = await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(this.folder, "/.botloader/scripts"));
-        const filesIndexNames = filesIndex.filter(f => f[0].endsWith(".ts.bloader")).map(f => f[0].slice(0, f[0].length - 8));
-
-        let deletedFiles = filesIndexNames.filter(iff => !filesWorking.some(wf => wf[0] === iff));
         for (let file of filesWorking) {
             await this.checkWorkingFile(file[0]);
         }
 
+        let filesIndex = await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(this.folder, "/.botloader/scripts"));
+        const filesIndexNames = filesIndex.filter(f => f[0].endsWith(".ts.bloader")).map(f => f[0].slice(0, f[0].length - 8));
+        let deletedFiles = filesIndexNames.filter(iff => !filesWorking.some(wf => wf[0] === iff));
         for (let file of deletedFiles) {
             this.setFileDeleted(vscode.Uri.joinPath(this.folder, "/" + file[0]));
         }
@@ -112,7 +113,6 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
             default:
                 this.removeFileResourceState(uri);
                 break;
-
         }
     }
 
@@ -135,12 +135,10 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
         if (hashIndex !== hashWorking) {
             // modified
             console.log(name, "Changed");
-            this.setFileModified(uri);
             return ChangeState.modified;
         } else {
             // unchanged
             console.log(name + " is unmodified");
-            this.removeFileResourceState(uri);
             return undefined;
         }
     }
@@ -184,6 +182,9 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
 
     removeFileResourceState(uri: vscode.Uri) {
         const index = this.changedFilesGroup.resourceStates.findIndex(u => u.resourceUri.toString() === uri.toString());
+        if (index === -1) {
+            return;
+        }
         const newArr = [...this.changedFilesGroup.resourceStates];
         newArr.splice(index, 1);
         this.changedFilesGroup.resourceStates = newArr;
@@ -241,7 +242,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
     }
 
     async pushUri(uri: vscode.Uri) {
-        vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, async progress => {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, async progress => {
             let index = await this.readIndexFile();
             await this.pushSingleChange(uri, index);
 
@@ -251,7 +252,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
     }
 
     async pushScmGroup(group: vscode.SourceControlResourceGroup) {
-        vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, async progress => {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, async progress => {
             let index = await this.readIndexFile();
 
             for (let state of this.changedFilesGroup.resourceStates) {
@@ -324,6 +325,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
     // tries to be as non destructive as possible
     // will only overwrite files unchaged against the old index 
     async syncWorkspace() {
+        console.log("Synchronizing workspace")
         let index = await this.readIndexFile();
 
         // first make a list of files identical to their index variant
@@ -404,6 +406,12 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
         await this.initialScan();
     }
 
+    async syncWorkspaceWithProgress() {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, async progress => {
+            await this.syncWorkspace();
+        });
+    }
+
     async getIdenticalIndexFiles(files: string[]) {
         let result = [];
         for (let name of files) {
@@ -454,4 +462,8 @@ function checkValidName(wsFolder: vscode.Uri, name: string) {
     }
 
     return false;
+}
+
+export interface BotloaderSourceControl extends vscode.SourceControl {
+    isBotloaderSourceControl: true,
 }

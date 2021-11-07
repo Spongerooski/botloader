@@ -8,7 +8,7 @@ import { mkdtemp } from 'fs/promises';
 import { join } from 'path';
 import { WorkspaceManager } from './workspacemanager';
 import { BotloaderWS, LogItem } from './ws';
-import { CHANGED_FILES_SCM_GROUP } from './guildspace';
+import { BotloaderSourceControl, CHANGED_FILES_SCM_GROUP } from './guildspace';
 
 const API_HOST_BASE = "127.0.0.1:7447";
 const API_BASE_URL = "http://" + API_HOST_BASE;
@@ -70,13 +70,17 @@ export async function activate(context: vscode.ExtensionContext) {
 			ws.setToken(newClient.token!);
 			await context.secrets.store("botloader-api-key", key as string);
 		}
-	}), vscode.commands.registerCommand('botloader-vscode.push', async (f: any) => {
-		if ((f as { resourceUri: vscode.Uri }).resourceUri !== undefined) {
-			let { resourceUri } = f as { resourceUri: vscode.Uri };
-			await manager.pushUri(resourceUri);
-		} else if ((f as vscode.SourceControlResourceGroup).id === CHANGED_FILES_SCM_GROUP) {
-			let fScm = f as vscode.SourceControlResourceGroup;
-			await manager.pushScmGroup(fScm);
+	}), vscode.commands.registerCommand('botloader-vscode.push', async (arg: any) => {
+		if (isScmGroup(arg)) {
+			await manager.pushScmGroup(arg);
+		} else if (containsResourceUri(arg)) {
+			await manager.pushUri(arg.resourceUri);
+		}
+	}), vscode.commands.registerCommand('botloader-vscode.sync', async (arg: any) => {
+		if (arg === undefined) {
+			manager.syncOne();
+		} else if (isScmProvider(arg)) {
+			manager.syncScm(arg);
 		}
 	}));
 
@@ -177,3 +181,32 @@ interface BotloaderJson {
 	openScripts: number[],
 }
 
+function isScmGroup(arg: any): arg is vscode.SourceControlResourceGroup {
+	if ((arg as vscode.SourceControlResourceGroup).id === CHANGED_FILES_SCM_GROUP) {
+		return true;
+	}
+
+	return false;
+}
+
+
+interface ResourceUriContainer {
+	resourceUri: vscode.Uri
+}
+
+function containsResourceUri(arg: any): arg is ResourceUriContainer {
+	if ((arg as ResourceUriContainer).resourceUri !== undefined) {
+		return true;
+	}
+
+	return false;
+}
+
+function isScmProvider(arg: any): arg is BotloaderSourceControl {
+	let cast = arg as BotloaderSourceControl;
+	if (cast.isBotloaderSourceControl !== undefined && cast.isBotloaderSourceControl) {
+		return true;
+	}
+
+	return false;
+}

@@ -37,6 +37,12 @@
         "title": "Push changes",
         "category": "BotLoader",
         "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "botloader-vscode.sync",
+        "title": "Synchronize changes",
+        "category": "BotLoader",
+        "icon": "$(sync)"
       }
     ],
     "menus": {
@@ -52,6 +58,18 @@
           "command": "botloader-vscode.push",
           "when": "scmProvider == botloader && scmResourceGroup == changed",
           "group": "inline"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "botloader-vscode.push",
+          "when": "scmProvider == botloader",
+          "group": "navigation"
+        },
+        {
+          "command": "botloader-vscode.sync",
+          "when": "scmProvider == botloader",
+          "group": "navigation"
         }
       ]
     },

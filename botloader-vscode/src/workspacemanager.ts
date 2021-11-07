@@ -75,6 +75,20 @@ export class WorkspaceManager implements vscode.Disposable {
         }
     }
 
+    async syncScm(control: vscode.SourceControl) {
+        let root = control.rootUri;
+        let workspace = this.openGuildWorkspaces.find(ws => ws.folder.toString() === root?.toString());
+        if (workspace) {
+            await workspace.syncWorkspaceWithProgress();
+        }
+    }
+
+    async syncOne() {
+        if (this.openGuildWorkspaces.length > 0) {
+            await this.openGuildWorkspaces[0].syncWorkspaceWithProgress();
+        }
+    }
+
     dispose() {
         for (let dis of this.otherDisposables) {
             dis.dispose();
