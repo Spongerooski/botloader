@@ -1,8 +1,10 @@
-use axum::{extract::Extension, Json};
+use axum::{extract::Extension, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use stores::web::{Session, SessionStore, SessionType};
 
-use crate::{errors::ApiErrorResponse, middlewares::LoggedInSession, ApiResult};
+use crate::{
+    errors::ApiErrorResponse, middlewares::LoggedInSession, util::EmptyResponse, ApiResult,
+};
 
 use tracing::error;
 
@@ -62,7 +64,7 @@ pub async fn del_session<ST: SessionStore + 'static>(
     Extension(session): Extension<LoggedInSession<ST>>,
     Extension(session_store): Extension<ST>,
     Json(payload): Json<DelSessionPayload>,
-) -> ApiResult<Json<()>> {
+) -> ApiResult<impl IntoResponse> {
     let deleting = session_store
         .get_session(&payload.token)
         .await
@@ -91,13 +93,13 @@ pub async fn del_session<ST: SessionStore + 'static>(
             ApiErrorResponse::InternalError
         })?;
 
-    Ok(Json(()))
+    Ok(EmptyResponse)
 }
 
 pub async fn del_all_sessions<ST: SessionStore + 'static>(
     Extension(session): Extension<LoggedInSession<ST>>,
     Extension(session_store): Extension<ST>,
-) -> ApiResult<Json<()>> {
+) -> ApiResult<impl IntoResponse> {
     session_store
         .del_all_sessions(session.session.user.id)
         .await
@@ -106,5 +108,5 @@ pub async fn del_all_sessions<ST: SessionStore + 'static>(
             ApiErrorResponse::InternalError
         })?;
 
-    Ok(Json(()))
+    Ok(EmptyResponse)
 }

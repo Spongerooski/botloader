@@ -18,6 +18,7 @@ mod config;
 mod errors;
 mod middlewares;
 mod routes;
+mod util;
 
 use errors::ApiErrorResponse;
 use tower_http::trace::TraceLayer;

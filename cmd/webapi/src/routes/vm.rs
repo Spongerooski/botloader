@@ -3,7 +3,7 @@ use stores::web::SessionStore;
 use tracing::error;
 use twilight_model::user::CurrentUserGuild;
 
-use crate::{errors::ApiErrorResponse, ApiResult};
+use crate::{errors::ApiErrorResponse, util::EmptyResponse, ApiResult};
 
 pub async fn reload_guild_vm<ST: SessionStore + Clone + Send + Sync + 'static>(
     Extension(bot_rpc): Extension<botrpc::Client>,
@@ -17,5 +17,5 @@ pub async fn reload_guild_vm<ST: SessionStore + Clone + Send + Sync + 'static>(
             ApiErrorResponse::InternalError
         })?;
 
-    Ok(())
+    Ok(EmptyResponse)
 }
