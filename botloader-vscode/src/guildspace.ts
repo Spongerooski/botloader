@@ -341,6 +341,10 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
             throw new Error("failed fetching scripts");
         }
 
+        // last resort security check, see checkValidName for more info
+        const wsFolder = this.folder;
+        resp = resp.filter(script => checkValidName(wsFolder, script.name));
+
         // nuke old index
         await vscode.workspace.fs.delete(vscode.Uri.joinPath(this.folder, "/.botloader/scripts"), {
             recursive: true,
@@ -437,3 +441,17 @@ interface ResourceState extends vscode.SourceControlResourceState {
 const themeColorAddedUri = "botloaderDecoration.untrackedResourceForeground";
 const themeColorModifiedUri = "botloaderDecoration.modifiedResourceForeground";
 const themeColorDeletedUri = "botloaderDecoration.deletedResourceForeground";
+
+
+// while this isn't needed as the backend does verification, this is a last resort to make sure
+// script names and use ../ to escape the workspace folder
+function checkValidName(wsFolder: vscode.Uri, name: string) {
+    const uri = vscode.Uri.joinPath(wsFolder, `/${name}.ts`);
+    const resolved = vscode.workspace.getWorkspaceFolder(uri);
+    if (resolved && resolved.uri.toString() === wsFolder.toString()) {
+        // this is inside the workspace folder
+        return true;
+    }
+
+    return false;
+}
