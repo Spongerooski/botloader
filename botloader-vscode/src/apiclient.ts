@@ -33,6 +33,11 @@ export class ApiClient {
             method: method,
             body: body ? JSON.stringify(body) : undefined,
         });
+        console.log(`Response status for ${path}: ${response.status}`);
+        if (response.status === 204) {
+            return {} as ApiResult<T>;
+        }
+
         if (response.status !== 200) {
             let decoded: ApiErrorResponse = await response.json() as ApiErrorResponse;
             return {
@@ -114,11 +119,11 @@ export class ApiClient {
         return await this.patch(`/api/guilds/${guildId}/scripts/${id}`, data);
     }
 
-    async delScript(guildId: string, id: number): Promise<ApiResult<{}>> {
+    async delScript(guildId: string, id: number): Promise<ApiResult<EmptyResponse>> {
         return await this.delete(`/api/guilds/${guildId}/scripts/${id}`);
     }
 
-    async reloadGuildVm(guildId: string): Promise<ApiResult<{}>> {
+    async reloadGuildVm(guildId: string): Promise<ApiResult<EmptyResponse>> {
         return await this.post(`/api/guilds/${guildId}/reload_vm`);
     }
 }
@@ -212,3 +217,5 @@ export interface UpdateScript {
     original_source: string,
     enabled: boolean,
 }
+
+export interface EmptyResponse { }
