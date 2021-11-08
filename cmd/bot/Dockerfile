@@ -6,4 +6,7 @@ RUN cargo build --release --bin bot
 FROM debian:buster-slim AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/bot /usr/local/bin/botloader-bot
+
+EXPOSE 7448
+
 ENTRYPOINT ["/usr/local/bin/botloader-bot"]
