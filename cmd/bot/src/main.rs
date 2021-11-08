@@ -15,7 +15,7 @@ mod commands;
 
 #[derive(Clone, StructOpt)]
 pub struct RunConfig {
-    #[structopt(long, env = "DISCORD_TOKEN")]
+    #[structopt(long, env = "DISCORD_BOT_TOKEN")]
     pub discord_token: String,
 
     #[structopt(long, env = "DATABASE_URL")]

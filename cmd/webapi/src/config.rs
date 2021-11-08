@@ -4,13 +4,13 @@ use structopt::StructOpt;
 
 #[derive(Clone, StructOpt)]
 pub struct RunConfig {
-    #[structopt(short, long, env = "DISCORD_TOKEN")]
+    #[structopt(short, long, env = "DISCORD_BOT_TOKEN")]
     pub discord_token: String,
 
-    #[structopt(long, env = "CLIENT_ID")]
+    #[structopt(long, env = "DISCORD_CLIENT_ID")]
     pub client_id: String,
 
-    #[structopt(long, env = "CLIENT_SECRET")]
+    #[structopt(long, env = "DISCORD_CLIENT_SECRET")]
     pub client_secret: String,
 
     /// points to the frontend's host base, this can be seperate from the api server(webapi)
@@ -27,7 +27,7 @@ pub struct RunConfig {
     #[structopt(long, env = "DATABASE_URL")]
     pub database_url: String,
 
-    #[structopt(long, env = "LISTEN_ADDR", default_value = "127.0.0.1:7447")]
+    #[structopt(long, env = "WEBAPI_LISTEN_ADDR", default_value = "127.0.0.1:7447")]
     pub listen_addr: String,
 
     #[structopt(
