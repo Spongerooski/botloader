@@ -116,7 +116,7 @@ jobs:
       - kubernetes/update-container-image:
           container-image-updates: jonas747/botloader-webapi=jonas747/botloader-webapi:$CIRCLE_PREVIOUS_BUILD_NUM
           get-rollout-status: true
-          resource-name: deployment/botloader-wbapi
+          resource-name: deployment/botloader-webapi
           show-kubectl-command: true
 workflows:
   build-n-publish:
