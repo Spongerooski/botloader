@@ -1,4 +1,6 @@
 version: 2.1
+orbs:
+  kubernetes: circleci/kubernetes@0.12.0
 executors:
   main:
     docker:
@@ -103,6 +105,19 @@ jobs:
             docker tag jonas747/botloader-bot:latest "jonas747/botloader-bot:$CIRCLE_BUILD_NUM"
             docker push "jonas747/botloader-webapi:$CIRCLE_BUILD_NUM"
             docker push "jonas747/botloader-bot:$CIRCLE_BUILD_NUM"
+  deploy-alpha:
+    docker:
+      # replace with your preferred image
+      - image: cimg/base:stable
+    steps:
+      - kubernetes/install
+      - kubernetes/install-kubeconfig:
+          kubeconfig: KUBECONFIG 
+      - kubernetes/update-container-image:
+          container-image-updates: jonas747/btoloader-webapi=jonas747/botloader-webapi:$CIRCLE_PREVIOUS_BUILD_NUM 
+          get-rollout-status: true 
+          resource-name: deployment/botloader-wbapi 
+          show-kubectl-command: true 
 workflows:
   build-n-publish:
     jobs:
@@ -113,3 +128,17 @@ workflows:
               only: master
           requires:
             - build-docker-images
+      - hold:
+          type: approval
+          filters:
+            branches:
+              only: master
+          requires:
+            - publish-images
+      - deploy-alpha:
+          filters:
+            branches:
+              only: master
+          requires:
+            - hold
+
