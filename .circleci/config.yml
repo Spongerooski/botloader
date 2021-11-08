@@ -118,6 +118,11 @@ jobs:
           get-rollout-status: true
           resource-name: deployment/botloader-webapi
           show-kubectl-command: true
+      - kubernetes/update-container-image:
+          container-image-updates: botloader-bot=jonas747/botloader-bot:$CIRCLE_PREVIOUS_BUILD_NUM
+          get-rollout-status: true
+          resource-name: deployment/botloader-bot
+          show-kubectl-command: true
 workflows:
   build-n-publish:
     jobs:
@@ -128,7 +133,7 @@ workflows:
               only: master
           requires:
             - build-docker-images
-      - hold:
+      - hold-deploy-alpha:
           type: approval
           filters:
             branches:
@@ -140,4 +145,4 @@ workflows:
             branches:
               only: master
           requires:
-            - hold
+            - hold-deploy-alpha
