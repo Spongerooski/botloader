@@ -112,12 +112,12 @@ jobs:
     steps:
       - kubernetes/install
       - kubernetes/install-kubeconfig:
-          kubeconfig: KUBECONFIG 
+          kubeconfig: KUBECONFIG_DATA
       - kubernetes/update-container-image:
-          container-image-updates: jonas747/btoloader-webapi=jonas747/botloader-webapi:$CIRCLE_PREVIOUS_BUILD_NUM 
-          get-rollout-status: true 
-          resource-name: deployment/botloader-wbapi 
-          show-kubectl-command: true 
+          container-image-updates: jonas747/botloader-webapi=jonas747/botloader-webapi:$CIRCLE_PREVIOUS_BUILD_NUM
+          get-rollout-status: true
+          resource-name: deployment/botloader-wbapi
+          show-kubectl-command: true
 workflows:
   build-n-publish:
     jobs:
@@ -141,4 +141,3 @@ workflows:
               only: master
           requires:
             - hold
-
