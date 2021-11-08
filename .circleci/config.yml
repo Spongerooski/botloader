@@ -97,6 +97,8 @@ jobs:
       - run:
           name: Publish Docker Image to Docker Hub
           command: |
+            docker push "jonas747/botloader-webapi:latest"
+            docker push "jonas747/botloader-bot:latest"
             docker tag jonas747/botloader-webapi:latest "jonas747/botloader-webapi:$CIRCLE_BUILD_NUM"
             docker tag jonas747/botloader-bot:latest "jonas747/botloader-bot:$CIRCLE_BUILD_NUM"
             docker push "jonas747/botloader-webapi:$CIRCLE_BUILD_NUM"
