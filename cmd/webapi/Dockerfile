@@ -3,7 +3,7 @@ FROM botloader-base as builder
 RUN cargo build --release --bin webapi
 
 #run
-FROM debian:bullseye-slim AS runtime
+FROM debian:bullseye AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/webapi /usr/local/bin/botloader-webapi
 
