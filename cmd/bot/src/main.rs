@@ -27,7 +27,11 @@ pub struct RunConfig {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    dotenv::dotenv().expect("failed loading dotenv files");
+    match dotenv::dotenv() {
+        Ok(_) => {}
+        Err(dotenv::Error::Io(_)) => {} // ignore io errors
+        Err(e) => panic!("failed loading dotenv file: {}", e),
+    }
     tracing_subscriber::fmt::init();
     // tracing_log::LogTracer::init().unwrap();
 

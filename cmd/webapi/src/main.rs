@@ -41,8 +41,13 @@ type ApiResult<T> = Result<T, ApiErrorResponse>;
 
 #[tokio::main]
 async fn main() {
-    dotenv::dotenv().unwrap();
+    match dotenv::dotenv() {
+        Ok(_) => {}
+        Err(dotenv::Error::Io(_)) => {} // ignore io errors
+        Err(e) => panic!("failed loading dotenv file: {}", e),
+    }
     init_tracing();
+
     info!("starting...");
 
     let conf = RunConfig::from_args();
