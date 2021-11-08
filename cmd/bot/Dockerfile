@@ -7,6 +7,9 @@ FROM debian:bullseye AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/bot /usr/local/bin/botloader-bot
 
+RUN apt-get update
+RUN apt-get install ca-certificates -y
+
 EXPOSE 7448
 
 ENTRYPOINT ["/usr/local/bin/botloader-bot"]

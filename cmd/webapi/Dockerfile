@@ -7,6 +7,9 @@ FROM debian:bullseye AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/webapi /usr/local/bin/botloader-webapi
 
+RUN apt-get update
+RUN apt-get install ca-certificates -y
+
 EXPOSE 7447
 
 ENTRYPOINT ["/usr/local/bin/botloader-webapi"]
