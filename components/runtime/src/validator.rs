@@ -1,7 +1,7 @@
 use std::{rc::Rc, time::Duration};
 
-use deno_core::{op_sync, Extension, JsRuntime, OpState, RuntimeOptions};
-use rusty_v8::IsolateHandle;
+use deno_core::{op_sync, Extension, JsRuntime, OpState, RuntimeOptions, Snapshot};
+use rusty_v8::{CreateParams, IsolateHandle};
 use tokio::sync::oneshot;
 use tracing::info;
 use url::Url;
@@ -59,6 +59,8 @@ async fn validator_thread(
             )])
             .build()],
         module_loader: Some(Rc::new(ModuleManager { module_map })),
+        create_params: Some(CreateParams::default().heap_limits(512_000, 10_240_000)),
+        startup_snapshot: Some(Snapshot::Static(vm::BOTLOADER_CORE_SNAPSHOT)),
         ..Default::default()
     });
 

@@ -11,7 +11,7 @@ pub type JsValue = serde_json::Value;
 /// Polymorphic error type able to represent different error domains.
 pub type AnyError = deno_core::error::AnyError;
 
-static BOTLOADER_CORE_SNAPSHOT: &[u8] =
+pub static BOTLOADER_CORE_SNAPSHOT: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/BOTLOADER_SNAPSHOT.bin"));
 
 pub fn prepend_script_source_header(source: &str, script: Option<&Script>) -> String {
