@@ -6,24 +6,20 @@ use axum::{
     routing::{delete, get, patch, post},
     AddExtensionLayer, BoxError, Router,
 };
-use config::RunConfig;
+use common::config::RunConfig;
 use oauth2::basic::BasicClient;
 use routes::auth::AuthHandlers;
 use stores::{inmemory::web::InMemoryCsrfStore, postgres::Postgres};
-use structopt::StructOpt;
 use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 
-mod config;
 mod errors;
 mod middlewares;
 mod routes;
 mod util;
 
-use errors::ApiErrorResponse;
-use tower_http::trace::TraceLayer;
-use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
-
+use crate::errors::ApiErrorResponse;
 use crate::middlewares::{
     CorsLayer, CurrentGuildLayer, NoSession, RequireCurrentGuildAuthLayer, SessionLayer,
 };
@@ -41,16 +37,10 @@ type ApiResult<T> = Result<T, ApiErrorResponse>;
 
 #[tokio::main]
 async fn main() {
-    match dotenv::dotenv() {
-        Ok(_) => {}
-        Err(dotenv::Error::Io(_)) => {} // ignore io errors
-        Err(e) => panic!("failed loading dotenv file: {}", e),
-    }
-    init_tracing();
+    let conf = common::common_init();
 
     info!("starting...");
 
-    let conf = RunConfig::from_args();
     let oatuh_client = conf.get_discord_oauth2_client();
 
     let postgres_store = Postgres::new_with_url(&conf.database_url).await.unwrap();
@@ -159,14 +149,6 @@ async fn main() {
     info!("Starting hype on address: {}", conf.listen_addr);
     let addr = conf.listen_addr.parse().unwrap();
     axum::Server::bind(&addr).serve(make_service).await.unwrap();
-}
-
-fn init_tracing() {
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
-        .finish()
-        .init();
 }
 
 #[allow(dead_code)]

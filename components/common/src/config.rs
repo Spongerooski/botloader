@@ -1,5 +1,4 @@
-use oauth2::basic::BasicClient;
-use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
+use oauth2::{basic::BasicClient, AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
 use structopt::StructOpt;
 
 #[derive(Clone, StructOpt)]
@@ -36,6 +35,9 @@ pub struct RunConfig {
         default_value = "http://127.0.0.1:7448"
     )]
     pub bot_rpc_connect_addr: String,
+
+    #[structopt(long, env = "BOT_RPC_LISTEN_ADDR", default_value = "127.0.0.1:7448")]
+    pub bot_rpc_listen_addr: String,
 }
 
 impl RunConfig {

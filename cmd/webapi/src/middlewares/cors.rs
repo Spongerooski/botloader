@@ -2,12 +2,11 @@ use axum::{
     body::{box_body, BoxBody},
     http::{header, HeaderMap, HeaderValue, Method, Request, Response},
 };
+use common::config::RunConfig;
 use futures::future::BoxFuture;
 use http_body::Empty;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
-
-use crate::config::RunConfig;
 
 #[derive(Clone)]
 pub struct CorsLayer {

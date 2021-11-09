@@ -15,26 +15,5 @@ script.on("MESSAGE_CREATE", async evt => {
     }
 })
 
-script.registerCommand({
-    name: "add",
-    description: "add 2 numbers",
-    options: {
-        "a": { description: "first number", kind: "Number", required: true },
-        "b": { description: "second number", kind: "Number", required: true },
-        "optional num": { description: "optional number", kind: "Number" },
-    },
-    callback: async (ctx, args) => {
-        let result = args.a + args.b;
-        if (args["optional num"]) {
-            result += args["optional num"];
-        }
-        await ctx.sendResponse(`Result: ${result}`);
-    }
-})
-
-// and then something like
-// script.registerIntervalTimer(...)
-// script.registerConfig(...)
-// script.registerStorage(...)
 
 script.run()

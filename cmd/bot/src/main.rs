@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use common::config::RunConfig;
 use futures::StreamExt;
 use futures_core::Stream;
 use stores::config::{ConfigStore, JoinedGuild};
 use stores::postgres::Postgres;
-use structopt::StructOpt;
 use tracing::{error, info};
 use twilight_cache_inmemory::{InMemoryCache, InMemoryCacheBuilder};
 use twilight_gateway::{Cluster, Event, Intents};
@@ -13,27 +13,9 @@ use vm::init_v8_flags;
 
 mod commands;
 
-#[derive(Clone, StructOpt)]
-pub struct RunConfig {
-    #[structopt(long, env = "DISCORD_BOT_TOKEN")]
-    pub discord_token: String,
-
-    #[structopt(long, env = "DATABASE_URL")]
-    pub database_url: String,
-
-    #[structopt(long, env = "BOT_RPC_LISTEN_ADDR", default_value = "127.0.0.1:7448")]
-    pub bot_rpc_listen_addr: String,
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    match dotenv::dotenv() {
-        Ok(_) => {}
-        Err(dotenv::Error::Io(_)) => {} // ignore io errors
-        Err(e) => panic!("failed loading dotenv file: {}", e),
-    }
-    tracing_subscriber::fmt::init();
-    // tracing_log::LogTracer::init().unwrap();
+    let config = common::common_init();
 
     // helps memory usage, altough the improvements were very minor they're still improvements
     // more testing needs to be done on larger scripts
@@ -42,19 +24,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "--lazy_feedback_allocation".to_string(),
     ]);
 
-    let config = RunConfig::from_args();
-
-    let token = config.discord_token.clone();
-    let database_url = config.database_url.clone();
-
     let http = Arc::new(
         twilight_http::client::ClientBuilder::new()
-            .token(token.clone())
+            .token(config.discord_token.clone())
             .build(),
     );
 
     let intents = Intents::GUILD_MESSAGES | Intents::GUILDS | Intents::GUILD_VOICE_STATES;
-    let (cluster, events) = Cluster::new(token, intents).await?;
+    let (cluster, events) = Cluster::new(config.discord_token.clone(), intents).await?;
     let cluster = Arc::new(cluster);
 
     let cluster_spawn = cluster.clone();
@@ -67,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let state = Arc::new(InMemoryCacheBuilder::new().build());
 
-    let config_store = Postgres::new_with_url(&database_url).await?;
+    let config_store = Postgres::new_with_url(&config.database_url).await?;
 
     let application_info = http
         .current_user_application()

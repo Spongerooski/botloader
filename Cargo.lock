@@ -432,6 +432,7 @@ name = "bot"
 version = "0.1.0"
 dependencies = [
  "botrpc",
+ "common",
  "dashmap",
  "dotenv",
  "futures",
@@ -598,6 +599,35 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "botrpc",
+ "dashmap",
+ "dotenv",
+ "futures",
+ "futures-core",
+ "guild-logger",
+ "oauth2",
+ "runtime",
+ "stores",
+ "structopt",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tracing-log",
+ "tracing-subscriber",
+ "tscompiler",
+ "twilight-http",
+ "twilight-model",
+ "twilight-util",
+ "validation",
+ "vm",
+ "vm-manager",
+ "vmthread",
 ]
 
 [[package]]
@@ -3915,6 +3945,7 @@ dependencies = [
  "base64 0.13.0",
  "botrpc",
  "chrono",
+ "common",
  "dashmap",
  "discordoauthwrapper",
  "dotenv",

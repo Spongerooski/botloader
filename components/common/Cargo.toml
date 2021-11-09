@@ -1,8 +1,8 @@
 [package]
-name = "bot"
+name = "common"
 version = "0.1.0"
-edition = "2018"
- 
+edition = "2021"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -15,16 +15,13 @@ vm = {path="../../components/vm"}
 botrpc = {path="../../components/botrpc"}
 guild-logger = {path="../../components/guild-logger"}
 validation = {path="../../components/validation"}
-common = {path="../../components/common"}
 
-twilight-cache-inmemory = "0.7"
-twilight-gateway = "0.7"
 twilight-http = {version = "0.7", features = ["tracing"]}
 twilight-model = "0.7"
 twilight-util = {version = "0.7", features=["permission-calculator"]}
  
 tracing = "0.1"
-tracing-futures= "0.2" 
+tracing-futures= "0.2"
 tracing-subscriber = "0.2"
 tracing-log = "0.1"
 
@@ -35,3 +32,4 @@ futures = "0.3"
 dashmap = "4.0"
 dotenv = "0.15"
 structopt = "0.3"
+oauth2 = "4.1"
