@@ -209,6 +209,7 @@ export interface MessageUpdate {
 
 export interface ScriptMeta {
     description: string,
+    scriptId: number,
     commands: Command[],
     commandGroups: CommandGroup[],
 }

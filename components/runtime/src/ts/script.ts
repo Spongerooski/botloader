@@ -4,6 +4,7 @@ import { OpWrappers } from "./op_wrappers";
 
 export class Script {
 
+    scriptId: number;
     description: string;
 
     eventMuxer = new ScriptEventMuxer();
@@ -11,8 +12,9 @@ export class Script {
 
     private runCalled = false;
 
-    constructor(description: string) {
-        this.description = description;
+    constructor(id: number) {
+        this.description = `script id ${id}`;
+        this.scriptId = id;
     }
 
     on<T extends EventType>(eventType: T, f: EventListenerFunction<EventDataType<T>>) {
@@ -39,6 +41,7 @@ export class Script {
             description: this.description,
             commands: cmds,
             commandGroups: groups,
+            scriptId: this.scriptId,
         });
 
         this.commandSystem.addEventListeners(this.eventMuxer);

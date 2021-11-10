@@ -1,6 +1,4 @@
-import { console, CreateMessage, Script, Timers } from 'botloader';
-
-const script = new Script("should trigger a error on messages");
+import { } from 'botloader';
 
 script.on("MESSAGE_CREATE", async evt => {
     if (!evt.author.bot) {
@@ -8,4 +6,3 @@ script.on("MESSAGE_CREATE", async evt => {
     }
 })
 
-script.run();

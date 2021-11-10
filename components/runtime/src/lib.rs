@@ -2,14 +2,9 @@ use std::sync::Arc;
 
 use contrib_manager::LoadedScript;
 use deno_core::{op_async, op_sync, Extension, OpState};
-use futures::SinkExt;
-use stores::config::Script;
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_model::id::GuildId;
-use vm::{
-    vm::{ScriptLoad, VmRole},
-    AnyError, JsValue,
-};
+use vm::{vm::VmRole, AnyError, JsValue};
 
 pub mod commonmodels;
 pub mod contrib_manager;

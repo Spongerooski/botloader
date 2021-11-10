@@ -17,22 +17,25 @@ pub static BOTLOADER_CORE_SNAPSHOT: &[u8] =
 pub fn prepend_script_source_header(source: &str, script: Option<&Script>) -> String {
     let mut result = gen_script_source_header(script);
     result.push_str(source);
+    result.push_str("\nscript.run();");
 
     result
 }
 
-pub fn gen_script_source_header(script: Option<&Script>) -> String {
+fn gen_script_source_header(script: Option<&Script>) -> String {
     match script {
         None => r#"
-        const SCRIPT_ID = "";
+        import {Script} from "script";
+        const script = new Script(0);
         "#
         .to_string(),
         Some(h) => {
             format!(
-                r#" 
-                const SCRIPT_ID = "{}";
+                r#"
+                import {{Script}} from "script";
+                const script = new Script({});
                 "#,
-                h.id,
+                h.id
             )
         }
     }

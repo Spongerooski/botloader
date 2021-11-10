@@ -18,8 +18,8 @@
         // ],
         "paths": {
             "botloader": [
-                "components/runtime/src/ts/index"
-            ]
+                "typings/index"
+            ],
         }
     }
 }

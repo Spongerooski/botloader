@@ -17,6 +17,7 @@ pub const CORE_MODULES: &[(&str, &str)] = &[
     ("commands", include_js!("commands.js")),
     ("script", include_js!("script.js")),
     ("index", include_js!("index.js")),
+    ("script_globals", "export {}"),
 ];
 
 pub fn create_module_map() -> Vec<ModuleEntry> {

@@ -1,4 +1,4 @@
-import { Script } from 'botloader';
+import { } from 'botloader';
 
 let a = 0;
 let b = a;
@@ -8,6 +8,4 @@ while (true) {
     b = a;
 }
 
-const script = new Script("asd");
-script.run()
 

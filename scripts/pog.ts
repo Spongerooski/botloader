@@ -1,6 +1,4 @@
-import { Script, OpWrappers } from 'botloader';
-
-const script = new Script("Super pog script");
+import { OpWrappers } from 'botloader';
 
 let counter = 1;
 
@@ -14,6 +12,3 @@ script.on("MESSAGE_CREATE", async evt => {
         })
     }
 })
-
-
-script.run()

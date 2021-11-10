@@ -1,7 +1,4 @@
-import { Script } from 'botloader';
-
-const script = new Script("runaway script");
-
+import { } from 'botloader';
 
 let a = 0;
 let b = a;
@@ -12,5 +9,3 @@ script.on("MESSAGE_CREATE", async evt => {
         b = a;
     }
 })
-
-script.run();
