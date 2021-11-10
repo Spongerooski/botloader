@@ -8,7 +8,7 @@ export interface Embed {
     kind: string,
     provider?: EmbedProvider,
     thumbnail?: EmbedThumbnail,
-    timestamp?: string,
+    timestamp?: number,
     title?: string,
     url?: string,
     video?: EmbedVideo,
@@ -66,7 +66,7 @@ export interface Message {
     author: User,
     channelId: string,
     content: string,
-    editedTimestamp?: string,
+    editedTimestamp?: number,
     embeds: Embed[],
     flags?: number,
     guildId?: string,
@@ -81,7 +81,7 @@ export interface Message {
     reactions: MessageReaction[],
     reference?: MessageReference,
     referencedMessage?: Message,
-    timestamp: string,
+    timestamp: number,
     tts: boolean,
     webhookId?: string,
 }
@@ -112,14 +112,14 @@ export interface Attachment {
     width?: number,
 }
 
-export type MessageType = "Regular" | "RecipientAdd" | "RecipientRemove" | "Call" | "ChannelNameChange" | "ChannelIconChange" | "ChannelMessagePinned" | "GuildMemberJoin" | "UserPremiumSub" | "UserPremiumSubTier1" | "UserPremiumSubTier2" | "UserPremiumSubTier3" | "ChannelFollowAdd" | "GuildDiscoveryDisqualified" | "GuildDiscoveryRequalified" | "GuildDiscoveryGracePeriodInitialWarning" | "GuildDiscoveryGracePeriodFinalWarning" | "Reply" | "GuildInviteReminder" | "ApplicationCommand";
+export type MessageType = "Regular" | "RecipientAdd" | "RecipientRemove" | "Call" | "ChannelNameChange" | "ChannelIconChange" | "ChannelMessagePinned" | "GuildMemberJoin" | "UserPremiumSub" | "UserPremiumSubTier1" | "UserPremiumSubTier2" | "UserPremiumSubTier3" | "ChannelFollowAdd" | "GuildDiscoveryDisqualified" | "GuildDiscoveryRequalified" | "GuildDiscoveryGracePeriodInitialWarning" | "GuildDiscoveryGracePeriodFinalWarning" | "Reply" | "GuildInviteReminder" | "ApplicationCommand" | "ThreadCreated" | "ThreadStarterMessage" | "ContextMenuCommand";
 
 export interface PartialMember {
     deaf: boolean,
-    joinedAt?: string,
+    joinedAt?: number,
     mute: boolean,
     nick?: string,
-    premiumSince?: string,
+    premiumSince?: number,
     roles: string[],
 }
 
@@ -130,12 +130,12 @@ export interface ChannelMention {
     name: string,
 }
 
-export type ChannelType = "GuildText" | "Private" | "GuildVoice" | "Group" | "GuildCategory" | "GuildNews" | "GuildStore" | "GuildStageVoice";
+export type ChannelType = "GuildText" | "Private" | "GuildVoice" | "Group" | "GuildCategory" | "GuildNews" | "GuildStore" | "GuildStageVoice" | "GuildNewsThread" | "GuildPublicThread" | "GuildPrivateThread";
 
 export interface Mention {
     avatar?: string,
     bot: boolean,
-    discriminator: string,
+    discriminator: number,
     id: string,
     member?: PartialMember,
     username: string,
@@ -165,9 +165,11 @@ export interface MessageReference {
     failIfNotExists?: boolean,
 }
 
+export type StickerType = "Standard" | "Guild";
+
 export interface Sticker {
     available: boolean,
-    description: string,
+    description?: string,
     formatType: StickerFormatType,
     guildId?: string,
     id: string,
@@ -176,6 +178,7 @@ export interface Sticker {
     sortValue?: number,
     tags: string,
     user?: User,
+    kind: StickerType,
 }
 
 export type StickerFormatType = "Png" | "Apng" | "Lottie";
@@ -191,7 +194,7 @@ export interface MessageUpdate {
     author?: User,
     channelId: string,
     content?: string,
-    editedTimestamp?: string,
+    editedTimestamp?: number,
     embeds?: Embed[],
     guildId?: string,
     id: string,
@@ -200,7 +203,7 @@ export interface MessageUpdate {
     mentionRoles?: string[],
     mentions?: Mention[],
     pinned?: boolean,
-    timestamp?: string,
+    timestamp?: number,
     tts?: boolean,
 }
 
@@ -225,6 +228,8 @@ export interface Command {
     name: string,
     description: string,
     options: CommandOption[],
+    group?: string,
+    subGroup?: string,
 }
 
 export type CommandOptionType = "String" | "Integer" | "Boolean" | "User" | "Channel" | "Role" | "Mentionable" | "Number";
@@ -239,7 +244,7 @@ export interface CommandOption {
 export interface User {
     avatar?: string,
     bot: boolean,
-    discriminator: string,
+    discriminator: number,
     email?: string,
     id: string,
     locale?: string,

@@ -3,7 +3,8 @@ use async_trait::async_trait;
 use twilight_model::id::{ChannelId, GuildId, UserId};
 
 use crate::config::{
-    ConfigStoreError, CreateScript, GuildMetaConfig, JoinedGuild, Script, StoreResult,
+    ConfigStoreError, CreateScript, GuildMetaConfig, JoinedGuild, Script, ScriptContributes,
+    StoreResult, UpdateScript,
 };
 
 // impl From<sqlx::
@@ -16,8 +17,8 @@ impl Postgres {
     ) -> StoreResult<DbScript, sqlx::Error> {
         match sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, original_source, name, enabled FROM guild_scripts WHERE \
-             guild_id = $1 AND name = $2;",
+            "SELECT id, guild_id, original_source, name, enabled, contributes_commands FROM \
+             guild_scripts WHERE guild_id = $1 AND name = $2;",
             guild_id.get() as i64,
             script_name
         )
@@ -37,8 +38,8 @@ impl Postgres {
     ) -> StoreResult<DbScript, sqlx::Error> {
         Ok(sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, name, original_source, enabled FROM guild_scripts WHERE \
-             guild_id = $1 AND id = $2;",
+            "SELECT id, guild_id, name, original_source, enabled, contributes_commands FROM \
+             guild_scripts WHERE guild_id = $1 AND id = $2;",
             guild_id.0.get() as i64,
             id
         )
@@ -83,7 +84,7 @@ impl crate::config::ConfigStore for Postgres {
             "
                 INSERT INTO guild_scripts (guild_id, name, original_source, enabled) 
                 VALUES ($1, $2, $3, $4)
-                RETURNING id, guild_id, name, original_source, enabled;
+                RETURNING id, guild_id, name, original_source, enabled, contributes_commands;
             ",
             guild_id.0.get() as i64,
             script.name,
@@ -99,21 +100,70 @@ impl crate::config::ConfigStore for Postgres {
     async fn update_script(
         &self,
         guild_id: GuildId,
-        script: Script,
+        script: UpdateScript,
     ) -> StoreResult<Script, Self::Error> {
+        let res = if let Some(contribs) = script.contributes {
+            let commands_enc = serde_json::to_value(contribs).unwrap();
+
+            sqlx::query_as!(
+                DbScript,
+                "
+                    UPDATE guild_scripts SET
+                    original_source = $3,
+                    enabled = $4,
+                    contributes_commands = $5
+                    WHERE guild_id = $1 AND id=$2
+                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands;
+                ",
+                guild_id.0.get() as i64,
+                script.id as i64,
+                script.original_source,
+                script.enabled,
+                commands_enc,
+            )
+            .fetch_one(&self.pool)
+            .await?
+        } else {
+            sqlx::query_as!(
+                DbScript,
+                "
+                    UPDATE guild_scripts SET
+                    original_source = $3,
+                    enabled = $4
+                    WHERE guild_id = $1 AND id=$2
+                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands;
+                ",
+                guild_id.0.get() as i64,
+                script.id as i64,
+                script.original_source,
+                script.enabled,
+            )
+            .fetch_one(&self.pool)
+            .await?
+        };
+
+        Ok(res.into())
+    }
+
+    async fn update_script_contributes(
+        &self,
+        guild_id: GuildId,
+        script_id: u64,
+        contribs: ScriptContributes,
+    ) -> StoreResult<Script, Self::Error> {
+        let commands_enc = serde_json::to_value(contribs).unwrap();
+
         let res = sqlx::query_as!(
             DbScript,
             "
-                UPDATE guild_scripts SET
-                original_source = $3,
-                enabled = $4
-                WHERE guild_id = $1 AND id=$2
-                RETURNING id, name, original_source, guild_id, enabled;
-            ",
+                    UPDATE guild_scripts SET
+                    contributes_commands = $3
+                    WHERE guild_id = $1 AND id=$2
+                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands;
+                ",
             guild_id.0.get() as i64,
-            script.id as i64,
-            script.original_source,
-            script.enabled,
+            script_id as i64,
+            commands_enc,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -144,8 +194,8 @@ impl crate::config::ConfigStore for Postgres {
     async fn list_scripts(&self, guild_id: GuildId) -> StoreResult<Vec<Script>, Self::Error> {
         let res = sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, original_source, name, enabled FROM guild_scripts WHERE \
-             guild_id = $1",
+            "SELECT id, guild_id, original_source, name, enabled, contributes_commands FROM \
+             guild_scripts WHERE guild_id = $1",
             guild_id.0.get() as i64,
         )
         .fetch_all(&self.pool)
@@ -251,15 +301,21 @@ struct DbScript {
     original_source: String,
     name: String,
     enabled: bool,
+    contributes_commands: serde_json::Value,
 }
 
 impl From<DbScript> for Script {
     fn from(script: DbScript) -> Self {
+        let commands_dec = serde_json::from_value(script.contributes_commands).unwrap_or_default();
+
         Self {
             id: script.id as u64,
             name: script.name,
             original_source: script.original_source,
             enabled: script.enabled,
+            contributes: ScriptContributes {
+                commands: commands_dec,
+            },
         }
     }
 }

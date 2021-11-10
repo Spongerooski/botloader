@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use stores::config::{ConfigStore, CreateScript, Script};
+use stores::config::{ConfigStore, CreateScript, UpdateScript};
 use tracing::{error, info, instrument};
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Cluster;
@@ -240,9 +240,12 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
                 .await
             {
                 Ok(existing) => {
-                    let script = Script {
+                    let script = UpdateScript {
                         original_source: source.clone(),
-                        ..existing
+                        contributes: None,
+                        enabled: true,
+                        id: existing.id,
+                        name: existing.name,
                     };
                     if let Err(verr) = validate(&script) {
                         return Ok(Some(format!(
@@ -345,7 +348,7 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
             )))
         }
         Command::EnabledScript(name) => {
-            let mut script = ctx
+            let script = ctx
                 .config_store
                 .get_script(cmd.m.guild_id.unwrap(), name.clone())
                 .await
@@ -354,10 +357,16 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
             if script.enabled {
                 Ok(Some("Script already enabled".to_string()))
             } else {
-                script.enabled = true;
+                let update = UpdateScript {
+                    id: script.id,
+                    name: script.name,
+                    enabled: true,
+                    original_source: script.original_source,
+                    contributes: None,
+                };
                 let script = ctx
                     .config_store
-                    .update_script(cmd.m.guild_id.unwrap(), script)
+                    .update_script(cmd.m.guild_id.unwrap(), update)
                     .await
                     .map_err(|e| format!("failed updating script :( {}", e))?;
 
@@ -370,7 +379,7 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
             }
         }
         Command::DisableScript(name) => {
-            let mut script = ctx
+            let script = ctx
                 .config_store
                 .get_script(cmd.m.guild_id.unwrap(), name.clone())
                 .await
@@ -379,10 +388,16 @@ async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
             if !script.enabled {
                 Ok(Some("Script already disabled".to_string()))
             } else {
-                script.enabled = false;
+                let update = UpdateScript {
+                    id: script.id,
+                    name: script.name,
+                    enabled: true,
+                    original_source: script.original_source,
+                    contributes: None,
+                };
                 let script = ctx
                     .config_store
-                    .update_script(cmd.m.guild_id.unwrap(), script)
+                    .update_script(cmd.m.guild_id.unwrap(), update)
                     .await
                     .map_err(|e| format!("failed updating script :( {}", e))?;
 

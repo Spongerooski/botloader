@@ -1,17 +1,26 @@
 use std::sync::Arc;
 
+use contrib_manager::LoadedScript;
 use deno_core::{op_async, op_sync, Extension, OpState};
+use futures::SinkExt;
+use stores::config::Script;
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_model::id::GuildId;
-use vm::{vm::VmRole, AnyError, JsValue};
+use vm::{
+    vm::{ScriptLoad, VmRole},
+    AnyError, JsValue,
+};
 
-mod commonmodels;
+pub mod commonmodels;
+pub mod contrib_manager;
 pub mod dispatchevents;
 pub mod jsmodules;
 mod sendmessage;
 pub mod validator;
 
 pub use validator::validate_script;
+
+use crate::commonmodels::script::ScriptMeta;
 
 pub fn create_extension(ctx: RuntimeContext) -> Extension {
     Extension::builder()
@@ -20,7 +29,7 @@ pub fn create_extension(ctx: RuntimeContext) -> Extension {
                 "op_jack_sendmessage",
                 op_async(sendmessage::op_send_message),
             ),
-            ("op_botloader_script_start", op_sync(dummy_op)),
+            ("op_botloader_script_start", op_sync(op_script_start)),
         ])
         .state(move |state| {
             state.put(ctx.clone());
@@ -43,4 +52,16 @@ pub struct RuntimeContext {
     pub bot_state: Arc<InMemoryCache>,
     pub dapi: Arc<twilight_http::Client>,
     pub role: VmRole,
+    pub contrib_manager_handle: contrib_manager::ContribManagerHandle,
+}
+
+pub fn op_script_start(state: &mut OpState, args: JsValue, _: ()) -> Result<(), AnyError> {
+    let des: ScriptMeta = serde_json::from_value(args)?;
+    let ctx = state.borrow::<RuntimeContext>();
+    ctx.contrib_manager_handle.send(LoadedScript {
+        guild_id: ctx.guild_id,
+        meta: des,
+    });
+
+    Ok(())
 }

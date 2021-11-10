@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use common::config::RunConfig;
+use common::DiscordConfig;
 use futures::StreamExt;
 use futures_core::Stream;
 use stores::config::{ConfigStore, JoinedGuild};
@@ -16,6 +17,10 @@ mod commands;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = common::common_init();
+
+    let discord_config = common::fetch_discord_config(config.discord_token.clone())
+        .await
+        .expect("failed fetching discord config");
 
     // helps memory usage, altough the improvements were very minor they're still improvements
     // more testing needs to be done on larger scripts
@@ -61,6 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             application_info,
             config_store,
             config,
+            discord_config,
         },
         events,
     )
@@ -77,6 +83,7 @@ pub struct BotContext<CT> {
     state: Arc<InMemoryCache>,
     application_info: CurrentApplicationInfo,
     config_store: CT,
+    discord_config: DiscordConfig,
 }
 
 async fn handle_events<CT: Clone + ConfigStore + Send + Sync + 'static>(
@@ -98,6 +105,7 @@ async fn handle_events<CT: Clone + ConfigStore + Send + Sync + 'static>(
         ctx.http.clone(),
         ctx.state.clone(),
         ctx.config_store.clone(),
+        ctx.discord_config.application.id,
     );
 
     let bot_rpc_server = botrpc::Server::new(

@@ -1,5 +1,10 @@
 use structopt::StructOpt;
+use tracing::info;
 use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
+use twilight_model::{
+    oauth::CurrentApplicationInfo,
+    user::{CurrentUser, User},
+};
 
 pub mod config;
 
@@ -22,4 +27,43 @@ fn init_tracing() {
         .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
         .finish()
         .init();
+}
+
+#[derive(Debug, Clone)]
+pub struct DiscordConfig {
+    pub bot_user: CurrentUser,
+    pub application: CurrentApplicationInfo,
+    pub owners: Vec<User>,
+}
+
+pub async fn fetch_discord_config(token: String) -> Result<DiscordConfig, twilight_http::Error> {
+    let client = twilight_http::Client::new(token);
+
+    // println!("fetching bot and application details from discord...");
+    let bot_user = client.current_user().exec().await?.model().await.unwrap();
+    info!("discord logged in as: {:?}", bot_user);
+
+    let application = client
+        .current_user_application()
+        .exec()
+        .await?
+        .model()
+        .await
+        .unwrap();
+    info!("discord application: {:?}", application.name);
+
+    let owners = match &application.team {
+        Some(t) => t.members.iter().map(|e| e.user.clone()).collect(),
+        None => vec![application.owner.clone()],
+    };
+    info!(
+        "discord application owners: {:?}",
+        owners.iter().map(|o| o.id).collect::<Vec<_>>()
+    );
+
+    Ok(DiscordConfig {
+        application,
+        bot_user,
+        owners,
+    })
 }

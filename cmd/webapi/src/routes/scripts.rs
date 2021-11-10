@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use serde::Deserialize;
-use stores::config::{ConfigStore, CreateScript, Script};
+use stores::config::{ConfigStore, CreateScript, UpdateScript};
 use tracing::error;
 use twilight_model::user::CurrentUserGuild;
 use validation::validate;
@@ -77,11 +77,12 @@ pub async fn update_guild_script(
     Path(GuildScriptPathParams { script_id }): Path<GuildScriptPathParams>,
     Json(payload): Json<UpdateRequestData>,
 ) -> ApiResult<impl IntoResponse> {
-    let sc = Script {
+    let sc = UpdateScript {
         id: script_id,
         enabled: payload.enabled,
         original_source: payload.original_source,
         name: payload.name,
+        contributes: None,
     };
 
     if let Err(verr) = validate(&sc) {

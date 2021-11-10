@@ -99,10 +99,23 @@ export namespace Commands {
                     }
                 }
 
+                let group = undefined;
+                let subGroup = undefined;
+                if (cmd.group) {
+                    if (cmd.group.parent) {
+                        group = cmd.group.parent.name;
+                        subGroup = cmd.group.name;
+                    } else {
+                        group = cmd.group.name;
+                    }
+                }
+
                 return {
                     name: cmd.name,
                     description: cmd.description,
                     options: options,
+                    group,
+                    subGroup,
                 }
             });
 

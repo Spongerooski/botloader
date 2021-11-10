@@ -41,7 +41,13 @@ pub trait ConfigStore: Clone + Sync {
     async fn update_script(
         &self,
         guild_id: GuildId,
-        script: Script,
+        script: UpdateScript,
+    ) -> StoreResult<Script, Self::Error>;
+    async fn update_script_contributes(
+        &self,
+        guild_id: GuildId,
+        script_id: u64,
+        contribs: ScriptContributes,
     ) -> StoreResult<Script, Self::Error>;
     async fn del_script(
         &self,
@@ -83,14 +89,27 @@ pub trait ConfigStore: Clone + Sync {
     ) -> StoreResult<Vec<JoinedGuild>, Self::Error>;
 }
 
+/// Struct you get back from the store
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Script {
     pub id: u64,
     pub name: String,
     pub original_source: String,
     pub enabled: bool,
+    pub contributes: ScriptContributes,
 }
 
+/// Struct you get back from the store
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateScript {
+    pub id: u64,
+    pub name: String,
+    pub original_source: String,
+    pub enabled: bool,
+    pub contributes: Option<ScriptContributes>,
+}
+
+/// Struct used when creating a script
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateScript {
     pub name: String,
@@ -98,6 +117,13 @@ pub struct CreateScript {
     pub enabled: bool,
 }
 
+/// Contribution points for a scripts, e.g triggers, commands etc
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScriptContributes {
+    pub commands: Vec<twilight_model::application::command::Command>,
+}
+
+/// A guilds config, for storing core botloader settings
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GuildMetaConfig {
     pub guild_id: GuildId,
@@ -113,6 +139,7 @@ impl GuildMetaConfig {
     }
 }
 
+/// A joined guild, we we store all guidls were connected to in the store
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JoinedGuild {
     pub id: GuildId,

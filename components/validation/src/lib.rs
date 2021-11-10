@@ -3,7 +3,7 @@ use std::fmt::Display;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Serialize;
-use stores::config::{CreateScript, Script};
+use stores::config::{CreateScript, UpdateScript};
 
 #[derive(Debug, Serialize)]
 pub struct ValidationError {
@@ -51,7 +51,7 @@ impl Validator for CreateScript {
     }
 }
 
-impl Validator for Script {
+impl Validator for UpdateScript {
     fn validate(&self, ctx: &mut ValidationContext) {
         check_script_name(ctx, &self.name);
         check_script_source(ctx, &self.original_source);

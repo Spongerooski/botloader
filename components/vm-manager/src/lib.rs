@@ -3,9 +3,8 @@
 use std::{collections::HashMap, sync::Arc};
 
 use guild_logger::{GuildLogger, LogEntry};
+use runtime::{contrib_manager::ContribManagerHandle, RuntimeContext};
 use stores::config::{ConfigStore, Script};
-
-use runtime::RuntimeContext;
 use tokio::sync::{
     mpsc::{self, UnboundedReceiver, UnboundedSender},
     RwLock,
@@ -13,7 +12,7 @@ use tokio::sync::{
 use tracing::info;
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Event;
-use twilight_model::id::GuildId;
+use twilight_model::id::{ApplicationId, GuildId};
 use vm::vm::{CreateRt, GuildVmEvent, ScriptLoad, Vm, VmCommand, VmContext, VmEvent, VmRole};
 use vmthread::{VmThreadCommand, VmThreadFuture, VmThreadHandle};
 
@@ -27,6 +26,7 @@ pub struct InnerManager<CT> {
     config_store: CT,
     rt_evt_tx: UnboundedSender<GuildVmEvent>,
     guild_logger: GuildLogger,
+    contrib_manager_handle: ContribManagerHandle,
 }
 
 #[derive(Clone)]
@@ -44,8 +44,18 @@ where
         twilight_http_client: Arc<twilight_http::Client>,
         state: Arc<InMemoryCache>,
         config_store: CT,
+        application_id: ApplicationId,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
+
+        let (mut contrib_manager, contrib_manager_handle) =
+            runtime::contrib_manager::create_manager_pair(
+                config_store.clone(),
+                application_id,
+                twilight_http_client.clone(),
+            );
+
+        tokio::spawn(async move { contrib_manager.run().await });
 
         let manager = Manager {
             inner: Arc::new(InnerManager {
@@ -57,6 +67,7 @@ where
                 guild_logger,
                 config_store,
                 state,
+                contrib_manager_handle,
             }),
         };
 
@@ -138,6 +149,7 @@ where
             dapi: self.inner.http.clone(),
             guild_id,
             role: VmRole::Main,
+            contrib_manager_handle: self.inner.contrib_manager_handle.clone(),
         };
 
         info!("spawning guild vm for {}", guild_id);
@@ -219,6 +231,7 @@ where
                 dapi: self.inner.http.clone(),
                 guild_id,
                 role: VmRole::Main,
+                contrib_manager_handle: self.inner.contrib_manager_handle.clone(),
             };
 
             info!("spawning guild vm for {}", guild_id);
