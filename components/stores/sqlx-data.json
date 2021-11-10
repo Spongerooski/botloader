@@ -1,50 +1,5 @@
 {
   "db": "PostgreSQL",
-  "03e0c6950a63ae1ca6c113b3deec359e176823fe9fc7c53912c084fa51c3dbfa": {
-    "query": "SELECT id, guild_id, name, original_source, enabled FROM guild_scripts WHERE guild_id = $1 AND id = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 1,
-          "name": "guild_id",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 2,
-          "name": "name",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "original_source",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 4,
-          "name": "enabled",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Int8"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "0795f36feabaf53a1c491cbbbd18cd43692ce7265ff243c427cb7d1f2e3beee3": {
     "query": "SELECT id, name, icon, owner_id FROM joined_guilds WHERE id = ANY ($1)",
     "describe": {
@@ -151,6 +106,213 @@
       ]
     }
   },
+  "16dbc6d61659c3e4447d7d352c0ec637efea3009dccf6bbf728df52372b0557c": {
+    "query": "SELECT id, guild_id, name, original_source, enabled, contributes_commands FROM guild_scripts WHERE guild_id = $1 AND id = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "guild_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "original_source",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "enabled",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 5,
+          "name": "contributes_commands",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "24ecaa2c38958cdd012b45c68bb70bdd8b8d8b8fb44fab5bd37b8fc10503606e": {
+    "query": "\n                    UPDATE guild_scripts SET\n                    original_source = $3,\n                    enabled = $4\n                    WHERE guild_id = $1 AND id=$2\n                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands;\n                ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "original_source",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "guild_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 4,
+          "name": "enabled",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 5,
+          "name": "contributes_commands",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Text",
+          "Bool"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "2e5221c83fadc1f46055b341fdbee81f01e25c9ca3bf6048fecbb7a797a0a567": {
+    "query": "SELECT id, guild_id, original_source, name, enabled, contributes_commands FROM guild_scripts WHERE guild_id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "guild_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "original_source",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "enabled",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 5,
+          "name": "contributes_commands",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "320355e993541068a28d6c9e3f2b81d90ceb6bd1b9c530826aa1ef27dd1785ff": {
+    "query": "\n                INSERT INTO guild_scripts (guild_id, name, original_source, enabled) \n                VALUES ($1, $2, $3, $4)\n                RETURNING id, guild_id, name, original_source, enabled, contributes_commands;\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "guild_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "original_source",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "enabled",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 5,
+          "name": "contributes_commands",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text",
+          "Text",
+          "Bool"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "37c7c96d21db55b2bb8a79810dea6b0403c80b91a399b57fdc74bbd715a70781": {
     "query": "SELECT token, kind, user_id, discriminator, username, avatar, created_at FROM web_sessions WHERE user_id = $1",
     "describe": {
@@ -207,8 +369,8 @@
       ]
     }
   },
-  "3de60c498d4c084eae58208b0fa73c64778782116c446115e29db395aa91edfb": {
-    "query": "SELECT id, guild_id, original_source, name, enabled FROM guild_scripts WHERE guild_id = $1 AND name = $2;",
+  "49314c879a4fca4cf708486a7c08f769f6242e2920bf801648603c3b6c4fd12e": {
+    "query": "\n                    UPDATE guild_scripts SET\n                    original_source = $3,\n                    enabled = $4,\n                    contributes_commands = $5\n                    WHERE guild_id = $1 AND id=$2\n                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands;\n                ",
     "describe": {
       "columns": [
         {
@@ -218,8 +380,8 @@
         },
         {
           "ordinal": 1,
-          "name": "guild_id",
-          "type_info": "Int8"
+          "name": "name",
+          "type_info": "Text"
         },
         {
           "ordinal": 2,
@@ -228,66 +390,31 @@
         },
         {
           "ordinal": 3,
-          "name": "name",
-          "type_info": "Text"
+          "name": "guild_id",
+          "type_info": "Int8"
         },
         {
           "ordinal": 4,
           "name": "enabled",
           "type_info": "Bool"
+        },
+        {
+          "ordinal": 5,
+          "name": "contributes_commands",
+          "type_info": "Jsonb"
         }
       ],
       "parameters": {
         "Left": [
           "Int8",
-          "Text"
+          "Int8",
+          "Text",
+          "Bool",
+          "Jsonb"
         ]
       },
       "nullable": [
         false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "4171490e31c459188f33b0bb2baf73194a5c381144e17867e49a2ff4d74e4fd7": {
-    "query": "SELECT id, guild_id, original_source, name, enabled FROM guild_scripts WHERE guild_id = $1",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 1,
-          "name": "guild_id",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 2,
-          "name": "original_source",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "name",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 4,
-          "name": "enabled",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Int8"
-        ]
-      },
-      "nullable": [
         false,
         false,
         false,
@@ -332,53 +459,6 @@
         ]
       },
       "nullable": []
-    }
-  },
-  "699a2885f79adeef6c484ec31f127116f71a08ff43e3490b7023e9b1f1979eb7": {
-    "query": "\n                UPDATE guild_scripts SET\n                original_source = $3,\n                enabled = $4\n                WHERE guild_id = $1 AND id=$2\n                RETURNING id, name, original_source, guild_id, enabled;\n            ",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "original_source",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "guild_id",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 4,
-          "name": "enabled",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Int8",
-          "Text",
-          "Bool"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
     }
   },
   "abb47ada0a375bab61b6af5397237afa44143194976edbaeac14cae05038a493": {
@@ -487,6 +567,109 @@
       ]
     }
   },
+  "cd85cb0020943518eebd9eb42f316a2c7386d44e4030cef58db6211dee66a6f0": {
+    "query": "\n                    UPDATE guild_scripts SET\n                    contributes_commands = $3\n                    WHERE guild_id = $1 AND id=$2\n                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands;\n                ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "original_source",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "guild_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 4,
+          "name": "enabled",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 5,
+          "name": "contributes_commands",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Jsonb"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "ced56188a6254f7af52c47c9cde28c5c7de299ca3179972ed21553af70719ee1": {
+    "query": "SELECT id, guild_id, original_source, name, enabled, contributes_commands FROM guild_scripts WHERE guild_id = $1 AND name = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "guild_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "original_source",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "enabled",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 5,
+          "name": "contributes_commands",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "d62c42a65e39b7e77f32c39a80317e1628663f2436e1581d74744786b21461f1": {
     "query": "DELETE FROM web_sessions WHERE token= $1",
     "describe": {
@@ -533,53 +716,6 @@
         ]
       },
       "nullable": [
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "e40d742fc45032a141298937be975abe15d3a3c79728801bc26418cac212ae35": {
-    "query": "\n                INSERT INTO guild_scripts (guild_id, name, original_source, enabled) \n                VALUES ($1, $2, $3, $4)\n                RETURNING id, guild_id, name, original_source, enabled;\n            ",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 1,
-          "name": "guild_id",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 2,
-          "name": "name",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "original_source",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 4,
-          "name": "enabled",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Text",
-          "Text",
-          "Bool"
-        ]
-      },
-      "nullable": [
-        false,
         false,
         false,
         false,
