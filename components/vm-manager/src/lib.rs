@@ -44,14 +44,12 @@ where
         twilight_http_client: Arc<twilight_http::Client>,
         state: Arc<InMemoryCache>,
         config_store: CT,
-        application_id: ApplicationId,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
 
         let (mut contrib_manager, contrib_manager_handle) =
             runtime::contrib_manager::create_manager_pair(
                 config_store.clone(),
-                application_id,
                 twilight_http_client.clone(),
             );
 

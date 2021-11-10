@@ -151,7 +151,7 @@ impl crate::config::ConfigStore for Postgres {
         script_id: u64,
         contribs: ScriptContributes,
     ) -> StoreResult<Script, Self::Error> {
-        let commands_enc = serde_json::to_value(contribs).unwrap();
+        let commands_enc = serde_json::to_value(contribs.commands).unwrap();
 
         let res = sqlx::query_as!(
             DbScript,

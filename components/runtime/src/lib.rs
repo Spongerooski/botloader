@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use contrib_manager::LoadedScript;
 use deno_core::{op_async, op_sync, Extension, OpState};
+use tracing::info;
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_model::id::GuildId;
 use vm::{vm::VmRole, AnyError, JsValue};
@@ -52,6 +53,13 @@ pub struct RuntimeContext {
 
 pub fn op_script_start(state: &mut OpState, args: JsValue, _: ()) -> Result<(), AnyError> {
     let des: ScriptMeta = serde_json::from_value(args)?;
+
+    info!(
+        "running script! {}, commands: {}",
+        des.script_id,
+        des.commands.len() + des.command_groups.len()
+    );
+
     let ctx = state.borrow::<RuntimeContext>();
     ctx.contrib_manager_handle.send(LoadedScript {
         guild_id: ctx.guild_id,

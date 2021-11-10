@@ -9,7 +9,6 @@ use stores::postgres::Postgres;
 use tracing::{error, info};
 use twilight_cache_inmemory::{InMemoryCache, InMemoryCacheBuilder};
 use twilight_gateway::{Cluster, Event, Intents};
-use twilight_model::oauth::CurrentApplicationInfo;
 use vm::init_v8_flags;
 
 mod commands;
@@ -29,12 +28,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "--lazy_feedback_allocation".to_string(),
     ]);
 
-    let http = Arc::new(
-        twilight_http::client::ClientBuilder::new()
-            .token(config.discord_token.clone())
-            .build(),
-    );
-
     let intents = Intents::GUILD_MESSAGES | Intents::GUILDS | Intents::GUILD_VOICE_STATES;
     let (cluster, events) = Cluster::new(config.discord_token.clone(), intents).await?;
     let cluster = Arc::new(cluster);
@@ -51,19 +44,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config_store = Postgres::new_with_url(&config.database_url).await?;
 
-    let application_info = http
-        .current_user_application()
-        .exec()
-        .await?
-        .model()
-        .await?;
-
     handle_events(
         BotContext {
-            http,
+            http: discord_config.client.clone(),
             cluster,
             state,
-            application_info,
             config_store,
             config,
             discord_config,
@@ -81,7 +66,6 @@ pub struct BotContext<CT> {
     http: Arc<twilight_http::Client>,
     cluster: Arc<Cluster>,
     state: Arc<InMemoryCache>,
-    application_info: CurrentApplicationInfo,
     config_store: CT,
     discord_config: DiscordConfig,
 }
@@ -105,7 +89,6 @@ async fn handle_events<CT: Clone + ConfigStore + Send + Sync + 'static>(
         ctx.http.clone(),
         ctx.state.clone(),
         ctx.config_store.clone(),
-        ctx.discord_config.application.id,
     );
 
     let bot_rpc_server = botrpc::Server::new(

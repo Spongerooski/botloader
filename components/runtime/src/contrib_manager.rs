@@ -8,7 +8,7 @@ use twilight_model::application::command::{
     Command as TwilightCommand, CommandOption as TwilightCommandOption,
     CommandType as TwilightCommandType, OptionsCommandOptionData,
 };
-use twilight_model::id::{ApplicationId, GuildId};
+use twilight_model::id::GuildId;
 
 use crate::commonmodels::script::{Command, CommandGroup, ScriptMeta};
 
@@ -27,13 +27,11 @@ pub struct ContribManager<CT> {
     config_store: CT,
     discord_client: Arc<twilight_http::Client>,
     rcv_loaded_script: mpsc::UnboundedReceiver<LoadedScript>,
-    application_id: ApplicationId,
     pending_checks: Vec<PendingCheckGroup>,
 }
 
 pub fn create_manager_pair<CT: ConfigStore>(
     config_store: CT,
-    application_id: ApplicationId,
     discord_client: Arc<twilight_http::Client>,
 ) -> (ContribManager<CT>, ContribManagerHandle) {
     let (send, rcv) = mpsc::unbounded_channel();
@@ -41,7 +39,6 @@ pub fn create_manager_pair<CT: ConfigStore>(
     (
         ContribManager {
             config_store,
-            application_id,
             discord_client,
             rcv_loaded_script: rcv,
             pending_checks: Vec::new(),
@@ -106,12 +103,8 @@ where
     }
 
     async fn update_db_contribs(&mut self, evt: &LoadedScript) {
-        let twilight_commands = to_twilight_commands(
-            evt.guild_id,
-            self.application_id,
-            &evt.meta.commands,
-            &evt.meta.command_groups,
-        );
+        let twilight_commands =
+            to_twilight_commands(evt.guild_id, &evt.meta.commands, &evt.meta.command_groups);
 
         // TODO: handle errors here, maybe retry?
         if let Err(err) = self
@@ -162,7 +155,19 @@ where
             })?;
 
         let merged = merge_script_commands(all_guild_scripts);
-        if let Err(err) = self.discord_client.set_guild_commands(guild_id, &merged) {
+        info!(
+            "updating guild commands for {}, n commands: {}",
+            guild_id,
+            merged.len()
+        );
+
+        if let Err(err) = self
+            .discord_client
+            .set_guild_commands(guild_id, &merged)
+            .unwrap()
+            .exec()
+            .await
+        {
             error!(%err, "failed updating guild commands")
             // TODO: for now this returns an ok, in the future once we have
             // more validation we could reutrn an err here and have it retry
@@ -183,7 +188,6 @@ struct PendingCheckGroup {
 
 pub fn to_twilight_commands(
     guild_id: GuildId,
-    application_id: ApplicationId,
     commands: &[Command],
     groups: &[CommandGroup],
 ) -> Vec<TwilightCommand> {
@@ -194,7 +198,7 @@ pub fn to_twilight_commands(
         .map(|cmd| TwilightCommand {
             name: cmd.name.clone(),
             description: cmd.description.clone(),
-            application_id: Some(application_id),
+            application_id: None,
             options: cmd.options.iter().map(|opt| opt.clone().into()).collect(),
             guild_id: Some(guild_id),
             default_permission: None,
@@ -205,7 +209,7 @@ pub fn to_twilight_commands(
 
     let mut groups = groups
         .iter()
-        .map(|cg| group_to_twilight_command(guild_id, application_id, cg))
+        .map(|cg| group_to_twilight_command(guild_id, cg))
         .collect::<Vec<_>>();
 
     // add the commands to the groups and sub groups
@@ -216,11 +220,7 @@ pub fn to_twilight_commands(
                 Some(g) => g,
                 None => {
                     // group not found, make a new one
-                    groups.push(make_unknown_group(
-                        guild_id,
-                        application_id,
-                        cmd_group.clone(),
-                    ));
+                    groups.push(make_unknown_group(guild_id, cmd_group.clone()));
 
                     // return mut reference to the new group
                     let len = groups.len();
@@ -265,13 +265,9 @@ pub fn to_twilight_commands(
     result
 }
 
-fn make_unknown_group(
-    guild_id: GuildId,
-    application_id: ApplicationId,
-    name: String,
-) -> TwilightCommand {
+fn make_unknown_group(guild_id: GuildId, name: String) -> TwilightCommand {
     TwilightCommand {
-        application_id: Some(application_id),
+        application_id: None,
         default_permission: None,
         description: GROUP_DESC_PLACEHOLDER.to_string(),
         guild_id: Some(guild_id),
@@ -282,11 +278,7 @@ fn make_unknown_group(
     }
 }
 
-pub fn group_to_twilight_command(
-    guild_id: GuildId,
-    application_id: ApplicationId,
-    group: &CommandGroup,
-) -> TwilightCommand {
+pub fn group_to_twilight_command(guild_id: GuildId, group: &CommandGroup) -> TwilightCommand {
     // handle sub groups
     let opts = group
         .sub_groups
@@ -301,7 +293,7 @@ pub fn group_to_twilight_command(
         .collect::<Vec<_>>();
 
     TwilightCommand {
-        application_id: Some(application_id),
+        application_id: None,
         guild_id: Some(guild_id),
         default_permission: None,
         description: group.description.clone(),

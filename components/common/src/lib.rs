@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use structopt::StructOpt;
 use tracing::info;
 use tracing_subscriber::{fmt::format::FmtSpan, util::SubscriberInitExt, EnvFilter};
@@ -34,6 +36,7 @@ pub struct DiscordConfig {
     pub bot_user: CurrentUser,
     pub application: CurrentApplicationInfo,
     pub owners: Vec<User>,
+    pub client: Arc<twilight_http::Client>,
 }
 
 pub async fn fetch_discord_config(token: String) -> Result<DiscordConfig, twilight_http::Error> {
@@ -61,9 +64,12 @@ pub async fn fetch_discord_config(token: String) -> Result<DiscordConfig, twilig
         owners.iter().map(|o| o.id).collect::<Vec<_>>()
     );
 
+    client.set_application_id(application.id);
+
     Ok(DiscordConfig {
         application,
         bot_user,
         owners,
+        client: Arc::new(client),
     })
 }
