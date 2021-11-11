@@ -12,10 +12,25 @@ use tracing::error;
 pub struct SessionMeta {
     kind: SessionType,
     created_at: chrono::DateTime<chrono::Utc>,
-    token: String,
 }
 
 impl From<Session> for SessionMeta {
+    fn from(s: Session) -> Self {
+        Self {
+            created_at: s.created_at,
+            kind: s.kind,
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct SessionMetaWithKey {
+    kind: SessionType,
+    created_at: chrono::DateTime<chrono::Utc>,
+    token: String,
+}
+
+impl From<Session> for SessionMetaWithKey {
     fn from(s: Session) -> Self {
         Self {
             created_at: s.created_at,
@@ -43,7 +58,7 @@ pub async fn get_all_sessions<ST: SessionStore + 'static>(
 pub async fn create_api_token<ST: SessionStore + 'static>(
     Extension(session): Extension<LoggedInSession<ST>>,
     Extension(session_store): Extension<ST>,
-) -> ApiResult<Json<SessionMeta>> {
+) -> ApiResult<Json<SessionMetaWithKey>> {
     let session = session_store
         .create_session(session.session.user.clone(), SessionType::ApiKey)
         .await
