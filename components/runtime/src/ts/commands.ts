@@ -87,7 +87,7 @@ export namespace Commands {
 
             const commands: OpCommand[] = this.commands.map(cmd => {
                 const options: OpCommandOption[] = [];
-                for (let prop in cmd) {
+                for (let prop in cmd.options) {
                     if (Object.prototype.hasOwnProperty.call(cmd.options, prop)) {
                         let entry = cmd.options[prop];
                         options.push({
