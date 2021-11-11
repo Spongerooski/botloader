@@ -7,7 +7,7 @@ use crate::config::{
     StoreResult, UpdateScript,
 };
 
-// impl From<sqlx::
+const GUILD_SCRIPT_COUNT_LIMIT: i64 = 100;
 
 impl Postgres {
     async fn get_db_script_by_name(
@@ -46,6 +46,17 @@ impl Postgres {
         .fetch_one(&self.pool)
         .await?)
     }
+
+    async fn get_guild_script_count(&self, guild_id: GuildId) -> StoreResult<i64, sqlx::Error> {
+        let result = sqlx::query!(
+            "SELECT count(*) FROM guild_scripts WHERE guild_id = $1;",
+            guild_id.0.get() as i64,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(result.count.unwrap_or_default())
+    }
 }
 
 #[async_trait]
@@ -79,6 +90,14 @@ impl crate::config::ConfigStore for Postgres {
         guild_id: GuildId,
         script: CreateScript,
     ) -> StoreResult<Script, Self::Error> {
+        let count = self.get_guild_script_count(guild_id).await?;
+        if count > GUILD_SCRIPT_COUNT_LIMIT {
+            return Err(ConfigStoreError::GuildScriptLimitReached(
+                count as u64,
+                GUILD_SCRIPT_COUNT_LIMIT as u64,
+            ));
+        }
+
         let res = sqlx::query_as!(
             DbScript,
             "

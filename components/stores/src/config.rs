@@ -13,6 +13,9 @@ pub enum ConfigStoreError<T: std::fmt::Debug + Error + 'static> {
     #[error("script link not found")]
     LinkNotFound,
 
+    #[error("reached limit of guild scripts: {0} (limit {1})")]
+    GuildScriptLimitReached(u64, u64),
+
     #[error("inner error occured: {0}")]
     Other(#[from] T),
 }
