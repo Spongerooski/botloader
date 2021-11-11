@@ -210,6 +210,27 @@
       ]
     }
   },
+  "28ba8c9f00ead06d759107bb246a004852ce954301f57e7a54cf54f3d01610ba": {
+    "query": "SELECT count(*) FROM web_sessions WHERE user_id = $1 AND kind = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int2"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "2e5221c83fadc1f46055b341fdbee81f01e25c9ca3bf6048fecbb7a797a0a567": {
     "query": "SELECT id, guild_id, original_source, name, enabled, contributes_commands FROM guild_scripts WHERE guild_id = $1",
     "describe": {
@@ -459,6 +480,26 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "72efcd2b9598423b2ac32fc51232e3da3bf281ae995f49993e09d6a8c519b382": {
+    "query": "SELECT count(*) FROM guild_scripts WHERE guild_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "abb47ada0a375bab61b6af5397237afa44143194976edbaeac14cae05038a493": {
