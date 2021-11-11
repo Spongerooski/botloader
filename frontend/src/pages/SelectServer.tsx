@@ -27,7 +27,7 @@ export function SelectServerPage() {
     }
 
     return <div className="guild-select-page">
-
+        <h3>Botloader is currently in a early private alpha stage, only a few number of people have access. this text will get updated when more info is available</h3>
         <h2>Joined servers</h2>
         <div className="guild-select-list">
             {joinedHasAdmin.map(g => <GuildListItem guild={g} key={g.guild.id} />)}
@@ -47,9 +47,8 @@ function GuildListItem({ guild: g }: { guild: BotGuild }) {
 }
 
 function GuildIcon(props: { guild: UserGuild }) {
-    return <img src={guildIconUrl(props.guild)} alt={`icon for ${props.guild.name}`} />
+    return <img src={guildIconUrl(props.guild)} alt={`icon`} className="avatar" />
 }
-
 
 const permAdmin = BigInt("0x0000000008");
 const permManageServer = BigInt("0x0000000020");

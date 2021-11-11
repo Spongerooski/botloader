@@ -54,7 +54,8 @@ export function UserSettingsPage() {
         <Panel title="Active sessions">
             <p>Manage your active sessions</p>
             {allSessions?.map((elem) => <SessionItem key={elem.token} item={elem} />)}
-            <AsyncOpButton label="Clear all sessions (including logging you out)" onClick={() => clearAllSessions()}></AsyncOpButton>
+            <br />
+            <AsyncOpButton label="Clear all sessions (including logging you out from this one)" onClick={() => clearAllSessions()} className="danger"></AsyncOpButton>
         </Panel>
     </div>
 }
@@ -62,7 +63,6 @@ export function UserSettingsPage() {
 function SessionItem(props: { item: SessionMeta }) {
     return <div className="user-session-item">
         <div className="session-kind">{props.item.kind}</div>
-        <div className="session-token"><KeySpoiler content={props.item.token} /></div>
         <div className="session-created_at"><DisplayDateTime dt={props.item.created_at} /></div>
     </div>
 }

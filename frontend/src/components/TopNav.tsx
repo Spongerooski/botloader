@@ -26,7 +26,7 @@ export function TopNav() {
 
 function UserLoggedIn(props: { user: User }) {
     return <Link to="/settings">
-        <img src={userAvatarUrl(props.user, 32)} alt="user avatar" />
+        <img src={userAvatarUrl(props.user, 32)} alt="user avatar" className="avatar" />
         <p>{props.user.username}#{props.user.discriminator}</p>
     </Link>
 }
@@ -37,7 +37,7 @@ function UserNotLoggedIn() {
 
 function CurrentGuild(props: { guild: BotGuild }) {
     return <>
-        <img src={guildIconUrl(props.guild.guild, 32)} alt="guild icon" />
+        <img src={guildIconUrl(props.guild.guild, 32)} alt="guild icon" className="avatar" />
         <p>{props.guild.guild.name}</p>
     </>
 }

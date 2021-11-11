@@ -5,6 +5,7 @@ import {
   Switch,
   Route,
   useParams,
+  Link,
 } from "react-router-dom";
 import { RequireLoggedInSession, SessionProvider } from './components/Session';
 import { CurrentGuildProvider, GuildsProvider } from './components/GuildsProvider';
@@ -13,6 +14,7 @@ import { ConfirmLoginPage } from './pages/ConfirmLogin';
 import { SelectServerPage } from './pages/SelectServer';
 import { UserSettingsPage } from './pages/UserSettings';
 import { GuildPage } from './pages/GuildPage';
+import loaderScreenshot from './img/loaderscreenshot.png';
 
 function App() {
   return (
@@ -46,10 +48,7 @@ function App() {
                 </GuildsProvider>
               </Route>
               <Route path="/">
-                <header className="App-header">
-                  <p>BotLoader coming soon™</p>
-                  <img src="/logo192.png" alt="zzz"></img>
-                </header>
+                <LandingPage />
               </Route>
             </Switch>
           </SessionProvider>
@@ -71,3 +70,15 @@ function OuterGuildPage() {
 }
 
 export default App;
+
+
+function LandingPage() {
+  return <>
+    <header className="App-header">
+      <p>Botloader coming soon™</p>
+      <img src="/logo192.png" alt="zzz" className="avatar"></img>
+      <p><small><Link to="/servers">Control panel</Link></small></p>
+      <img src={loaderScreenshot} alt="screenshot"></img>
+    </header>
+  </>
+}

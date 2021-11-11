@@ -3,6 +3,7 @@ import { useState } from "react"
 type Props = {
     label: string,
     onClick: () => any,
+    className?: string,
 }
 
 export function AsyncOpButton(props: Props) {
@@ -15,5 +16,5 @@ export function AsyncOpButton(props: Props) {
         setStatus(false);
     }
 
-    return <button disabled={status} onClick={() => doOp()}>{props.label}</button>
+    return <button disabled={status} onClick={() => doOp()} className={props.className}>{props.label}</button>
 }
