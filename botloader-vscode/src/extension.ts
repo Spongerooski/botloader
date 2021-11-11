@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { ApiClient, isErrorResponse, Script, UserGuild } from './apiclient';
+import { ApiClient, isErrorResponse, UserGuild } from 'botloader-common';
 
 import { tmpdir } from 'os';
 import { mkdtemp } from 'fs/promises';
@@ -9,6 +9,7 @@ import { join } from 'path';
 import { WorkspaceManager } from './workspacemanager';
 import { BotloaderWS, LogItem } from './ws';
 import { BotloaderSourceControl, CHANGED_FILES_SCM_GROUP } from './guildspace';
+import { createFetcher } from './util';
 
 const API_HOST_BASE = "127.0.0.1:7447";
 const API_BASE_URL = "http://" + API_HOST_BASE;
@@ -22,7 +23,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	let token = await context.secrets.get("botloader-api-key");
 	let ws = new BotloaderWS(WS_BASE_URL, handleLogMessage, token);
-	let apiClient = new ApiClient(API_BASE_URL, token);
+	let apiClient = new ApiClient(createFetcher(), API_BASE_URL, token);
 
 	let manager = new WorkspaceManager(apiClient, ws);
 	context.subscriptions.push(manager);
@@ -59,7 +60,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			title: "API key",
 		});
 
-		let newClient = new ApiClient(API_BASE_URL, key);
+		let newClient = new ApiClient(createFetcher(), API_BASE_URL, key);
 		let resp = await newClient.getCurrentUser();
 
 		if (isErrorResponse(resp)) {

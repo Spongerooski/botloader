@@ -139,6 +139,7 @@
   },
   "dependencies": {
     "node-fetch": "^3.0.0",
-    "ws": "^8.2.3"
+    "ws": "^8.2.3",
+    "botloader-common": "file:../frontend-common"
   }
 }
