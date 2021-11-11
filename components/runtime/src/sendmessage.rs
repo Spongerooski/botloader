@@ -39,3 +39,33 @@ pub async fn op_send_message(
 
     Ok(re)
 }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendInteractionResponseArgs {
+    content: String,
+    token: String,
+}
+
+pub async fn op_send_interaction_response(
+    state: Rc<RefCell<OpState>>,
+    args: SendInteractionResponseArgs,
+    _: (),
+) -> Result<Message, AnyError> {
+    let rt_ctx = {
+        let state = state.borrow();
+        state.borrow::<RuntimeContext>().clone()
+    };
+
+    let re = rt_ctx
+        .dapi
+        .create_followup_message(&args.token)
+        .unwrap()
+        .content(&args.content)
+        .exec()
+        .await?
+        .model()
+        .await?;
+
+    Ok(re)
+}

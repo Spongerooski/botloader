@@ -1,5 +1,7 @@
-import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandOption as OpCommandOption, CommandOptionType as OpCommandOptionType, PartialMember, User } from "./commonmodels";
+import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandInteraction, CommandOption as OpCommandOption, CommandOptionType as OpCommandOptionType, PartialMember, User } from "./commonmodels";
+import { console } from "./core_util";
 import { ScriptEventMuxer } from "./events";
+import { OpWrappers } from "./op_wrappers";
 
 export namespace Commands {
 
@@ -65,10 +67,6 @@ export namespace Commands {
         T extends MentionableOption<boolean> ? {} :
         unknown;
 
-    export class ExecutedCommandContext {
-        async sendResponse(resp: string) { }
-    }
-
     export interface Group {
         commands: CommandDef<any>[],
     }
@@ -102,7 +100,27 @@ export namespace Commands {
         commands: CommandDef<OptionsMap>[] = [];
 
         addEventListeners(muxer: ScriptEventMuxer) {
-            // TODO
+            muxer.listeners.push({
+                event: "BOTLOADER_COMMAND_INTERACTION_CREATE",
+                f: this.handleInteractionCreate.bind(this),
+            })
+        }
+
+        handleInteractionCreate(interaction: CommandInteraction) {
+            let command = this.commands.find(cmd => matchesCommand(cmd, interaction));
+            if (!command) {
+                return;
+            }
+
+            let optionsMap = {};
+            for (let opt of interaction.options) {
+                optionsMap = {
+                    [opt.name]: opt.value.value,
+                    ...optionsMap
+                }
+            }
+            console.log(JSON.stringify(optionsMap));
+            command.callback(new ExecutedCommandContext(interaction), optionsMap)
         }
 
         genOpBinding(): [OpCommand[], OpCommandGroup[]] {
@@ -166,6 +184,34 @@ export namespace Commands {
 
 
             return [commands, groups];
+        }
+    }
+
+    function matchesCommand(cmd: CommandDef<any>, interaction: CommandInteraction) {
+        if (interaction.parentParentName) {
+            if (cmd.group && cmd.group.parent) {
+                return cmd.name === interaction.name && cmd.group.name === interaction.parentName && cmd.group.parent.name === interaction.parentParentName;
+            }
+        } else if (interaction.parentName) {
+            if (cmd.group && !cmd.group.parent) {
+                return cmd.name === interaction.name && cmd.group.name === interaction.parentName;
+            }
+        } else {
+            if (!cmd.group) {
+                return cmd.name === interaction.name;
+            }
+        }
+    }
+
+    export class ExecutedCommandContext {
+        interaction: CommandInteraction;
+
+        constructor(interaction: CommandInteraction) {
+            this.interaction = interaction;
+        }
+
+        async sendResponse(resp: string) {
+            OpWrappers.interactionFollowUp({ token: this.interaction.token, content: resp })
         }
     }
 }

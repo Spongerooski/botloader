@@ -17,6 +17,18 @@ export namespace OpWrappers {
         ) as Message;
     }
 
+    export interface InteractionFollowUpData {
+        content: string,
+        token: string,
+    }
+
+    export async function interactionFollowUp(args: InteractionFollowUpData): Promise<Message> {
+        return await Deno.core.opAsync(
+            "op_interaction_followup",
+            args
+        ) as Message;
+    }
+
     export function scriptStarted(meta: ScriptMeta) {
         Deno.core.opSync(
             "op_botloader_script_start",

@@ -9,6 +9,7 @@ use stores::postgres::Postgres;
 use tracing::{error, info};
 use twilight_cache_inmemory::{InMemoryCache, InMemoryCacheBuilder};
 use twilight_gateway::{Cluster, Event, Intents};
+use twilight_model::application::callback::{CallbackData, InteractionResponse};
 use vm::init_v8_flags;
 
 mod commands;
@@ -150,6 +151,29 @@ async fn handle_events<CT: Clone + ConfigStore + Send + Sync + 'static>(
                     commands::handle_command(cmd_context.clone(), cmd).await
                 }
             }
+            Event::InteractionCreate(evt) => match &evt.0 {
+                twilight_model::application::interaction::Interaction::Ping(_) => {}
+                twilight_model::application::interaction::Interaction::MessageComponent(_) => {}
+                twilight_model::application::interaction::Interaction::ApplicationCommand(cmd) => {
+                    ctx.http
+                        .interaction_callback(
+                            cmd.id,
+                            &cmd.token,
+                            &InteractionResponse::DeferredChannelMessageWithSource(CallbackData {
+                                allowed_mentions: None,
+                                components: None,
+                                content: None,
+                                embeds: Vec::new(),
+                                flags: None,
+                                tts: None,
+                            }),
+                        )
+                        .exec()
+                        .await
+                        .ok();
+                }
+                _ => {}
+            },
             _ => {}
         }
 

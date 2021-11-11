@@ -1,9 +1,10 @@
-import { Message, MessageDelete, MessageUpdate } from './commonmodels';
+import { CommandInteraction, Message, MessageDelete, MessageUpdate } from './commonmodels';
 
-export type EventType = "MESSAGE_CREATE" | "MESSAGE_UPDATE" | "MESSAGE_DELETE";
+export type EventType = "BOTLOADER_COMMAND_INTERACTION_CREATE" | "MESSAGE_CREATE" | "MESSAGE_UPDATE" | "MESSAGE_DELETE";
 export type EventListenerFunction<T> = (a: T) => void;
 
 export type EventDataType<T extends EventType> =
+    T extends "BOTLOADER_COMMAND_INTERACTION_CREATE" ? CommandInteraction :
     T extends "MESSAGE_CREATE" ? Message :
     T extends "MESSAGE_UPDATE" ? MessageUpdate :
     T extends "MESSAGE_DELETE" ? MessageDelete

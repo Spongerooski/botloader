@@ -25,6 +25,10 @@ pub fn create_extension(ctx: RuntimeContext) -> Extension {
                 "op_jack_sendmessage",
                 op_async(sendmessage::op_send_message),
             ),
+            (
+                "op_interaction_followup",
+                op_async(sendmessage::op_send_interaction_response),
+            ),
             ("op_botloader_script_start", op_sync(op_script_start)),
         ])
         .state(move |state| {

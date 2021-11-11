@@ -1,3 +1,45 @@
+export interface CommandInteraction {
+    channelId: string,
+    id: string,
+    member: PartialMember,
+    token: string,
+    name: string,
+    parentName?: string,
+    parentParentName?: string,
+    options: CommandInteractionOption[],
+}
+
+export interface CommandInteractionOption {
+    name: string,
+    value: CommandInteractionOptionValue,
+}
+
+export type CommandInteractionOptionValue = {
+    kind: "String",
+    value: string,
+} | {
+    kind: "Integer",
+    value: number,
+} | {
+    kind: "Boolean",
+    value: boolean,
+} | {
+    kind: "User",
+    value: string,
+} | {
+    kind: "Channel",
+    value: string,
+} | {
+    kind: "Role",
+    value: string,
+} | {
+    kind: "Mentionable",
+    value: string,
+} | {
+    kind: "Number",
+    value: number,
+};
+
 export interface Embed {
     author?: EmbedAuthor,
     color?: number,
