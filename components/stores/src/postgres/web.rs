@@ -4,13 +4,32 @@ use super::Postgres;
 use async_trait::async_trait;
 use twilight_model::{id::UserId, user::CurrentUser};
 
+const USER_API_KEY_LIMIT: i64 = 100;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("oauth token not found")]
     OauthTokenNotFound,
 
+    #[error("reached limit of api keys: {0} (limit {1})")]
+    ApiKeyLimitReached(u64, u64),
+
     #[error(transparent)]
     Sql(#[from] sqlx::Error),
+}
+
+impl Postgres {
+    async fn get_api_key_count(&self, user_id: UserId) -> Result<i64, Error> {
+        let result = sqlx::query!(
+            "SELECT count(*) FROM web_sessions WHERE user_id = $1 AND kind = $2;",
+            user_id.0.get() as i64,
+            i16::from(SessionType::ApiKey),
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(result.count.unwrap_or_default())
+    }
 }
 
 #[async_trait]
@@ -57,6 +76,16 @@ impl crate::web::SessionStore for Postgres {
         user: CurrentUser,
         kind: SessionType,
     ) -> Result<Session, Self::Error> {
+        if matches!(kind, SessionType::ApiKey) {
+            let count = self.get_api_key_count(user.id).await?;
+            if count > USER_API_KEY_LIMIT {
+                return Err(Error::ApiKeyLimitReached(
+                    count as u64,
+                    USER_API_KEY_LIMIT as u64,
+                ));
+            }
+        }
+
         let oauth_token = sqlx::query_as!(
             DbOauthToken,
             "SELECT user_id, discord_bearer_token, discord_refresh_token, discord_token_expires_at
