@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { BotGuild, CurrentGuildsResponse, isErrorResponse } from "../ApiClient";
+import { BotGuild, CurrentGuildsResponse, isErrorResponse } from "botloader-common";
 import { useSession } from "./Session";
 
 export const GuildsContext = createContext<CurrentGuildsResponse | undefined>(undefined);

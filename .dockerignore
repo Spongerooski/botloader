@@ -2,4 +2,5 @@ target
 frontend/node_modules
 botloader-vscode/node_modules
 botloader-vscode/out
+frontend-common/dist
 .env

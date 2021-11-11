@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { ApiClient, isErrorResponse, User } from "../ApiClient";
+import { ApiClient, isErrorResponse, User } from "botloader-common";
+import { BuildConfig } from "../BuildConfig";
+import { CreateFetcher } from "../Util";
 
 export const SessionContext = createContext<Session>({
-    apiClient: new ApiClient(),
+    apiClient: new ApiClient(CreateFetcher(), BuildConfig.botloaderApiBase),
 });
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
     let [session, setSession] = useState<Session>({
-        apiClient: new ApiClient(),
+        apiClient: new ApiClient(CreateFetcher(), BuildConfig.botloaderApiBase),
     });
 
     useEffect(() => {
@@ -29,7 +31,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             let token = localStorage.getItem("botloader_token");
             if (token) {
                 // Got a token in storage, validate it and use it
-                let client = new ApiClient(token);
+                let client = new ApiClient(CreateFetcher(), BuildConfig.botloaderApiBase, token);
                 await validateAndUpdateSession(client);
             } else {
                 console.log("no token in local storage, no session to restore");

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BotGuild, isErrorResponse, Script } from "../ApiClient";
+import { BotGuild, isErrorResponse, Script } from "botloader-common";
 import { useCurrentGuild } from "../components/GuildsProvider";
 import { useSession } from "../components/Session";
 import './GuildPage.css'

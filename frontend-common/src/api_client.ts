@@ -1,19 +1,24 @@
-import { BuildConfig } from "./BuildConfig";
+import { CreateScript, CurrentGuildsResponse, EmptyResponse, LoginResponse, Script, SessionMeta, UpdateScript, User } from "./api_models";
 
+/* eslint-disable @typescript-eslint/naming-convention */
 export class ApiClient {
     token?: string;
+    base: string;
+    fetcher: ApiFetcher;
 
-    constructor(token?: string) {
+    // plug in either node-fetch or window.fetch depending on use context
+    constructor(fetcher: ApiFetcher, base: string, token?: string) {
         this.token = token;
+        this.base = base;
+        this.fetcher = fetcher;
     }
 
     async do<T>(method: string, path: string, body?: any): Promise<ApiResult<T>> {
-        let base = BuildConfig.botloaderApiBase;
+        let base = this.base;
 
         let headers = {};
         if (this.token) {
             headers = {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 Authorization: this.token,
                 ...headers,
             };
@@ -21,20 +26,23 @@ export class ApiClient {
 
         if (body) {
             headers = {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 "Content-Type": "application/json",
                 ...headers,
             };
         }
 
-        let response = await fetch(base + path, {
+        let response = await this.fetcher.fetch(base + path, {
             headers: headers,
             method: method,
             body: body ? JSON.stringify(body) : undefined,
         });
+        console.log(`Response status for ${path}: ${response.status}`);
+        if (response.status === 204) {
+            return {} as ApiResult<T>;
+        }
 
         if (response.status !== 200) {
-            let decoded: ApiErrorResponse = await response.json();
+            let decoded: ApiErrorResponse = await response.json() as ApiErrorResponse;
             return {
                 resp_code: response.status,
                 is_error: true,
@@ -42,7 +50,7 @@ export class ApiClient {
             };
         }
 
-        return await response.json();
+        return await response.json() as ApiResult<T>;
     }
 
     async get<T>(path: string,): Promise<ApiResult<T>> {
@@ -114,15 +122,23 @@ export class ApiClient {
         return await this.patch(`/api/guilds/${guildId}/scripts/${id}`, data);
     }
 
-    async delScript(guildId: string, id: number): Promise<ApiResult<{}>> {
+    async delScript(guildId: string, id: number): Promise<ApiResult<EmptyResponse>> {
         return await this.delete(`/api/guilds/${guildId}/scripts/${id}`);
+    }
+
+    async reloadGuildVm(guildId: string): Promise<ApiResult<EmptyResponse>> {
+        return await this.post(`/api/guilds/${guildId}/reload_vm`);
     }
 }
 
 export type ApiResult<T> = T | ApiError;
 
 export function isErrorResponse<T>(resp: ApiResult<T>): resp is ApiError {
-    return (resp as ApiError).is_error !== undefined;
+    if (resp) {
+        return (resp as ApiError).is_error !== undefined;
+    } else {
+        return false;
+    }
 }
 
 export interface ApiError {
@@ -136,71 +152,22 @@ export interface ApiErrorResponse {
     description: string,
 }
 
-export function ApiClientInjector() { }
-
-export interface User {
-    avatar?: string,
-    bot: boolean,
-    discriminator: string,
-    email?: string,
-    flags?: number,
-    id: string,
-    locale?: string,
-    username: string,
-    premium_type?: number,
-    public_flags?: number,
-    verified?: boolean,
+// just some simple abstractions so that we can use this in both a node and browser context
+export interface ApiFetcher {
+    fetch(path: string, opts: FetcherOpts): Promise<FetchResponse>;
 }
 
-
-export interface UserGuild {
-    id: string,
-    name: string,
-    icon?: string,
-    owner: boolean,
-    permissions: string,
-    features: string[],
+export interface FetcherHeaders {
+    [index: string]: string,
 }
 
-export interface BotGuild {
-    guild: UserGuild,
-    connected: boolean,
+export interface FetcherOpts {
+    headers: FetcherHeaders,
+    method: string,
+    body?: string,
 }
 
-export interface CurrentGuildsResponse {
-    guilds: BotGuild[],
-}
-
-export interface LoginResponse {
-    user: User,
-    token: string,
-}
-
-export interface SessionMeta {
-    kind: SessionType,
-    created_at: string,
-    token: string,
-}
-
-export type SessionType = "User" | "ApiKey";
-
-
-export interface Script {
-    id: number,
-    name: string,
-    original_source: string,
-    compiled_js: string,
-    enabled: boolean,
-}
-
-export interface CreateScript {
-    name: string,
-    original_source: string,
-    enabled: boolean,
-}
-
-export interface UpdateScript {
-    name: string,
-    original_source: string,
-    enabled: boolean,
+export interface FetchResponse {
+    json(): Promise<unknown>,
+    status: number,
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Redirect } from "react-router";
-import { isErrorResponse, SessionMeta } from "../ApiClient";
+import { isErrorResponse, SessionMeta } from "botloader-common";
 import { AsyncOpButton } from "../components/AsyncOpButton";
 import { DisplayDateTime } from "../components/DateTime";
 import { Panel } from "../components/Panel";

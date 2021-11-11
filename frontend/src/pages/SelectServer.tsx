@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { BotGuild, UserGuild } from "../ApiClient";
+import { BotGuild, UserGuild } from "botloader-common";
 import { useGuilds } from "../components/GuildsProvider"
 import { guildIconUrl } from "../components/Util";
 import "./SelectServer.css"

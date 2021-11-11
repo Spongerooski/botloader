@@ -1,4 +1,4 @@
-import { User, UserGuild } from "../ApiClient";
+import { User, UserGuild } from "botloader-common";
 
 export function guildIconUrl(g: UserGuild, size = 64): string {
 

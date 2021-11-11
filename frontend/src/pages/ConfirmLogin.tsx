@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { Redirect, useLocation } from "react-router";
-import { ApiClient, isErrorResponse, ApiError } from "../ApiClient";
+import { ApiClient, isErrorResponse, ApiError } from "botloader-common";
+import { BuildConfig } from "../BuildConfig";
+import { CreateFetcher } from "../Util";
 
 interface LoadingStatus {
     loading: boolean,
@@ -18,7 +20,7 @@ export function ConfirmLoginPage() {
         let query = new URLSearchParams(loc.search);
 
         async function completeLogin() {
-            let client = new ApiClient();
+            let client = new ApiClient(CreateFetcher(), BuildConfig.botloaderApiBase);
             let resp = await client.confirmLogin(query.get("code") as string, query.get("state") as string)
             if (!isErrorResponse(resp)) {
                 localStorage.setItem("botloader_token", resp.token);

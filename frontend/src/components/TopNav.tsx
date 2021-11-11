@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { BotGuild, User } from "../ApiClient";
+import { BotGuild, User } from "botloader-common";
 import { BuildConfig } from "../BuildConfig";
 import { useCurrentGuild } from "./GuildsProvider";
 import { useSession } from "./Session";
