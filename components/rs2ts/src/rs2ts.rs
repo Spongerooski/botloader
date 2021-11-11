@@ -7,6 +7,7 @@ pub enum TsType {
     Number,
     Boolean,
     Array(Box<TsType>),
+    ArrayTypes(Vec<TsType>),
     Optional(Box<TsType>),
     Ident(String),
     StringLiteral(String),
@@ -36,6 +37,15 @@ impl Display for TsType {
             }
             TsType::Array(t) => {
                 format!("{}[]", t)
+            }
+            TsType::ArrayTypes(t) => {
+                let inner = t
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",");
+
+                format!("[{}]", inner)
             }
             TsType::Optional(t) => {
                 format!("{}", t)
@@ -206,6 +216,38 @@ impl Converter {
                             ts_type,
                         });
                     }
+                }
+            }
+            Fields::Unnamed(ref fields) => {
+                let mut ts_types: Vec<TsType> = Vec::new();
+
+                for field in fields.unnamed.iter() {
+                    // let field_name =
+                    // to_camelcase(false, &field.ident.as_ref().unwrap().to_string());
+                    if let Some(ts_type) = self.rust_type_to_ts_type(&field.ty) {
+                        // ts_fields.push(TSField {
+                        //     name: field_name,
+                        //     optional: matches!(ts_type, TsType::Optional(_)),
+                        //     ts_type,
+                        // });
+                        ts_types.push(ts_type);
+                    }
+                }
+
+                match ts_types.len() {
+                    1 => {
+                        let ts_type = ts_types.pop().unwrap();
+
+                        ts_fields.push(TSField {
+                            name: "value".to_string(),
+                            optional: matches!(ts_type, TsType::Optional(_)),
+                            ts_type,
+                        });
+                    }
+                    2.. => {
+                        todo!();
+                    }
+                    _ => {}
                 }
             }
             _ => {

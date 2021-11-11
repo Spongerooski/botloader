@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 match field_type.as_str() {
                     "UserId" | "GuildId" | "ChannelId" | "RoleId" | "ApplicationId" | "EmojiId"
                     | "MessageId" | "StickerPackId" | "AttachmentId" | "WebhookId"
-                    | "StickerId" => Some(TsType::String),
+                    | "StickerId" | "GenericId" => Some(TsType::String),
                     _ => None,
                 }
             }
