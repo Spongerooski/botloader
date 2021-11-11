@@ -1,4 +1,4 @@
-import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandOption as OpCommandOption, CommandOptionType as OpCommandOptionType } from "./commonmodels";
+import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandOption as OpCommandOption, CommandOptionType as OpCommandOptionType, PartialMember, User } from "./commonmodels";
 import { ScriptEventMuxer } from "./events";
 
 export namespace Commands {
@@ -27,13 +27,29 @@ export namespace Commands {
         required?: TRequired;
     }
 
-
     export interface StringOption<T extends boolean> extends BaseOption<T> {
         kind: "String";
     };
-
     export interface NumberOption<T extends boolean> extends BaseOption<T> {
         kind: "Number";
+    };
+    export interface IntOption<T extends boolean> extends BaseOption<T> {
+        kind: "Integer";
+    };
+    export interface BoolOption<T extends boolean> extends BaseOption<T> {
+        kind: "Boolean";
+    };
+    export interface UserOption<T extends boolean> extends BaseOption<T> {
+        kind: "User";
+    };
+    export interface ChannelOption<T extends boolean> extends BaseOption<T> {
+        kind: "Channel";
+    };
+    export interface RoleOption<T extends boolean> extends BaseOption<T> {
+        kind: "Role";
+    };
+    export interface MentionableOption<T extends boolean> extends BaseOption<T> {
+        kind: "Mentionable";
     };
 
     export type OptionType = OpCommandOptionType;
@@ -41,7 +57,13 @@ export namespace Commands {
     type OptionTypeToParsedType<T extends BaseOption<boolean>> =
         T extends StringOption<boolean> ? string :
         T extends NumberOption<boolean> ? number :
-        any;
+        T extends IntOption<boolean> ? number :
+        T extends BoolOption<boolean> ? boolean :
+        T extends UserOption<boolean> ? PartialMember :
+        T extends ChannelOption<boolean> ? {} :
+        T extends RoleOption<boolean> ? {} :
+        T extends MentionableOption<boolean> ? {} :
+        unknown;
 
     export class ExecutedCommandContext {
         async sendResponse(resp: string) { }

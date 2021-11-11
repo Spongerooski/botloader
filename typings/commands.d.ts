@@ -1,4 +1,4 @@
-import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandOptionType as OpCommandOptionType } from "./commonmodels";
+import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandOptionType as OpCommandOptionType, PartialMember } from "./commonmodels";
 import { ScriptEventMuxer } from "./events";
 export declare namespace Commands {
     export interface CommandDef<T extends OptionsMap> {
@@ -26,8 +26,26 @@ export declare namespace Commands {
     export interface NumberOption<T extends boolean> extends BaseOption<T> {
         kind: "Number";
     }
+    export interface IntOption<T extends boolean> extends BaseOption<T> {
+        kind: "Integer";
+    }
+    export interface BoolOption<T extends boolean> extends BaseOption<T> {
+        kind: "Boolean";
+    }
+    export interface UserOption<T extends boolean> extends BaseOption<T> {
+        kind: "User";
+    }
+    export interface ChannelOption<T extends boolean> extends BaseOption<T> {
+        kind: "Channel";
+    }
+    export interface RoleOption<T extends boolean> extends BaseOption<T> {
+        kind: "Role";
+    }
+    export interface MentionableOption<T extends boolean> extends BaseOption<T> {
+        kind: "Mentionable";
+    }
     export type OptionType = OpCommandOptionType;
-    type OptionTypeToParsedType<T extends BaseOption<boolean>> = T extends StringOption<boolean> ? string : T extends NumberOption<boolean> ? number : any;
+    type OptionTypeToParsedType<T extends BaseOption<boolean>> = T extends StringOption<boolean> ? string : T extends NumberOption<boolean> ? number : T extends IntOption<boolean> ? number : T extends BoolOption<boolean> ? boolean : T extends UserOption<boolean> ? PartialMember : T extends ChannelOption<boolean> ? {} : T extends RoleOption<boolean> ? {} : T extends MentionableOption<boolean> ? {} : unknown;
     export class ExecutedCommandContext {
         sendResponse(resp: string): Promise<void>;
     }
