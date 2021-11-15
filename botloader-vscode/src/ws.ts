@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { setTimeout } from "timers";
-import { User } from "./apiclient";
+import { User } from "botloader-common";
 import { WebSocket, CloseEvent, MessageEvent } from 'ws';
 
 export class BotloaderWS {

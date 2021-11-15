@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ApiClient, UserGuild } from './apiclient';
+import { ApiClient } from 'botloader-common';
 import { GuildScriptWorkspace } from './guildspace';
 import { IndexFile } from './models';
 import { BotloaderWS } from './ws';

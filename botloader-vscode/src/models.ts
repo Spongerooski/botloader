@@ -1,4 +1,4 @@
-import { UserGuild } from "./apiclient";
+import { UserGuild } from "botloader-common";
 
 export interface IndexFile {
     guild: UserGuild,

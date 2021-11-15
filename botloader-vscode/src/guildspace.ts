@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import * as vscode from 'vscode';
-import { ApiClient, ApiResult, isErrorResponse, Script } from './apiclient';
+import { ApiClient, ApiResult, isErrorResponse, Script } from 'botloader-common';
 import { relative } from 'path';
 import { IndexFile } from './models';
 
@@ -325,7 +325,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
     // tries to be as non destructive as possible
     // will only overwrite files unchaged against the old index 
     async syncWorkspace() {
-        console.log("Synchronizing workspace")
+        console.log("Syncing workspace");
         let index = await this.readIndexFile();
 
         // first make a list of files identical to their index variant

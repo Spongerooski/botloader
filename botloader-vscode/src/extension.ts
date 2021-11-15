@@ -11,9 +11,7 @@ import { BotloaderWS, LogItem } from './ws';
 import { BotloaderSourceControl, CHANGED_FILES_SCM_GROUP } from './guildspace';
 import { createFetcher } from './util';
 
-const API_HOST_BASE = "127.0.0.1:7447";
-const API_BASE_URL = "http://" + API_HOST_BASE;
-const WS_BASE_URL = "ws://" + API_HOST_BASE;
+
 // this method is called when your extension is activated 
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
@@ -22,8 +20,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(outputChannel);
 
 	let token = await context.secrets.get("botloader-api-key");
-	let ws = new BotloaderWS(WS_BASE_URL, handleLogMessage, token);
-	let apiClient = new ApiClient(createFetcher(), API_BASE_URL, token);
+
+	const config = vscode.workspace.getConfiguration("botloader");
+	const apiBase: string = config.get("apiHost")!;
+	const apiHttps: boolean = config.get("apiHttpsEnabled")!;
+
+	const httpApiBase = apiHttps ? "https://" + apiBase : "http://" + apiBase;
+	const wsApiBase = apiHttps ? "wss://" + apiBase : "ws://" + apiBase;
+
+	let ws = new BotloaderWS(wsApiBase, handleLogMessage, token);
+	let apiClient = new ApiClient(createFetcher(), httpApiBase, token);
 
 	let manager = new WorkspaceManager(apiClient, ws);
 	context.subscriptions.push(manager);
@@ -60,7 +66,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			title: "API key",
 		});
 
-		let newClient = new ApiClient(createFetcher(), API_BASE_URL, key);
+		let newClient = new ApiClient(createFetcher(), httpApiBase, key);
 		let resp = await newClient.getCurrentUser();
 
 		if (isErrorResponse(resp)) {

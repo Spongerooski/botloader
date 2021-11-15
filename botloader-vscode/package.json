@@ -110,7 +110,22 @@
           "highContrast": "#73C991"
         }
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Botloader",
+      "properties": {
+        "botloader.apiHost": {
+          "type": "string",
+          "default": "api.botloader.io",
+          "description": "The api server hostname, you can point this to a local testing server for development purposes. (api.botloader.io is the official one)."
+        },
+        "botloader.apiHttpsEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Is https enabled on the api? (if you're using anything but localhost then you should use https)"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
