@@ -292,7 +292,7 @@ impl Vm {
             return;
         }
 
-        let rcv = {
+        let eval_res = {
             let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
 
             let parsed_uri =
@@ -314,20 +314,27 @@ impl Vm {
             //
             // this might very well break in the future when we update to a newer version of deno
             // but hopefully it's caught before production.
-            let id = {
+            let res = {
                 let mut pinned = Box::pin(fut);
                 let waker: Waker = Arc::new(NoOpWaker).into();
                 let mut cx = Context::from_waker(&waker);
                 match pinned.poll_unpin(&mut cx) {
                     Poll::Pending => panic!("Future should resolve instantly!"),
-                    Poll::Ready(v) => v.unwrap(),
+                    Poll::Ready(v) => v,
                 }
             };
 
-            rt.mod_evaluate(id)
+            res.map(|id| rt.mod_evaluate(id))
         };
 
-        self.complete_module_eval(rcv).await;
+        match eval_res {
+            Err(e) => {
+                self.log_guild_err(e);
+            }
+            Ok(rcv) => {
+                self.complete_module_eval(rcv).await;
+            }
+        }
 
         self.loaded_scripts.push(script);
     }
