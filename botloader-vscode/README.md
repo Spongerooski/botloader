@@ -13,6 +13,9 @@ Requires nodejs to be installed
 
 ## Release Notes
 
+### 0.0.2
+ - fix typings not being included.
+
 ### 0.0.1
 
  - first publish, we got basic functionality working.
