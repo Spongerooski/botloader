@@ -1,4 +1,4 @@
-use std::{borrow::Cow, convert::Infallible, pin::Pin, task::Poll};
+use std::{borrow::Cow, convert::Infallible, pin::Pin, task::Poll, time::Duration};
 
 use axum::{
     extract::{
@@ -83,6 +83,8 @@ impl<ST: SessionStore + Clone + 'static> WsConn<ST> {
     }
 
     async fn run(&mut self) {
+        let mut ping_ticker = tokio::time::interval(Duration::from_secs(30));
+
         loop {
             // SelectAll returns Ready(None) when empty
             // so if we didn't have this check this thread
@@ -99,11 +101,24 @@ impl<ST: SessionStore + Clone + 'static> WsConn<ST> {
                             return;
                         }
                     },
+                    _ = ping_ticker.tick() => {
+                        if !self.send_ping().await{
+                            return;
+                        }
+                    },
                 }
             } else {
-                let ws = self.socket.recv().await;
-                if !self.handle_ws_rcv(ws).await {
-                    return;
+                tokio::select! {
+                    ws = self.socket.recv() => {
+                        if !self.handle_ws_rcv(ws).await {
+                            return;
+                        }
+                    },
+                    _ = ping_ticker.tick() => {
+                        if !self.send_ping().await{
+                            return;
+                        }
+                    },
                 }
             }
         }
@@ -303,6 +318,16 @@ impl<ST: SessionStore + Clone + 'static> WsConn<ST> {
             Err(WsCloseReason::GuildMissingAccess)
         } else {
             Err(WsCloseReason::UnknownGuild)
+        }
+    }
+
+    async fn send_ping(&mut self) -> bool {
+        match self.send(Message::Ping(vec![69])).await {
+            Ok(_) => true,
+            Err(reason) => {
+                self.close(reason).await;
+                false
+            }
         }
     }
 
