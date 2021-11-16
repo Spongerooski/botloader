@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use deno_core::OpState;
+use twilight_model::id::RoleId;
 use vm::{AnyError, JsValue};
 
 use crate::{
@@ -153,4 +154,40 @@ pub async fn op_delete_messages_bulk(
         .await?;
 
     Ok(())
+}
+
+pub fn op_get_role(
+    state: &mut OpState,
+    role_id: RoleId,
+    _: (),
+) -> Result<crate::commonmodels::role::Role, AnyError> {
+    let rt_ctx = state.borrow::<RuntimeContext>();
+
+    match rt_ctx.bot_state.role(role_id) {
+        Some(c) if c.guild_id() == rt_ctx.guild_id => Ok(c.value().resource().into()),
+        _ => Err(anyhow::anyhow!("role not in state")),
+    }
+}
+
+pub fn op_get_roles(
+    state: &mut OpState,
+    _: (),
+    _: (),
+) -> Result<Vec<crate::commonmodels::role::Role>, AnyError> {
+    let rt_ctx = state.borrow::<RuntimeContext>();
+
+    match rt_ctx.bot_state.guild_roles(rt_ctx.guild_id) {
+        // convert the hashset of role id's into a vec of commonmodel::role::Role's
+        Some(c) => Ok(c
+            .value()
+            .iter()
+            .filter_map(|r| {
+                rt_ctx
+                    .bot_state
+                    .role(*r)
+                    .map(|v| v.value().resource().into())
+            })
+            .collect()),
+        _ => Err(anyhow::anyhow!("guild not in state")),
+    }
 }

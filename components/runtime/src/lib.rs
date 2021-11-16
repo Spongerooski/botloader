@@ -48,8 +48,8 @@ pub fn create_extension(ctx: RuntimeContext) -> Extension {
                 "discord_bulk_delete_messages",
                 op_async(ops::discord::op_delete_messages_bulk),
             ),
-            ("discord_get_role", op_sync(dummy_op)),
-            ("discord_get_roles", op_sync(dummy_op)),
+            ("discord_get_role", op_sync(ops::discord::op_get_role)),
+            ("discord_get_roles", op_sync(ops::discord::op_get_roles)),
             ("discord_create_role", op_sync(dummy_op)),
             ("discord_edit_role", op_sync(dummy_op)),
             ("discord_delete_role", op_sync(dummy_op)),
@@ -75,7 +75,9 @@ pub fn in_mem_source_load_fn(src: &'static str) -> Box<dyn Fn() -> Result<String
 }
 
 pub fn dummy_op(_state: &mut OpState, _args: JsValue, _: ()) -> Result<(), AnyError> {
-    Ok(())
+    Err(anyhow::anyhow!(
+        "unimplemented, this op is not implemented yet"
+    ))
 }
 
 #[derive(Debug, Clone)]

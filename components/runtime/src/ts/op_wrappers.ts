@@ -1,4 +1,4 @@
-import { OpCreateChannelMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk } from "./commonmodels";
+import { OpCreateChannelMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk, Role } from "./commonmodels";
 
 // This file contains op wrappers
 // They are used internally and you should generally not need to use them in your own scripts.
@@ -48,5 +48,18 @@ export namespace OpWrappers {
             "discord_create_followup_message",
             args
         ) as Message;
+    }
+
+    export async function getRole(roleId: string): Promise<Role> {
+        return await Deno.core.opSync(
+            "discord_get_role",
+            roleId
+        ) as Role;
+    }
+
+    export async function getRoles(): Promise<Role[]> {
+        return await Deno.core.opSync(
+            "discord_get_roles",
+        ) as Role[];
     }
 }

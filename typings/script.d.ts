@@ -1,5 +1,5 @@
 import { Commands } from "./commands";
-import { OpCreateMessageFields, OpEditMessageFields, Guild, Message } from "./commonmodels";
+import { OpCreateMessageFields, OpEditMessageFields, Guild, Message, Role } from "./commonmodels";
 import { EventDataType, EventListenerFunction, EventType, ScriptEventMuxer } from "./events";
 export declare class Script {
     scriptId: number;
@@ -19,8 +19,8 @@ export declare class Script {
     editMessage(channelId: string, messageId: string, fields: OpEditMessageFields): Promise<Message>;
     deleteMessage(channelId: string, messageId: string): Promise<void>;
     bulkDeleteMessages(channelId: string, ...messageIds: string[]): Promise<void>;
-    getRole(): void;
-    getRoles(): void;
+    getRole(roleId: string): Promise<Role>;
+    getRoles(): Promise<Role[]>;
     createRole(): void;
     editRole(): void;
     deleteRole(): void;

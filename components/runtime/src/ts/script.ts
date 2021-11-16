@@ -1,5 +1,5 @@
 import { Commands } from "./commands";
-import { OpCreateMessageFields, OpEditMessageFields, Guild, Message } from "./commonmodels";
+import { OpCreateMessageFields, OpEditMessageFields, Guild, Message, Role } from "./commonmodels";
 import { EventDataType, EventListenerFunction, EventType, InternalEventSystem, ScriptEventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
 
@@ -88,8 +88,13 @@ export class Script {
     }
 
     // Role functions
-    getRole() { }
-    getRoles() { }
+    getRole(roleId: string): Promise<Role> {
+        return OpWrappers.getRole(roleId);
+    }
+    getRoles(): Promise<Role[]> {
+        return OpWrappers.getRoles();
+    }
+
     createRole() { }
     editRole() { }
     deleteRole() { }

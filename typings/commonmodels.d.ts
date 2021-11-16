@@ -297,6 +297,24 @@ export interface AllowedMentions {
     repliedUser: boolean;
 }
 export declare type ParseTypes = "Everyone" | "Roles" | "Users";
+export interface Role {
+    color: number;
+    hoist: boolean;
+    icon?: string;
+    id: string;
+    managed: boolean;
+    mentionable: boolean;
+    name: string;
+    permissions: string;
+    position: number;
+    tags?: RoleTags;
+    unicodeEmoji?: string;
+}
+export interface RoleTags {
+    botId?: string;
+    integrationId?: string;
+    premiumSubscriber: boolean;
+}
 export interface ScriptMeta {
     description: string;
     scriptId: number;
