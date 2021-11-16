@@ -1,9 +1,8 @@
-import { Message, ScriptMeta } from "./commonmodels";
+import { CreateChannelMessage, CreateFollowUpMessage, EditChannelMessage, Guild, Message, ScriptMeta } from "./commonmodels";
 export declare namespace OpWrappers {
-    interface CreateMessageData {
-        content: string;
-        channelId: string;
-    }
-    function createMessage(args: CreateMessageData): Promise<Message>;
+    function createChannelMessage(args: CreateChannelMessage): Promise<Message>;
+    function editChannelMessage(args: EditChannelMessage): Promise<Message>;
+    function createInteractionFollowup(args: CreateFollowUpMessage): Promise<Message>;
     function scriptStarted(meta: ScriptMeta): void;
+    function getGuild(): Guild;
 }

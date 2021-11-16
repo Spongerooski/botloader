@@ -1,4 +1,5 @@
 import { Commands } from "./commands";
+import { CreateChannelMessage, EditChannelMessage } from "./commonmodels";
 import { EventDataType, EventListenerFunction, EventType, ScriptEventMuxer } from "./events";
 export declare class Script {
     scriptId: number;
@@ -10,4 +11,26 @@ export declare class Script {
     on<T extends EventType>(eventType: T, f: EventListenerFunction<EventDataType<T>>): void;
     registerCommand<T extends Commands.OptionsMap>(cmd: Commands.CommandDef<T>): void;
     run(): void;
+    getGuild(): import("./commonmodels").Guild;
+    editGuild(): void;
+    getMessage(): void;
+    getMessages(): void;
+    createMessage(args: CreateChannelMessage): Promise<import("./commonmodels").Message>;
+    editMessage(args: EditChannelMessage): Promise<import("./commonmodels").Message>;
+    deleteMessage(): void;
+    bulkDeleteMessages(): void;
+    getRole(): void;
+    getRoles(): void;
+    createRole(): void;
+    editRole(): void;
+    deleteRole(): void;
+    getChannel(): void;
+    getChannels(): void;
+    createChannel(): void;
+    editChannel(): void;
+    deleteChannel(): void;
+    getInvite(): void;
+    getInvites(): void;
+    createInvite(): void;
+    deleteInvite(): void;
 }

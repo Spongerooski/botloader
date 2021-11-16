@@ -1,4 +1,4 @@
-import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandOptionType as OpCommandOptionType, PartialMember } from "./commonmodels";
+import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandInteraction, CommandOptionType as OpCommandOptionType, PartialMember } from "./commonmodels";
 import { ScriptEventMuxer } from "./events";
 export declare namespace Commands {
     export interface CommandDef<T extends OptionsMap> {
@@ -46,9 +46,6 @@ export declare namespace Commands {
     }
     export type OptionType = OpCommandOptionType;
     type OptionTypeToParsedType<T extends BaseOption<boolean>> = T extends StringOption<boolean> ? string : T extends NumberOption<boolean> ? number : T extends IntOption<boolean> ? number : T extends BoolOption<boolean> ? boolean : T extends UserOption<boolean> ? PartialMember : T extends ChannelOption<boolean> ? {} : T extends RoleOption<boolean> ? {} : T extends MentionableOption<boolean> ? {} : unknown;
-    export class ExecutedCommandContext {
-        sendResponse(resp: string): Promise<void>;
-    }
     export interface Group {
         commands: CommandDef<any>[];
     }
@@ -64,7 +61,13 @@ export declare namespace Commands {
     export class System {
         commands: CommandDef<OptionsMap>[];
         addEventListeners(muxer: ScriptEventMuxer): void;
+        handleInteractionCreate(interaction: CommandInteraction): void;
         genOpBinding(): [OpCommand[], OpCommandGroup[]];
+    }
+    export class ExecutedCommandContext {
+        interaction: CommandInteraction;
+        constructor(interaction: CommandInteraction);
+        sendResponse(resp: string): Promise<void>;
     }
     export {};
 }
