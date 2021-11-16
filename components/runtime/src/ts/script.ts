@@ -1,5 +1,5 @@
 import { Commands } from "./commands";
-import { CreateChannelMessage, EditChannelMessage } from "./commonmodels";
+import { CreateChannelMessage, CreateMessageFields, EditChannelMessage, EditMessageFields, Guild, Message } from "./commonmodels";
 import { EventDataType, EventListenerFunction, EventType, InternalEventSystem, ScriptEventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
 
@@ -50,7 +50,7 @@ export class Script {
     }
 
     // Guild functions
-    getGuild() {
+    getGuild(): Guild {
         return OpWrappers.getGuild()
     }
     editGuild() { }
@@ -59,11 +59,18 @@ export class Script {
     getMessage() { }
     getMessages() { }
 
-    createMessage(args: CreateChannelMessage) {
-        return OpWrappers.createChannelMessage(args);
+    createMessage(channelId: string, fields: CreateMessageFields): Promise<Message> {
+        return OpWrappers.createChannelMessage({
+            channelId,
+            fields,
+        });
     }
-    editMessage(args: EditChannelMessage) {
-        return OpWrappers.editChannelMessage(args);
+    editMessage(channelId: string, messageId: string, fields: EditMessageFields): Promise<Message> {
+        return OpWrappers.editChannelMessage({
+            channelId,
+            messageId,
+            fields,
+        });
     }
     deleteMessage() { }
     bulkDeleteMessages() { }
