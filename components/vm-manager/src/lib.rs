@@ -12,7 +12,7 @@ use tokio::sync::{
 use tracing::info;
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Event;
-use twilight_model::id::{ApplicationId, GuildId};
+use twilight_model::id::GuildId;
 use vm::vm::{CreateRt, GuildVmEvent, ScriptLoad, Vm, VmCommand, VmContext, VmEvent, VmRole};
 use vmthread::{VmThreadCommand, VmThreadFuture, VmThreadHandle};
 
