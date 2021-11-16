@@ -40,8 +40,14 @@ pub fn create_extension(ctx: RuntimeContext) -> Extension {
                 "discord_edit_message",
                 op_async(ops::discord::op_edit_channel_message),
             ),
-            ("discord_delete_message", op_sync(dummy_op)),
-            ("discord_bulk_delete_messages", op_sync(dummy_op)),
+            (
+                "discord_delete_message",
+                op_async(ops::discord::op_delete_message),
+            ),
+            (
+                "discord_bulk_delete_messages",
+                op_async(ops::discord::op_delete_messages_bulk),
+            ),
             ("discord_get_role", op_sync(dummy_op)),
             ("discord_get_roles", op_sync(dummy_op)),
             ("discord_create_role", op_sync(dummy_op)),

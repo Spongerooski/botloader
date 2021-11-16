@@ -1,5 +1,5 @@
 import { Commands } from "./commands";
-import { CreateChannelMessage, CreateMessageFields, EditChannelMessage, EditMessageFields, Guild, Message } from "./commonmodels";
+import { OpCreateMessageFields, OpEditMessageFields, Guild, Message } from "./commonmodels";
 import { EventDataType, EventListenerFunction, EventType, InternalEventSystem, ScriptEventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
 
@@ -59,21 +59,33 @@ export class Script {
     getMessage() { }
     getMessages() { }
 
-    createMessage(channelId: string, fields: CreateMessageFields): Promise<Message> {
+    createMessage(channelId: string, fields: OpCreateMessageFields): Promise<Message> {
         return OpWrappers.createChannelMessage({
             channelId,
             fields,
         });
     }
-    editMessage(channelId: string, messageId: string, fields: EditMessageFields): Promise<Message> {
+    editMessage(channelId: string, messageId: string, fields: OpEditMessageFields): Promise<Message> {
         return OpWrappers.editChannelMessage({
             channelId,
             messageId,
             fields,
         });
     }
-    deleteMessage() { }
-    bulkDeleteMessages() { }
+
+    deleteMessage(channelId: string, messageId: string) {
+        return OpWrappers.deleteChannelMessage({
+            channelId,
+            messageId,
+        })
+    }
+
+    bulkDeleteMessages(channelId: string, ...messageIds: string[]) {
+        return OpWrappers.deleteChannelMessagesBulk({
+            channelId,
+            messageIds,
+        })
+    }
 
     // Role functions
     getRole() { }

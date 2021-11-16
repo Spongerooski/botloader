@@ -40,43 +40,6 @@ export type CommandInteractionOptionValue = {
     value: number,
 };
 
-export interface CreateChannelMessage {
-    channelId: string,
-    fields: CreateMessageFields,
-}
-
-export interface EditChannelMessage {
-    channelId: string,
-    messageId: string,
-    fields: EditMessageFields,
-}
-
-export interface CreateFollowUpMessage {
-    interactionToken: string,
-    fields: CreateMessageFields,
-}
-
-export interface CreateMessageFields {
-    content: string,
-    embeds?: Embed[],
-    allowedMentions?: AllowedMentions,
-}
-
-export interface EditMessageFields {
-    content?: string,
-    embeds?: Embed[],
-    allowedMentions?: AllowedMentions,
-}
-
-export interface AllowedMentions {
-    parse: ParseTypes[],
-    users: string[],
-    roles: string[],
-    repliedUser: boolean,
-}
-
-export type ParseTypes = "Everyone" | "Roles" | "Users";
-
 export interface Embed {
     author?: EmbedAuthor,
     color?: number,
@@ -331,6 +294,53 @@ export interface MessageUpdate {
     timestamp?: number,
     tts?: boolean,
 }
+
+export interface OpDeleteMessage {
+    channelId: string,
+    messageId: string,
+}
+
+export interface OpDeleteMessagesBulk {
+    channelId: string,
+    messageIds: string[],
+}
+
+export interface OpCreateChannelMessage {
+    channelId: string,
+    fields: OpCreateMessageFields,
+}
+
+export interface OpEditChannelMessage {
+    channelId: string,
+    messageId: string,
+    fields: OpEditMessageFields,
+}
+
+export interface OpCreateFollowUpMessage {
+    interactionToken: string,
+    fields: OpCreateMessageFields,
+}
+
+export interface OpCreateMessageFields {
+    content: string,
+    embeds?: Embed[],
+    allowedMentions?: AllowedMentions,
+}
+
+export interface OpEditMessageFields {
+    content?: string,
+    embeds?: Embed[],
+    allowedMentions?: AllowedMentions,
+}
+
+export interface AllowedMentions {
+    parse: ParseTypes[],
+    users: string[],
+    roles: string[],
+    repliedUser: boolean,
+}
+
+export type ParseTypes = "Everyone" | "Roles" | "Users";
 
 export interface ScriptMeta {
     description: string,

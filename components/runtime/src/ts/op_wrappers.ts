@@ -1,32 +1,10 @@
-import { CreateChannelMessage, CreateFollowUpMessage, EditChannelMessage, Guild, Message, ScriptMeta } from "./commonmodels";
+import { OpCreateChannelMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk } from "./commonmodels";
 
 // This file contains op wrappers
 // They are used internally and you should generally not need to use them in your own scripts.
 // May be removed from the publid API at some point.
 
 export namespace OpWrappers {
-
-    export async function createChannelMessage(args: CreateChannelMessage): Promise<Message> {
-        return await Deno.core.opAsync(
-            "discord_create_message",
-            args
-        ) as Message;
-    }
-
-    export async function editChannelMessage(args: EditChannelMessage): Promise<Message> {
-        return await Deno.core.opAsync(
-            "discord_edit_message",
-            args
-        ) as Message;
-    }
-
-    export async function createInteractionFollowup(args: CreateFollowUpMessage): Promise<Message> {
-        return await Deno.core.opAsync(
-            "discord_create_followup_message",
-            args
-        ) as Message;
-    }
-
     export function scriptStarted(meta: ScriptMeta) {
         Deno.core.opSync(
             "op_botloader_script_start",
@@ -36,5 +14,39 @@ export namespace OpWrappers {
 
     export function getGuild(): Guild {
         return Deno.core.opSync("discord_get_guild");
+    }
+
+    export async function createChannelMessage(args: OpCreateChannelMessage): Promise<Message> {
+        return await Deno.core.opAsync(
+            "discord_create_message",
+            args
+        ) as Message;
+    }
+
+    export async function editChannelMessage(args: OpEditChannelMessage): Promise<Message> {
+        return await Deno.core.opAsync(
+            "discord_edit_message",
+            args
+        ) as Message;
+    }
+
+    export async function deleteChannelMessage(args: OpDeleteMessage): Promise<void> {
+        await Deno.core.opAsync(
+            "discord_delete_message",
+            args
+        );
+    }
+    export async function deleteChannelMessagesBulk(args: OpDeleteMessagesBulk): Promise<void> {
+        await Deno.core.opAsync(
+            "discord_bulk_delete_messages",
+            args
+        );
+    }
+
+    export async function createInteractionFollowup(args: OpCreateFollowUpMessage): Promise<Message> {
+        return await Deno.core.opAsync(
+            "discord_create_followup_message",
+            args
+        ) as Message;
     }
 }

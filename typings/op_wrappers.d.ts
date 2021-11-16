@@ -1,8 +1,10 @@
-import { CreateChannelMessage, CreateFollowUpMessage, EditChannelMessage, Guild, Message, ScriptMeta } from "./commonmodels";
+import { OpCreateChannelMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk } from "./commonmodels";
 export declare namespace OpWrappers {
-    function createChannelMessage(args: CreateChannelMessage): Promise<Message>;
-    function editChannelMessage(args: EditChannelMessage): Promise<Message>;
-    function createInteractionFollowup(args: CreateFollowUpMessage): Promise<Message>;
     function scriptStarted(meta: ScriptMeta): void;
     function getGuild(): Guild;
+    function createChannelMessage(args: OpCreateChannelMessage): Promise<Message>;
+    function editChannelMessage(args: OpEditChannelMessage): Promise<Message>;
+    function deleteChannelMessage(args: OpDeleteMessage): Promise<void>;
+    function deleteChannelMessagesBulk(args: OpDeleteMessagesBulk): Promise<void>;
+    function createInteractionFollowup(args: OpCreateFollowUpMessage): Promise<Message>;
 }

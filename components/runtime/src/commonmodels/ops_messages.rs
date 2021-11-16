@@ -7,33 +7,47 @@ use twilight_model::{
     id::{ChannelId, MessageId, RoleId, UserId},
 };
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpDeleteMessage {
+    pub(crate) channel_id: ChannelId,
+    pub(crate) message_id: MessageId,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpDeleteMessagesBulk {
+    pub(crate) channel_id: ChannelId,
+    pub(crate) message_ids: Vec<MessageId>,
+}
+
 use crate::commonmodels::embed::Embed;
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateChannelMessage {
+pub struct OpCreateChannelMessage {
     pub(crate) channel_id: ChannelId,
-    pub(crate) fields: CreateMessageFields,
+    pub(crate) fields: OpCreateMessageFields,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct EditChannelMessage {
+pub struct OpEditChannelMessage {
     pub(crate) channel_id: ChannelId,
     pub(crate) message_id: MessageId,
-    pub(crate) fields: EditMessageFields,
+    pub(crate) fields: OpEditMessageFields,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateFollowUpMessage {
+pub struct OpCreateFollowUpMessage {
     pub(crate) interaction_token: String,
-    pub(crate) fields: CreateMessageFields,
+    pub(crate) fields: OpCreateMessageFields,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateMessageFields {
+pub struct OpCreateMessageFields {
     pub(crate) content: String,
     pub(crate) embeds: Option<Vec<Embed>>,
     pub(crate) allowed_mentions: Option<AllowedMentions>,
@@ -41,7 +55,7 @@ pub struct CreateMessageFields {
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct EditMessageFields {
+pub struct OpEditMessageFields {
     pub(crate) content: Option<String>,
     pub(crate) embeds: Option<Vec<Embed>>,
     pub(crate) allowed_mentions: Option<AllowedMentions>,
