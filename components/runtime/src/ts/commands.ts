@@ -211,7 +211,7 @@ export namespace Commands {
         }
 
         async sendResponse(resp: string) {
-            OpWrappers.interactionFollowUp({ token: this.interaction.token, content: resp })
+            OpWrappers.createInteractionFollowup({ interactionToken: this.interaction.token, fields: { content: resp } })
         }
     }
 }

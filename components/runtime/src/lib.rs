@@ -11,7 +11,7 @@ pub mod commonmodels;
 pub mod contrib_manager;
 pub mod dispatchevents;
 pub mod jsmodules;
-mod sendmessage;
+mod ops;
 pub mod validator;
 
 pub use validator::validate_script;
@@ -21,15 +21,41 @@ use crate::commonmodels::script::ScriptMeta;
 pub fn create_extension(ctx: RuntimeContext) -> Extension {
     Extension::builder()
         .ops(vec![
-            (
-                "op_jack_sendmessage",
-                op_async(sendmessage::op_send_message),
-            ),
-            (
-                "op_interaction_followup",
-                op_async(sendmessage::op_send_interaction_response),
-            ),
+            // botloader stuff
             ("op_botloader_script_start", op_sync(op_script_start)),
+            // discord stuff
+            ("discord_get_guild", op_sync(ops::discord::op_get_guild)),
+            ("discord_edit_guild", op_sync(dummy_op)),
+            ("discord_get_message", op_sync(dummy_op)),
+            ("discord_get_messages", op_sync(dummy_op)),
+            (
+                "discord_create_message",
+                op_async(ops::discord::op_create_channel_message),
+            ),
+            (
+                "discord_create_followup_message",
+                op_async(ops::discord::op_create_followup_message),
+            ),
+            (
+                "discord_edit_message",
+                op_async(ops::discord::op_edit_channel_message),
+            ),
+            ("discord_delete_message", op_sync(dummy_op)),
+            ("discord_bulk_delete_messages", op_sync(dummy_op)),
+            ("discord_get_role", op_sync(dummy_op)),
+            ("discord_get_roles", op_sync(dummy_op)),
+            ("discord_create_role", op_sync(dummy_op)),
+            ("discord_edit_role", op_sync(dummy_op)),
+            ("discord_delete_role", op_sync(dummy_op)),
+            ("discord_get_channel", op_sync(dummy_op)),
+            ("discord_get_channels", op_sync(dummy_op)),
+            ("discord_create_channel", op_sync(dummy_op)),
+            ("discord_edit_channel", op_sync(dummy_op)),
+            ("discord_delete_channel", op_sync(dummy_op)),
+            ("discord_get_invite", op_sync(dummy_op)),
+            ("discord_get_invites", op_sync(dummy_op)),
+            ("discord_create_invite", op_sync(dummy_op)),
+            ("discord_delete_invite", op_sync(dummy_op)),
         ])
         .state(move |state| {
             state.put(ctx.clone());

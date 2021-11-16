@@ -1,4 +1,5 @@
 import { Commands } from "./commands";
+import { CreateChannelMessage, EditChannelMessage } from "./commonmodels";
 import { EventDataType, EventListenerFunction, EventType, InternalEventSystem, ScriptEventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
 
@@ -47,4 +48,58 @@ export class Script {
         this.commandSystem.addEventListeners(this.eventMuxer);
         InternalEventSystem.registerEventMuxer(this.eventMuxer);
     }
+
+    // Guild functions
+    getGuild() {
+        return OpWrappers.getGuild()
+    }
+    editGuild() { }
+
+    // Message functions
+    getMessage() { }
+    getMessages() { }
+
+    createMessage(args: CreateChannelMessage) {
+        return OpWrappers.createChannelMessage(args);
+    }
+    editMessage(args: EditChannelMessage) {
+        return OpWrappers.editChannelMessage(args);
+    }
+    deleteMessage() { }
+    bulkDeleteMessages() { }
+
+    // Role functions
+    getRole() { }
+    getRoles() { }
+    createRole() { }
+    editRole() { }
+    deleteRole() { }
+
+    // Channel functions
+    getChannel() { }
+    getChannels() { }
+    createChannel() { }
+    editChannel() { }
+    deleteChannel() { }
+
+    // Invite functions
+    getInvite() { }
+    getInvites() { }
+    createInvite() { }
+    deleteInvite() { }
+
+    // // Emoji functions
+    // getEmoji() { }
+    // getEmojis() { }
+    // createEmoji() { }
+    // editEmoji() { }
+    // deleteEmoji() { }
+
+
+    // // Sticker functions
+    // getSticker() { }
+    // getStickers() { }
+    // createSticker() { }
+    // editSticker() { }
+    // deleteSticker() { }
 }

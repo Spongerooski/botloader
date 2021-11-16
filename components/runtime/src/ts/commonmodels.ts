@@ -40,6 +40,43 @@ export type CommandInteractionOptionValue = {
     value: number,
 };
 
+export interface CreateChannelMessage {
+    channelId: string,
+    fields: CreateMessageFields,
+}
+
+export interface EditChannelMessage {
+    channelId: string,
+    messageId: string,
+    fields: EditMessageFields,
+}
+
+export interface CreateFollowUpMessage {
+    interactionToken: string,
+    fields: CreateMessageFields,
+}
+
+export interface CreateMessageFields {
+    content: string,
+    embeds?: Embed[],
+    allowedMentions?: AllowedMentions,
+}
+
+export interface EditMessageFields {
+    content?: string,
+    embeds?: Embed[],
+    allowedMentions?: AllowedMentions,
+}
+
+export interface AllowedMentions {
+    parse: ParseTypes[],
+    users: string[],
+    roles: string[],
+    repliedUser: boolean,
+}
+
+export type ParseTypes = "Everyone" | "Roles" | "Users";
+
 export interface Embed {
     author?: EmbedAuthor,
     color?: number,
@@ -100,6 +137,52 @@ export interface EmbedVideo {
     url?: string,
     width?: number,
 }
+
+export interface Guild {
+    afkChannelId?: string,
+    afkTimeout: number,
+    applicationId?: string,
+    banner?: string,
+    defaultMessageNotifications: DefaultMessageNotificationLevel,
+    description?: string,
+    discoverySplash?: string,
+    explicitContentFilter: ExplicitContentFilter,
+    features: string[],
+    icon?: string,
+    id: string,
+    joinedAt?: number,
+    large: boolean,
+    maxMembers?: number,
+    maxPresences?: number,
+    memberCount?: number,
+    mfaLevel: MfaLevel,
+    name: string,
+    nsfwLevel: NSFWLevel,
+    ownerId: string,
+    preferredLocale: string,
+    premiumSubscriptionCount?: number,
+    premiumTier: PremiumTier,
+    rulesChannelId?: string,
+    splash?: string,
+    systemChannelId?: string,
+    unavailable: boolean,
+    vanityUrlCode?: string,
+    verificationLevel: VerificationLevel,
+    widgetChannelId?: string,
+    widgetEnabled?: boolean,
+}
+
+export type DefaultMessageNotificationLevel = "All" | "Mentions";
+
+export type ExplicitContentFilter = "None" | "MembersWithoutRole" | "AllMembers";
+
+export type MfaLevel = "None" | "Elevated";
+
+export type NSFWLevel = "Default" | "Explicit" | "Safe" | "AgeRestricted";
+
+export type PremiumTier = "None" | "Tier1" | "Tier2" | "Tier3";
+
+export type VerificationLevel = "None" | "Low" | "Medium" | "High" | "VeryHigh";
 
 export interface Message {
     activity?: MessageActivity,
