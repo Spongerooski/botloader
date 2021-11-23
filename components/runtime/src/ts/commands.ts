@@ -1,4 +1,4 @@
-import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandInteraction, CommandOption as OpCommandOption, CommandOptionType as OpCommandOptionType, PartialMember, User } from "./commonmodels";
+import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandInteraction, CommandOption as OpCommandOption, CommandOptionType as OpCommandOptionType, PartialMember, User } from "./models/index";
 import { console } from "./core_util";
 import { ScriptEventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";

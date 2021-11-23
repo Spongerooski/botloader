@@ -10,7 +10,7 @@ use twilight_model::application::command::{
 };
 use twilight_model::id::GuildId;
 
-use crate::commonmodels::script::{Command, CommandGroup, ScriptMeta};
+use runtime_models::script::{Command, CommandGroup, ScriptMeta};
 
 #[derive(Clone, Debug)]
 pub struct ContribManagerHandle {
@@ -86,7 +86,7 @@ where
             if let Some(qi) = item
                 .items
                 .iter_mut()
-                .find(|v| v.meta.script_id == evt.meta.script_id)
+                .find(|v| v.meta.script_id.0 == evt.meta.script_id.0)
             {
                 *qi = evt
             } else {
@@ -111,7 +111,7 @@ where
             .config_store
             .update_script_contributes(
                 evt.guild_id,
-                evt.meta.script_id,
+                evt.meta.script_id.0,
                 ScriptContributes {
                     commands: twilight_commands,
                 },

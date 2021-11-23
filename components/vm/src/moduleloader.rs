@@ -26,14 +26,35 @@ impl ModuleLoader for ModuleManager {
             specifier = "index";
         }
 
-        if specifier.starts_with("./") {
+        let apply_referrer = if specifier.starts_with("./") {
             specifier = specifier.strip_prefix("./").unwrap();
-        }
+            true
+        } else {
+            false
+        };
 
-        let resolved = Url::parse(format!("file://{}.js", specifier).as_str()).map_err(|e| {
-            anyhow::anyhow!("failed parsing url: {} ({} - {})", e, specifier, referrer)
+        let parsed_referrer = Url::parse(referrer).map_err(|e| {
+            anyhow::anyhow!(
+                "failed parsing referrer url: {} ({} - {})",
+                e,
+                specifier,
+                referrer
+            )
         })?;
-        Ok(resolved)
+
+        if apply_referrer {
+            let resolved = parsed_referrer
+                .join(format!("{}.js", specifier).as_str())
+                .unwrap();
+
+            Ok(resolved)
+        } else {
+            let resolved =
+                Url::parse(format!("file:///{}.js", specifier).as_str()).map_err(|e| {
+                    anyhow::anyhow!("failed parsing url: {} ({} - {})", e, specifier, referrer)
+                })?;
+            Ok(resolved)
+        }
     }
 
     fn load(

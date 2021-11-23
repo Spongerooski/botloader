@@ -1,4 +1,4 @@
-import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandInteraction, CommandOptionType as OpCommandOptionType, PartialMember } from "./commonmodels";
+import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandInteraction, CommandOptionType as OpCommandOptionType, PartialMember } from "./models/index";
 import { ScriptEventMuxer } from "./events";
 export declare namespace Commands {
     export interface CommandDef<T extends OptionsMap> {

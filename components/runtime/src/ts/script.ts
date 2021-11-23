@@ -1,5 +1,5 @@
 import { Commands } from "./commands";
-import { OpCreateMessageFields, OpEditMessageFields, Guild, Message, Role } from "./commonmodels";
+import { OpCreateMessageFields, OpEditMessageFields, Guild, Message, Role } from "./models/index";
 import { EventDataType, EventListenerFunction, EventType, InternalEventSystem, ScriptEventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
 

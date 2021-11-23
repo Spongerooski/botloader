@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use contrib_manager::LoadedScript;
 use deno_core::{op_async, op_sync, Extension, OpState};
+use runtime_models::script::ScriptMeta;
 use tracing::info;
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_model::id::GuildId;
 use vm::{vm::VmRole, AnyError, JsValue};
 
-pub mod commonmodels;
 pub mod contrib_manager;
 pub mod dispatchevents;
 pub mod jsmodules;
@@ -15,8 +15,6 @@ mod ops;
 pub mod validator;
 
 pub use validator::validate_script;
-
-use crate::commonmodels::script::ScriptMeta;
 
 pub fn create_extension(ctx: RuntimeContext) -> Extension {
     Extension::builder()
@@ -94,7 +92,7 @@ pub fn op_script_start(state: &mut OpState, args: JsValue, _: ()) -> Result<(), 
 
     info!(
         "running script! {}, commands: {}",
-        des.script_id,
+        des.script_id.0,
         des.commands.len() + des.command_groups.len()
     );
 

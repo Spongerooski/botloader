@@ -4,19 +4,17 @@ use deno_core::OpState;
 use twilight_model::id::RoleId;
 use vm::{AnyError, JsValue};
 
-use crate::{
-    commonmodels::{
-        guild::Guild,
-        message::Message,
-        ops_messages::{
-            OpCreateChannelMessage, OpCreateFollowUpMessage, OpDeleteMessage, OpDeleteMessagesBulk,
-            OpEditChannelMessage,
-        },
+use crate::RuntimeContext;
+use runtime_models::{
+    guild::Guild,
+    message::Message,
+    ops::messages::{
+        OpCreateChannelMessage, OpCreateFollowUpMessage, OpDeleteMessage, OpDeleteMessagesBulk,
+        OpEditChannelMessage,
     },
-    RuntimeContext,
 };
 
-use super::check_guild_channel;
+use super::{check_guild_channel, parse_str_snowflake_id};
 
 pub fn op_get_guild(state: &mut OpState, _args: JsValue, _: ()) -> Result<Guild, AnyError> {
     let rt_ctx = state.borrow::<RuntimeContext>();
@@ -37,7 +35,7 @@ pub async fn op_create_channel_message(
         state.borrow::<RuntimeContext>().clone()
     };
 
-    check_guild_channel(&rt_ctx, args.channel_id)?;
+    let channel_id = check_guild_channel(&rt_ctx, &args.channel_id)?;
 
     let maybe_embeds = args
         .fields
@@ -49,7 +47,7 @@ pub async fn op_create_channel_message(
 
     let mut mc = rt_ctx
         .dapi
-        .create_message(args.channel_id)
+        .create_message(channel_id)
         .content(&args.fields.content)?
         .embeds(&maybe_embeds)?;
 
@@ -70,7 +68,8 @@ pub async fn op_edit_channel_message(
         state.borrow::<RuntimeContext>().clone()
     };
 
-    check_guild_channel(&rt_ctx, args.channel_id)?;
+    let channel_id = check_guild_channel(&rt_ctx, &args.channel_id)?;
+    let message_id = parse_str_snowflake_id(&args.message_id)?;
 
     let maybe_embeds = args
         .fields
@@ -79,7 +78,7 @@ pub async fn op_edit_channel_message(
 
     let mut mc = rt_ctx
         .dapi
-        .update_message(args.channel_id, args.message_id)
+        .update_message(channel_id, message_id.0.into())
         .content(args.fields.content.as_deref())?;
 
     if let Some(embeds) = &maybe_embeds {
@@ -126,10 +125,12 @@ pub async fn op_delete_message(
         state.borrow::<RuntimeContext>().clone()
     };
 
-    check_guild_channel(&rt_ctx, args.channel_id)?;
+    let channel_id = check_guild_channel(&rt_ctx, &args.channel_id)?;
+    let message_id = parse_str_snowflake_id(&args.message_id)?;
+
     rt_ctx
         .dapi
-        .delete_message(args.channel_id, args.message_id)
+        .delete_message(channel_id, message_id.0.into())
         .exec()
         .await?;
 
@@ -146,10 +147,17 @@ pub async fn op_delete_messages_bulk(
         state.borrow::<RuntimeContext>().clone()
     };
 
-    check_guild_channel(&rt_ctx, args.channel_id)?;
+    let channel_id = check_guild_channel(&rt_ctx, &args.channel_id)?;
+    let message_ids = args
+        .message_ids
+        .iter()
+        .filter_map(|v| parse_str_snowflake_id(v).ok())
+        .map(|v| v.0.into())
+        .collect::<Vec<_>>();
+
     rt_ctx
         .dapi
-        .delete_messages(args.channel_id, &args.message_ids)
+        .delete_messages(channel_id, &message_ids)
         .exec()
         .await?;
 
@@ -160,7 +168,7 @@ pub fn op_get_role(
     state: &mut OpState,
     role_id: RoleId,
     _: (),
-) -> Result<crate::commonmodels::role::Role, AnyError> {
+) -> Result<runtime_models::role::Role, AnyError> {
     let rt_ctx = state.borrow::<RuntimeContext>();
 
     match rt_ctx.bot_state.role(role_id) {
@@ -173,7 +181,7 @@ pub fn op_get_roles(
     state: &mut OpState,
     _: (),
     _: (),
-) -> Result<Vec<crate::commonmodels::role::Role>, AnyError> {
+) -> Result<Vec<runtime_models::role::Role>, AnyError> {
     let rt_ctx = state.borrow::<RuntimeContext>();
 
     match rt_ctx.bot_state.guild_roles(rt_ctx.guild_id) {

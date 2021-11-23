@@ -1,9 +1,0 @@
-pub mod command_interaction;
-pub mod embed;
-pub mod guild;
-pub mod message;
-pub mod messageupdate;
-pub mod ops_messages;
-pub mod role;
-pub mod script;
-pub mod user;

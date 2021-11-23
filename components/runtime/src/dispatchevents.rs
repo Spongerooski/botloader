@@ -1,4 +1,3 @@
-use crate::commonmodels;
 use twilight_model::{gateway::event::Event, id::GuildId};
 
 pub fn discord_event_to_dispatch(evt: Event) -> Option<DiscordDispatchEvent> {
@@ -6,18 +5,23 @@ pub fn discord_event_to_dispatch(evt: Event) -> Option<DiscordDispatchEvent> {
         Event::MessageCreate(m) if m.guild_id.is_some() => Some(DiscordDispatchEvent {
             name: "MESSAGE_CREATE",
             guild_id: m.guild_id.unwrap(),
-            data: serde_json::to_value(&commonmodels::message::Message::from(m.0)).unwrap(),
+            data: serde_json::to_value(&runtime_models::message::Message::from(m.0)).unwrap(),
         }),
         Event::MessageUpdate(m) if m.guild_id.is_some() => Some(DiscordDispatchEvent {
             name: "MESSAGE_UPDATE",
             guild_id: m.guild_id.unwrap(),
-            data: serde_json::to_value(&commonmodels::messageupdate::MessageUpdate::from(*m))
-                .unwrap(),
+            data: serde_json::to_value(
+                &runtime_models::events::message_update::MessageUpdate::from(*m),
+            )
+            .unwrap(),
         }),
         Event::MessageDelete(m) if m.guild_id.is_some() => Some(DiscordDispatchEvent {
             name: "MESSAGE_DELETE",
             guild_id: m.guild_id.unwrap(),
-            data: serde_json::to_value(&commonmodels::message::MessageDelete::from(m)).unwrap(),
+            data: serde_json::to_value(
+                &runtime_models::events::message_delete::MessageDelete::from(m),
+            )
+            .unwrap(),
         }),
         Event::InteractionCreate(interaction) => match interaction.0 {
             twilight_model::application::interaction::Interaction::Ping(_) => None,
@@ -28,7 +32,9 @@ pub fn discord_event_to_dispatch(evt: Event) -> Option<DiscordDispatchEvent> {
                     name: "BOTLOADER_COMMAND_INTERACTION_CREATE",
                     guild_id: guild_id.unwrap(),
                     data: serde_json::to_value(
-                        &commonmodels::command_interaction::CommandInteraction::from(*cmd),
+                        &runtime_models::events::command_interaction::CommandInteraction::from(
+                            *cmd,
+                        ),
                     )
                     .unwrap(),
                 })

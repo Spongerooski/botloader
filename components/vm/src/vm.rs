@@ -296,7 +296,7 @@ impl Vm {
             let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
 
             let parsed_uri =
-                Url::parse(format!("file://guild/{}.js", script.inner.name).as_str()).unwrap();
+                Url::parse(format!("file:///guild/{}.js", script.inner.name).as_str()).unwrap();
 
             let fut = rt.load_module(
                 &parsed_uri,

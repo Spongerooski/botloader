@@ -1,5 +1,5 @@
 import { Commands } from "./commands";
-import { OpCreateMessageFields, OpEditMessageFields, Guild, Message, Role } from "./commonmodels";
+import { OpCreateMessageFields, OpEditMessageFields, Guild, Message, Role } from "./models/index";
 import { EventDataType, EventListenerFunction, EventType, ScriptEventMuxer } from "./events";
 export declare class Script {
     scriptId: number;

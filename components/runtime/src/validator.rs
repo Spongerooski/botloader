@@ -11,7 +11,7 @@ use vm::{
     prepend_script_source_header, AnyError, JsValue,
 };
 
-use crate::commonmodels::script::ScriptMeta;
+use runtime_models::script::ScriptMeta;
 
 /// Validates a script, making sure it parses correctly and runs the ScriptMeta function to retrieve essential information about this script
 pub async fn validate_script(source: String) -> Result<ScriptMeta, AnyError> {
@@ -71,7 +71,7 @@ async fn validator_thread(
 
     let module_id = rt
         .load_module(
-            &Url::parse("file://user/validating").unwrap(),
+            &Url::parse("file:///user/validating").unwrap(),
             Some(prepend_script_source_header(&source, None)),
         )
         .await?;

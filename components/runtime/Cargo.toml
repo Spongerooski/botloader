@@ -27,10 +27,13 @@ anyhow = "1.0"
 url = "2.2"
 serde_json = "1.0"
 async-trait = "0.1"
+ts-rs = "6.0"
+lazy_static = "1.4"
 
 stores = {path="../../components/stores"}
 tscompiler = {path="../../components/tscompiler"}
 scriptscheduler = {path="../../components/scriptscheduler"}
+runtime-models = {path="../../components/runtime-models"}
 
 [build-dependencies]
 tscompiler = {path="../../components/tscompiler"}

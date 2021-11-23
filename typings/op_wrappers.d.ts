@@ -1,4 +1,4 @@
-import { OpCreateChannelMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk, Role } from "./commonmodels";
+import { OpCreateChannelMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk, Role } from "./models/index";
 export declare namespace OpWrappers {
     function scriptStarted(meta: ScriptMeta): void;
     function getGuild(): Guild;

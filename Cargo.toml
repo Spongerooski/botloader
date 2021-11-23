@@ -8,7 +8,7 @@ members = [
     "components/botrpc",
     "components/vm-manager",
     "components/guild-logger",
-    "cmd/rs2ts-cli",
+    "components/runtime-models",
     "cmd/bot",
     "cmd/webapi",
 ]

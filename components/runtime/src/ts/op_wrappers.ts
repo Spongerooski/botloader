@@ -1,4 +1,4 @@
-import { OpCreateChannelMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk, Role } from "./commonmodels";
+import { OpCreateChannelMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk, Role } from "./models/index";
 
 // This file contains op wrappers
 // They are used internally and you should generally not need to use them in your own scripts.
