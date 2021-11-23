@@ -1,3 +1,7 @@
+# This script goes over already generated ts types (using cargo t)
+# and creates a index.ts file for each folder with all of the ts files
+# in that folder exported from it
+
 #!/bin/bash
 set -e
 
