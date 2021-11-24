@@ -42,7 +42,9 @@ impl From<twilight_model::channel::Message> for Message {
             author: v.author.into(),
             channel_id: v.channel_id.to_string(),
             content: v.content,
-            edited_timestamp: v.edited_timestamp.map(|ts| NotBigU64(ts.as_secs())),
+            edited_timestamp: v
+                .edited_timestamp
+                .map(|ts| NotBigU64(ts.as_micros() / 1000)),
             embeds: v.embeds.into_iter().map(From::from).collect(),
             flags: v.flags.map(|f| NotBigU64(f.bits())),
             guild_id: v.guild_id.as_ref().map(ToString::to_string),
@@ -57,7 +59,7 @@ impl From<twilight_model::channel::Message> for Message {
             reactions: v.reactions.into_iter().map(From::from).collect(),
             reference: v.reference.map(From::from),
             referenced_message: v.referenced_message.map(|e| Box::new((*e).into())),
-            timestamp: NotBigU64(v.timestamp.as_secs()),
+            timestamp: NotBigU64(v.timestamp.as_micros() / 1000),
             tts: v.tts,
             webhook_id: v.webhook_id.as_ref().map(ToString::to_string),
         }
