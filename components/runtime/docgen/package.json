@@ -7,8 +7,10 @@
     "build": "node src/index.js"
   },
   "author": "",
+  "type": "module",
   "license": "ISC",
   "devDependencies": {
-    "typedoc": "^0.22.9"
+    "typedoc": "^0.22.9",
+    "typescript": "^4.4.4"
   }
 }

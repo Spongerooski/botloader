@@ -1,11 +1,11 @@
-const TypeDoc = require("typedoc");
+import { Application, TSConfigReader, TypeDocReader } from "typedoc";
 
 async function main() {
-    const app = new TypeDoc.Application();
+    const app = new Application();
 
     // If you want TypeDoc to load tsconfig.json / typedoc.json files
-    app.options.addReader(new TypeDoc.TSConfigReader());
-    app.options.addReader(new TypeDoc.TypeDocReader());
+    app.options.addReader(new TSConfigReader());
+    app.options.addReader(new TypeDocReader());
 
     app.bootstrap({
         // typedoc options here
@@ -23,8 +23,6 @@ async function main() {
 
         // Rendered docs
         await app.generateDocs(project, outputDir);
-        // Alternatively generate JSON output
-        await app.generateJson(project, outputDir + "/documentation.json");
     }
 }
 
