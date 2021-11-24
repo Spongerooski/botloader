@@ -8,18 +8,56 @@ use crate::util::NotBigU64;
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct Embed {
+    #[serde(default)]
+    #[ts(optional)]
     pub author: Option<EmbedAuthor>,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub color: Option<u32>,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub description: Option<String>,
-    pub fields: Vec<EmbedField>,
+
+    #[serde(default)]
+    #[ts(optional)]
+    pub fields: Option<Vec<EmbedField>>,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub footer: Option<EmbedFooter>,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub image: Option<EmbedImage>,
-    pub kind: String,
+
+    #[serde(default)]
+    #[ts(optional)]
+    pub kind: Option<String>,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub provider: Option<EmbedProvider>,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub thumbnail: Option<EmbedThumbnail>,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub timestamp: Option<NotBigU64>,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub title: Option<String>,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub url: Option<String>,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub video: Option<EmbedVideo>,
 }
 impl From<Embed> for twilight_model::channel::embed::Embed {
@@ -28,10 +66,15 @@ impl From<Embed> for twilight_model::channel::embed::Embed {
             author: v.author.map(From::from),
             color: v.color,
             description: v.description,
-            fields: v.fields.into_iter().map(From::from).collect(),
+            fields: v
+                .fields
+                .unwrap_or_default()
+                .into_iter()
+                .map(From::from)
+                .collect(),
             footer: v.footer.map(From::from),
             image: v.image.map(From::from),
-            kind: v.kind,
+            kind: v.kind.unwrap_or_else(|| "rich".to_string()),
             provider: v.provider.map(From::from),
             thumbnail: v.thumbnail.map(From::from),
             timestamp: v
@@ -51,10 +94,18 @@ impl From<twilight_model::channel::embed::Embed> for Embed {
             author: v.author.map(From::from),
             color: v.color,
             description: v.description,
-            fields: v.fields.into_iter().map(From::from).collect(),
+            fields: if v.fields.is_empty() {
+                None
+            } else {
+                Some(v.fields.into_iter().map(From::from).collect())
+            },
             footer: v.footer.map(From::from),
             image: v.image.map(From::from),
-            kind: v.kind,
+            kind: if v.kind.is_empty() {
+                None
+            } else {
+                Some(v.kind)
+            },
             provider: v.provider.map(From::from),
             thumbnail: v.thumbnail.map(From::from),
             timestamp: v.timestamp.map(|ts| NotBigU64(ts.as_micros() / 1000)),
@@ -71,6 +122,8 @@ impl From<twilight_model::channel::embed::Embed> for Embed {
 pub struct EmbedAuthor {
     pub icon_url: Option<String>,
     pub name: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
     pub proxy_icon_url: Option<String>,
     pub url: Option<String>,
 }
@@ -130,6 +183,8 @@ impl From<twilight_model::channel::embed::EmbedField> for EmbedField {
 #[serde(rename_all = "camelCase")]
 pub struct EmbedFooter {
     pub icon_url: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
     pub proxy_icon_url: Option<String>,
     pub text: String,
 }
@@ -158,9 +213,16 @@ impl From<twilight_model::channel::embed::EmbedFooter> for EmbedFooter {
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedImage {
-    pub height: Option<i32>,
-    pub proxy_url: Option<String>,
     pub url: Option<String>,
+
+    #[serde(default)]
+    #[ts(optional)]
+    pub height: Option<i32>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub proxy_url: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
     pub width: Option<i32>,
 }
 impl From<EmbedImage> for twilight_model::channel::embed::EmbedImage {
@@ -215,9 +277,16 @@ impl From<twilight_model::channel::embed::EmbedProvider> for EmbedProvider {
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedThumbnail {
-    pub height: Option<i32>,
-    pub proxy_url: Option<String>,
     pub url: Option<String>,
+
+    #[serde(default)]
+    #[ts(optional)]
+    pub height: Option<i32>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub proxy_url: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
     pub width: Option<i32>,
 }
 
@@ -246,9 +315,16 @@ impl From<twilight_model::channel::embed::EmbedThumbnail> for EmbedThumbnail {
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedVideo {
-    pub height: Option<i32>,
-    pub proxy_url: Option<String>,
     pub url: Option<String>,
+
+    #[serde(default)]
+    #[ts(optional)]
+    pub height: Option<i32>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub proxy_url: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
     pub width: Option<i32>,
 }
 
