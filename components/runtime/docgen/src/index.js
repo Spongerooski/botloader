@@ -13,6 +13,9 @@ async function main() {
         tsconfig: "../src/ts/tsconfig.json",
         readme: "src/README.md",
         name: "Botloader",
+        excludePrivate: true,
+        excludeProtected: true,
+        excludeInternal: true,
     });
 
     const project = app.convert();
