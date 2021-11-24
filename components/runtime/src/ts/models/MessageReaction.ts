@@ -1,7 +1,7 @@
 import type { ReactionType } from "./ReactionType";
 
 export interface MessageReaction {
-  count: bigint;
+  count: number;
   emoji: ReactionType;
   me: boolean;
 }

@@ -10,7 +10,7 @@ export interface Sticker {
   id: string;
   name: string;
   packId: string | null;
-  sortValue: bigint | null;
+  sortValue: number | null;
   tags: string;
   user: User | null;
   kind: StickerType;

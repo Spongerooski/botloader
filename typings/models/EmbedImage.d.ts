@@ -1,6 +1,6 @@
 export interface EmbedImage {
-    height: bigint | null;
+    height: number | null;
     proxyUrl: string | null;
     url: string | null;
-    width: bigint | null;
+    width: number | null;
 }

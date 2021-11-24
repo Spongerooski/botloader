@@ -8,12 +8,14 @@ use twilight_model::guild::{
     VerificationLevel as TwilightVerificationLevel,
 };
 
+use crate::util::NotBigU64;
+
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct Guild {
     pub(crate) afk_channel_id: Option<String>,
-    pub(crate) afk_timeout: u64,
+    pub(crate) afk_timeout: NotBigU64,
     pub(crate) application_id: Option<String>,
     pub(crate) banner: Option<String>,
     pub(crate) default_message_notifications: DefaultMessageNotificationLevel,
@@ -23,17 +25,17 @@ pub struct Guild {
     pub(crate) features: Vec<String>,
     pub(crate) icon: Option<String>,
     pub(crate) id: String,
-    pub(crate) joined_at: Option<u64>,
+    pub(crate) joined_at: Option<NotBigU64>,
     pub(crate) large: bool,
-    pub(crate) max_members: Option<u64>,
-    pub(crate) max_presences: Option<u64>,
-    pub(crate) member_count: Option<u64>,
+    pub(crate) max_members: Option<NotBigU64>,
+    pub(crate) max_presences: Option<NotBigU64>,
+    pub(crate) member_count: Option<NotBigU64>,
     pub(crate) mfa_level: MfaLevel,
     pub(crate) name: String,
     pub(crate) nsfw_level: NsfwLevel,
     pub(crate) owner_id: String,
     pub(crate) preferred_locale: String,
-    pub(crate) premium_subscription_count: Option<u64>,
+    pub(crate) premium_subscription_count: Option<NotBigU64>,
     pub(crate) premium_tier: PremiumTier,
     pub(crate) rules_channel_id: Option<String>,
     pub(crate) splash: Option<String>,
@@ -51,7 +53,7 @@ impl From<&CachedGuild> for Guild {
     fn from(v: &CachedGuild) -> Self {
         Self {
             afk_channel_id: v.afk_channel_id().as_ref().map(ToString::to_string),
-            afk_timeout: v.afk_timeout(),
+            afk_timeout: NotBigU64(v.afk_timeout()),
             application_id: v.application_id().as_ref().map(ToString::to_string),
             banner: v.banner().map(ToString::to_string),
             default_message_notifications: v.default_message_notifications().into(),
@@ -61,17 +63,17 @@ impl From<&CachedGuild> for Guild {
             features: v.features().map(ToString::to_string).collect(),
             icon: v.icon().map(ToString::to_string),
             id: v.id().to_string(),
-            joined_at: v.joined_at().map(|ts| ts.as_secs()),
+            joined_at: v.joined_at().map(|ts| NotBigU64(ts.as_micros() / 1000)),
             large: v.large(),
-            max_members: v.max_members(),
-            max_presences: v.max_presences(),
-            member_count: v.member_count(),
+            max_members: v.max_members().map(NotBigU64),
+            max_presences: v.max_presences().map(NotBigU64),
+            member_count: v.member_count().map(NotBigU64),
             mfa_level: v.mfa_level().into(),
             name: v.name().to_string(),
             nsfw_level: v.nsfw_level().into(),
             owner_id: v.owner_id().to_string(),
             preferred_locale: v.preferred_locale().to_string(),
-            premium_subscription_count: v.premium_subscription_count(),
+            premium_subscription_count: v.premium_subscription_count().map(NotBigU64),
             premium_tier: v.premium_tier().into(),
             rules_channel_id: v.rules_channel_id().as_ref().map(ToString::to_string),
             splash: v.splash().map(ToString::to_string),

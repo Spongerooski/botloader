@@ -16,9 +16,9 @@ export interface Message {
     author: User;
     channelId: string;
     content: string;
-    editedTimestamp: bigint | null;
+    editedTimestamp: number | null;
     embeds: Array<Embed>;
-    flags: bigint | null;
+    flags: number | null;
     guildId: string | null;
     id: string;
     kind: MessageType;
@@ -31,7 +31,7 @@ export interface Message {
     reactions: Array<MessageReaction>;
     reference: MessageReference | null;
     referencedMessage: Message | null;
-    timestamp: bigint;
+    timestamp: number;
     tts: boolean;
     webhookId: string | null;
 }

@@ -1,6 +1,8 @@
 use serde::Serialize;
 use ts_rs::TS;
 
+use crate::util::NotBigU64;
+
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
@@ -14,7 +16,7 @@ pub struct User {
     pub mfa_enabled: Option<bool>,
     pub username: String,
     pub premium_type: Option<PremiumType>,
-    pub public_flags: Option<u64>,
+    pub public_flags: Option<NotBigU64>,
     pub system: Option<bool>,
     pub verified: Option<bool>,
 }
@@ -31,7 +33,7 @@ impl From<twilight_model::user::User> for User {
             mfa_enabled: v.mfa_enabled,
             username: v.name,
             premium_type: v.premium_type.map(From::from),
-            public_flags: v.public_flags.map(|e| e.bits()),
+            public_flags: v.public_flags.map(|e| NotBigU64(e.bits())),
             system: v.system,
             verified: v.verified,
         }

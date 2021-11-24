@@ -15,7 +15,7 @@ export interface Embed {
     kind: string;
     provider: EmbedProvider | null;
     thumbnail: EmbedThumbnail | null;
-    timestamp: bigint | null;
+    timestamp: number | null;
     title: string | null;
     url: string | null;
     video: EmbedVideo | null;

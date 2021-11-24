@@ -9,7 +9,7 @@ export interface MessageUpdate {
   author: User | null;
   channelId: string;
   content: string | null;
-  editedTimestamp: bigint | null;
+  editedTimestamp: number | null;
   embeds: Array<Embed> | null;
   guildId: string | null;
   id: string;
@@ -18,6 +18,6 @@ export interface MessageUpdate {
   mentionRoles: Array<string> | null;
   mentions: Array<Mention> | null;
   pinned: boolean | null;
-  timestamp: bigint | null;
+  timestamp: number | null;
   tts: boolean | null;
 }

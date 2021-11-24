@@ -6,5 +6,5 @@ export interface Mention {
     id: string;
     member: PartialMember | null;
     username: string;
-    publicFlags: bigint;
+    publicFlags: number;
 }

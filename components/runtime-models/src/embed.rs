@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use twilight_model::datetime::Timestamp;
 
+use crate::util::NotBigU64;
+
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
@@ -15,7 +17,7 @@ pub struct Embed {
     pub kind: String,
     pub provider: Option<EmbedProvider>,
     pub thumbnail: Option<EmbedThumbnail>,
-    pub timestamp: Option<u64>,
+    pub timestamp: Option<NotBigU64>,
     pub title: Option<String>,
     pub url: Option<String>,
     pub video: Option<EmbedVideo>,
@@ -32,7 +34,10 @@ impl From<Embed> for twilight_model::channel::embed::Embed {
             kind: v.kind,
             provider: v.provider.map(From::from),
             thumbnail: v.thumbnail.map(From::from),
-            timestamp: v.timestamp.map(Timestamp::from_secs).flatten(),
+            timestamp: v
+                .timestamp
+                .map(|v| Timestamp::from_micros(v.0 * 1000))
+                .flatten(),
             title: v.title,
             url: v.url,
             video: v.video.map(From::from),
@@ -52,7 +57,7 @@ impl From<twilight_model::channel::embed::Embed> for Embed {
             kind: v.kind,
             provider: v.provider.map(From::from),
             thumbnail: v.thumbnail.map(From::from),
-            timestamp: v.timestamp.map(|ts| ts.as_secs()),
+            timestamp: v.timestamp.map(|ts| NotBigU64(ts.as_micros() / 1000)),
             title: v.title,
             url: v.url,
             video: v.video.map(From::from),
@@ -153,18 +158,18 @@ impl From<twilight_model::channel::embed::EmbedFooter> for EmbedFooter {
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedImage {
-    pub height: Option<u64>,
+    pub height: Option<i32>,
     pub proxy_url: Option<String>,
     pub url: Option<String>,
-    pub width: Option<u64>,
+    pub width: Option<i32>,
 }
 impl From<EmbedImage> for twilight_model::channel::embed::EmbedImage {
     fn from(v: EmbedImage) -> Self {
         Self {
-            height: v.height,
+            height: v.height.map(|v| v as u64),
             proxy_url: v.proxy_url,
             url: v.url,
-            width: v.width,
+            width: v.width.map(|v| v as u64),
         }
     }
 }
@@ -172,10 +177,10 @@ impl From<EmbedImage> for twilight_model::channel::embed::EmbedImage {
 impl From<twilight_model::channel::embed::EmbedImage> for EmbedImage {
     fn from(v: twilight_model::channel::embed::EmbedImage) -> Self {
         Self {
-            height: v.height,
+            height: v.height.map(|v| v as i32),
             proxy_url: v.proxy_url,
             url: v.url,
-            width: v.width,
+            width: v.width.map(|v| v as i32),
         }
     }
 }
@@ -210,29 +215,29 @@ impl From<twilight_model::channel::embed::EmbedProvider> for EmbedProvider {
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedThumbnail {
-    pub height: Option<u64>,
+    pub height: Option<i32>,
     pub proxy_url: Option<String>,
     pub url: Option<String>,
-    pub width: Option<u64>,
+    pub width: Option<i32>,
 }
 
 impl From<EmbedThumbnail> for twilight_model::channel::embed::EmbedThumbnail {
     fn from(v: EmbedThumbnail) -> Self {
         Self {
-            height: v.height,
+            height: v.height.map(|v| v as u64),
             proxy_url: v.proxy_url,
             url: v.url,
-            width: v.width,
+            width: v.width.map(|v| v as u64),
         }
     }
 }
 impl From<twilight_model::channel::embed::EmbedThumbnail> for EmbedThumbnail {
     fn from(v: twilight_model::channel::embed::EmbedThumbnail) -> Self {
         Self {
-            height: v.height,
+            height: v.height.map(|v| v as i32),
             proxy_url: v.proxy_url,
             url: v.url,
-            width: v.width,
+            width: v.width.map(|v| v as i32),
         }
     }
 }
@@ -241,19 +246,19 @@ impl From<twilight_model::channel::embed::EmbedThumbnail> for EmbedThumbnail {
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedVideo {
-    pub height: Option<u64>,
+    pub height: Option<i32>,
     pub proxy_url: Option<String>,
     pub url: Option<String>,
-    pub width: Option<u64>,
+    pub width: Option<i32>,
 }
 
 impl From<twilight_model::channel::embed::EmbedVideo> for EmbedVideo {
     fn from(v: twilight_model::channel::embed::EmbedVideo) -> Self {
         Self {
-            height: v.height,
+            height: v.height.map(|v| v as i32),
             proxy_url: v.proxy_url,
             url: v.url,
-            width: v.width,
+            width: v.width.map(|v| v as i32),
         }
     }
 }
@@ -261,10 +266,10 @@ impl From<twilight_model::channel::embed::EmbedVideo> for EmbedVideo {
 impl From<EmbedVideo> for twilight_model::channel::embed::EmbedVideo {
     fn from(v: EmbedVideo) -> Self {
         Self {
-            height: v.height,
+            height: v.height.map(|v| v as u64),
             proxy_url: v.proxy_url,
             url: v.url,
-            width: v.width,
+            width: v.width.map(|v| v as u64),
         }
     }
 }

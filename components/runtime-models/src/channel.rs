@@ -132,7 +132,7 @@ fn export_bindings_guildchannel() {
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 pub struct VoiceChannel {
-    pub bitrate: u64,
+    pub bitrate: NotBigU64,
     pub guild_id: String,
     pub id: String,
     #[ts(type = "'GuildVoice'|'GuildStageVoice'")]
@@ -142,14 +142,14 @@ pub struct VoiceChannel {
     pub permission_overwrites: Vec<PermissionOverwrite>,
     pub position: i64,
     pub rtc_region: Option<String>,
-    pub user_limit: Option<u64>,
+    pub user_limit: Option<NotBigU64>,
     pub video_quality_mode: Option<VideoQualityMode>,
 }
 
 impl From<twilight_model::channel::VoiceChannel> for VoiceChannel {
     fn from(v: twilight_model::channel::VoiceChannel) -> Self {
         Self {
-            bitrate: v.bitrate,
+            bitrate: NotBigU64(v.bitrate),
             guild_id: v
                 .guild_id
                 .as_ref()
@@ -166,7 +166,7 @@ impl From<twilight_model::channel::VoiceChannel> for VoiceChannel {
                 .collect(),
             position: v.position,
             rtc_region: v.rtc_region,
-            user_limit: v.user_limit,
+            user_limit: v.user_limit.map(NotBigU64),
             video_quality_mode: v.video_quality_mode.map(Into::into),
         }
     }
@@ -250,7 +250,7 @@ pub struct PublicThread {
     pub name: String,
     pub owner_id: Option<String>,
     pub parent_id: Option<String>,
-    pub rate_limit_per_user: Option<u64>,
+    pub rate_limit_per_user: Option<NotBigU64>,
     pub thread_metadata: ThreadMetadata,
 }
 
@@ -272,7 +272,7 @@ impl From<twilight_model::channel::thread::PublicThread> for PublicThread {
             name: v.name,
             owner_id: v.owner_id.as_ref().map(ToString::to_string),
             parent_id: v.parent_id.as_ref().map(ToString::to_string),
-            rate_limit_per_user: v.rate_limit_per_user,
+            rate_limit_per_user: v.rate_limit_per_user.map(NotBigU64),
             thread_metadata: v.thread_metadata.into(),
         }
     }
@@ -295,7 +295,7 @@ pub struct PrivateThread {
     pub owner_id: Option<String>,
     pub parent_id: Option<String>,
     pub permission_overwrites: Vec<PermissionOverwrite>,
-    pub rate_limit_per_user: Option<u64>,
+    pub rate_limit_per_user: Option<NotBigU64>,
     pub thread_metadata: ThreadMetadata,
 }
 
@@ -317,7 +317,7 @@ impl From<twilight_model::channel::thread::PrivateThread> for PrivateThread {
             name: v.name,
             owner_id: v.owner_id.as_ref().map(ToString::to_string),
             parent_id: v.parent_id.as_ref().map(ToString::to_string),
-            rate_limit_per_user: v.rate_limit_per_user,
+            rate_limit_per_user: v.rate_limit_per_user.map(NotBigU64),
             thread_metadata: v.thread_metadata.into(),
             permission_overwrites: v
                 .permission_overwrites
@@ -344,7 +344,7 @@ pub struct NewsThread {
     pub name: String,
     pub owner_id: Option<String>,
     pub parent_id: Option<String>,
-    pub rate_limit_per_user: Option<u64>,
+    pub rate_limit_per_user: Option<NotBigU64>,
     pub thread_metadata: ThreadMetadata,
 }
 
@@ -366,7 +366,7 @@ impl From<twilight_model::channel::thread::NewsThread> for NewsThread {
             name: v.name,
             owner_id: v.owner_id.as_ref().map(ToString::to_string),
             parent_id: v.parent_id.as_ref().map(ToString::to_string),
-            rate_limit_per_user: v.rate_limit_per_user,
+            rate_limit_per_user: v.rate_limit_per_user.map(NotBigU64),
             thread_metadata: v.thread_metadata.into(),
         }
     }

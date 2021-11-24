@@ -17,6 +17,6 @@ export interface PrivateThread {
   owner_id: string | null;
   parent_id: string | null;
   permission_overwrites: Array<PermissionOverwrite>;
-  rate_limit_per_user: bigint | null;
+  rate_limit_per_user: number | null;
   thread_metadata: ThreadMetadata;
 }

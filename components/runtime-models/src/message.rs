@@ -1,5 +1,5 @@
 use super::user::User;
-use crate::{channel::ChannelType, embed::Embed};
+use crate::{channel::ChannelType, embed::Embed, util::NotBigU64};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -13,9 +13,9 @@ pub struct Message {
     pub author: User,
     pub channel_id: String,
     pub content: String,
-    pub edited_timestamp: Option<u64>,
+    pub edited_timestamp: Option<NotBigU64>,
     pub embeds: Vec<Embed>,
-    pub flags: Option<u64>,
+    pub flags: Option<NotBigU64>,
     pub guild_id: Option<String>,
     pub id: String,
     pub kind: MessageType,
@@ -28,7 +28,7 @@ pub struct Message {
     pub reactions: Vec<MessageReaction>,
     pub reference: Option<MessageReference>,
     pub referenced_message: Option<Box<Message>>,
-    pub timestamp: u64,
+    pub timestamp: NotBigU64,
     pub tts: bool,
     pub webhook_id: Option<String>,
 }
@@ -42,9 +42,9 @@ impl From<twilight_model::channel::Message> for Message {
             author: v.author.into(),
             channel_id: v.channel_id.to_string(),
             content: v.content,
-            edited_timestamp: v.edited_timestamp.map(|ts| ts.as_secs()),
+            edited_timestamp: v.edited_timestamp.map(|ts| NotBigU64(ts.as_secs())),
             embeds: v.embeds.into_iter().map(From::from).collect(),
-            flags: v.flags.map(|f| f.bits()),
+            flags: v.flags.map(|f| NotBigU64(f.bits())),
             guild_id: v.guild_id.as_ref().map(ToString::to_string),
             id: v.id.to_string(),
             kind: v.kind.into(),
@@ -57,7 +57,7 @@ impl From<twilight_model::channel::Message> for Message {
             reactions: v.reactions.into_iter().map(From::from).collect(),
             reference: v.reference.map(From::from),
             referenced_message: v.referenced_message.map(|e| Box::new((*e).into())),
-            timestamp: v.timestamp.as_secs(),
+            timestamp: NotBigU64(v.timestamp.as_secs()),
             tts: v.tts,
             webhook_id: v.webhook_id.as_ref().map(ToString::to_string),
         }
@@ -130,12 +130,12 @@ impl From<twilight_model::channel::message::MessageApplication> for MessageAppli
 pub struct Attachment {
     pub content_type: Option<String>,
     pub filename: String,
-    pub height: Option<u64>,
+    pub height: Option<i32>,
     pub id: String,
     pub proxy_url: String,
-    pub size: u64,
+    pub size: NotBigU64,
     pub url: String,
-    pub width: Option<u64>,
+    pub width: Option<i32>,
 }
 
 impl From<twilight_model::channel::Attachment> for Attachment {
@@ -143,12 +143,12 @@ impl From<twilight_model::channel::Attachment> for Attachment {
         Self {
             content_type: v.content_type,
             filename: v.filename,
-            height: v.height,
+            height: v.height.map(|v| v as i32),
             id: v.id.to_string(),
             proxy_url: v.proxy_url,
-            size: v.size,
+            size: NotBigU64(v.size),
             url: v.url,
-            width: v.width,
+            width: v.width.map(|v| v as i32),
         }
     }
 }
@@ -222,10 +222,10 @@ impl From<twilight_model::channel::message::MessageType> for MessageType {
 #[serde(rename_all = "camelCase")]
 pub struct PartialMember {
     pub deaf: bool,
-    pub joined_at: Option<u64>,
+    pub joined_at: Option<NotBigU64>,
     pub mute: bool,
     pub nick: Option<String>,
-    pub premium_since: Option<u64>,
+    pub premium_since: Option<NotBigU64>,
     pub roles: Vec<String>,
 }
 
@@ -233,10 +233,10 @@ impl From<twilight_model::guild::PartialMember> for PartialMember {
     fn from(v: twilight_model::guild::PartialMember) -> Self {
         Self {
             deaf: v.deaf,
-            joined_at: v.joined_at.map(|ts| ts.as_secs()),
+            joined_at: v.joined_at.map(|ts| NotBigU64(ts.as_micros() / 1000)),
             mute: v.mute,
             nick: v.nick,
-            premium_since: v.premium_since.map(|ts| ts.as_secs()),
+            premium_since: v.premium_since.map(|ts| NotBigU64(ts.as_micros() / 1000)),
             roles: v.roles.iter().map(ToString::to_string).collect(),
         }
     }
@@ -286,7 +286,7 @@ pub struct Mention {
     /// Username of the user.
     pub username: String,
     /// Public flags on the user's account.
-    pub public_flags: u64,
+    pub public_flags: NotBigU64,
 }
 
 impl From<twilight_model::channel::message::Mention> for Mention {
@@ -298,7 +298,7 @@ impl From<twilight_model::channel::message::Mention> for Mention {
             id: v.id.to_string(),
             member: v.member.map(From::from),
             username: v.name,
-            public_flags: v.public_flags.bits(),
+            public_flags: NotBigU64(v.public_flags.bits()),
         }
     }
 }
@@ -307,7 +307,7 @@ impl From<twilight_model::channel::message::Mention> for Mention {
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct MessageReaction {
-    pub count: u64,
+    pub count: NotBigU64,
     pub emoji: ReactionType,
     pub me: bool,
 }
@@ -315,7 +315,7 @@ pub struct MessageReaction {
 impl From<twilight_model::channel::message::MessageReaction> for MessageReaction {
     fn from(v: twilight_model::channel::message::MessageReaction) -> Self {
         Self {
-            count: v.count,
+            count: NotBigU64(v.count),
             emoji: v.emoji.into(),
             me: v.me,
         }
@@ -435,7 +435,7 @@ pub struct Sticker {
     /// Unique ID of the pack the sticker is in.
     pub pack_id: Option<String>,
     /// Sticker's sort order within a pack.
-    pub sort_value: Option<u64>,
+    pub sort_value: Option<NotBigU64>,
     /// CSV list of tags the sticker is assigned to, if any.
     pub tags: String,
     /// ID of the user that uploaded the sticker.
@@ -455,7 +455,7 @@ impl From<twilight_model::channel::message::Sticker> for Sticker {
             tags: v.tags,
             available: v.available,
             guild_id: v.guild_id.as_ref().map(ToString::to_string),
-            sort_value: v.sort_value,
+            sort_value: v.sort_value.map(NotBigU64),
             user: v.user.map(|u| u.into()),
             kind: v.kind.into(),
         }

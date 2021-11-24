@@ -1,8 +1,8 @@
 export interface PartialMember {
   deaf: boolean;
-  joinedAt: bigint | null;
+  joinedAt: number | null;
   mute: boolean;
   nick: string | null;
-  premiumSince: bigint | null;
+  premiumSince: number | null;
   roles: Array<string>;
 }

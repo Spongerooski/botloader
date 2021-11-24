@@ -32,7 +32,7 @@ export * from './Message';
 export * from './MessageType';
 export * from './MfaLevel';
 export * from './NewsThread';
-export * from './NSFWLevel';
+export * from './NsfwLevel';
 export * from './ops/index';
 export * from './PartialMember';
 export * from './PermissionOverwrite';

@@ -13,6 +13,6 @@ export interface NewsThread {
     name: string;
     owner_id: string | null;
     parent_id: string | null;
-    rate_limit_per_user: bigint | null;
+    rate_limit_per_user: number | null;
     thread_metadata: ThreadMetadata;
 }

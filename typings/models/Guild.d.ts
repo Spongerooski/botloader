@@ -1,12 +1,12 @@
 import type { VerificationLevel } from "./VerificationLevel";
-import type { NSFWLevel } from "./NSFWLevel";
 import type { PremiumTier } from "./PremiumTier";
 import type { ExplicitContentFilter } from "./ExplicitContentFilter";
+import type { NsfwLevel } from "./NsfwLevel";
 import type { DefaultMessageNotificationLevel } from "./DefaultMessageNotificationLevel";
 import type { MfaLevel } from "./MfaLevel";
 export interface Guild {
     afkChannelId: string | null;
-    afkTimeout: bigint;
+    afkTimeout: number;
     applicationId: string | null;
     banner: string | null;
     defaultMessageNotifications: DefaultMessageNotificationLevel;
@@ -16,17 +16,17 @@ export interface Guild {
     features: Array<string>;
     icon: string | null;
     id: string;
-    joinedAt: bigint | null;
+    joinedAt: number | null;
     large: boolean;
-    maxMembers: bigint | null;
-    maxPresences: bigint | null;
-    memberCount: bigint | null;
+    maxMembers: number | null;
+    maxPresences: number | null;
+    memberCount: number | null;
     mfaLevel: MfaLevel;
     name: string;
-    nsfwLevel: NSFWLevel;
+    nsfwLevel: NsfwLevel;
     ownerId: string;
     preferredLocale: string;
-    premiumSubscriptionCount: bigint | null;
+    premiumSubscriptionCount: number | null;
     premiumTier: PremiumTier;
     rulesChannelId: string | null;
     splash: string | null;

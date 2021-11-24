@@ -10,7 +10,7 @@ export interface User {
   mfaEnabled: boolean | null;
   username: string;
   premiumType: PremiumType | null;
-  publicFlags: bigint | null;
+  publicFlags: number | null;
   system: boolean | null;
   verified: boolean | null;
 }

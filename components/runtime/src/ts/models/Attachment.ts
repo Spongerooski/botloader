@@ -1,10 +1,10 @@
 export interface Attachment {
   contentType: string | null;
   filename: string;
-  height: bigint | null;
+  height: number | null;
   id: string;
   proxyUrl: string;
-  size: bigint;
+  size: number;
   url: string;
-  width: bigint | null;
+  width: number | null;
 }
