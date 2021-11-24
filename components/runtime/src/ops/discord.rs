@@ -14,7 +14,7 @@ use runtime_models::{
     },
 };
 
-use super::{check_guild_channel, parse_str_snowflake_id};
+use super::{get_guild_channel, parse_str_snowflake_id};
 
 pub fn op_get_guild(state: &mut OpState, _args: JsValue, _: ()) -> Result<Guild, AnyError> {
     let rt_ctx = state.borrow::<RuntimeContext>();
@@ -35,7 +35,7 @@ pub async fn op_create_channel_message(
         state.borrow::<RuntimeContext>().clone()
     };
 
-    let channel_id = check_guild_channel(&rt_ctx, &args.channel_id)?;
+    let channel = get_guild_channel(&rt_ctx, &args.channel_id).await?;
 
     let maybe_embeds = args
         .fields
@@ -47,7 +47,7 @@ pub async fn op_create_channel_message(
 
     let mut mc = rt_ctx
         .dapi
-        .create_message(channel_id)
+        .create_message(channel.id())
         .content(&args.fields.content)?
         .embeds(&maybe_embeds)?;
 
@@ -68,7 +68,7 @@ pub async fn op_edit_channel_message(
         state.borrow::<RuntimeContext>().clone()
     };
 
-    let channel_id = check_guild_channel(&rt_ctx, &args.channel_id)?;
+    let channel = get_guild_channel(&rt_ctx, &args.channel_id).await?;
     let message_id = parse_str_snowflake_id(&args.message_id)?;
 
     let maybe_embeds = args
@@ -78,7 +78,7 @@ pub async fn op_edit_channel_message(
 
     let mut mc = rt_ctx
         .dapi
-        .update_message(channel_id, message_id.0.into())
+        .update_message(channel.id(), message_id.0.into())
         .content(args.fields.content.as_deref())?;
 
     if let Some(embeds) = &maybe_embeds {
@@ -125,12 +125,12 @@ pub async fn op_delete_message(
         state.borrow::<RuntimeContext>().clone()
     };
 
-    let channel_id = check_guild_channel(&rt_ctx, &args.channel_id)?;
+    let channel = get_guild_channel(&rt_ctx, &args.channel_id).await?;
     let message_id = parse_str_snowflake_id(&args.message_id)?;
 
     rt_ctx
         .dapi
-        .delete_message(channel_id, message_id.0.into())
+        .delete_message(channel.id(), message_id.0.into())
         .exec()
         .await?;
 
@@ -147,7 +147,7 @@ pub async fn op_delete_messages_bulk(
         state.borrow::<RuntimeContext>().clone()
     };
 
-    let channel_id = check_guild_channel(&rt_ctx, &args.channel_id)?;
+    let channel = get_guild_channel(&rt_ctx, &args.channel_id).await?;
     let message_ids = args
         .message_ids
         .iter()
@@ -157,7 +157,7 @@ pub async fn op_delete_messages_bulk(
 
     rt_ctx
         .dapi
-        .delete_messages(channel_id, &message_ids)
+        .delete_messages(channel.id(), &message_ids)
         .exec()
         .await?;
 
@@ -194,6 +194,43 @@ pub fn op_get_roles(
                     .bot_state
                     .role(*r)
                     .map(|v| v.value().resource().into())
+            })
+            .collect()),
+        _ => Err(anyhow::anyhow!("guild not in state")),
+    }
+}
+
+pub async fn op_get_channel(
+    state: Rc<RefCell<OpState>>,
+    channel_id_str: String,
+    _: (),
+) -> Result<runtime_models::channel::GuildChannel, AnyError> {
+    let rt_ctx = {
+        let state = state.borrow();
+        state.borrow::<RuntimeContext>().clone()
+    };
+
+    let channel = get_guild_channel(&rt_ctx, &channel_id_str).await?;
+    Ok(channel.into())
+}
+
+pub fn op_get_channels(
+    state: &mut OpState,
+    _: (),
+    _: (),
+) -> Result<Vec<runtime_models::channel::GuildChannel>, AnyError> {
+    let rt_ctx = state.borrow::<RuntimeContext>();
+
+    match rt_ctx.bot_state.guild_channels(rt_ctx.guild_id) {
+        // convert the hashset of role id's into a vec of commonmodel::role::Role's
+        Some(c) => Ok(c
+            .value()
+            .iter()
+            .filter_map(|r| {
+                rt_ctx
+                    .bot_state
+                    .guild_channel(*r)
+                    .map(|v| v.value().resource().clone().into())
             })
             .collect()),
         _ => Err(anyhow::anyhow!("guild not in state")),

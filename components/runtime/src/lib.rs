@@ -51,8 +51,14 @@ pub fn create_extension(ctx: RuntimeContext) -> Extension {
             ("discord_create_role", op_sync(dummy_op)),
             ("discord_edit_role", op_sync(dummy_op)),
             ("discord_delete_role", op_sync(dummy_op)),
-            ("discord_get_channel", op_sync(dummy_op)),
-            ("discord_get_channels", op_sync(dummy_op)),
+            (
+                "discord_get_channel",
+                op_async(ops::discord::op_get_channel),
+            ),
+            (
+                "discord_get_channels",
+                op_sync(ops::discord::op_get_channels),
+            ),
             ("discord_create_channel", op_sync(dummy_op)),
             ("discord_edit_channel", op_sync(dummy_op)),
             ("discord_delete_channel", op_sync(dummy_op)),

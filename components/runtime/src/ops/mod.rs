@@ -1,15 +1,18 @@
-use twilight_model::id::{ChannelId, GenericId};
+use twilight_model::{
+    channel::GuildChannel,
+    id::{ChannelId, GenericId},
+};
 use vm::AnyError;
 
 use crate::RuntimeContext;
 
 pub mod discord;
 
-/// Ensures that a guild channel resides in the rt_ctx guild
-fn check_guild_channel(
+// ensures the provided channel is in the guild, also checking the api as fallback
+async fn get_guild_channel(
     rt_ctx: &RuntimeContext,
     channel_id_str: &str,
-) -> Result<ChannelId, AnyError> {
+) -> Result<GuildChannel, AnyError> {
     let channel_id = if let Some(channel_id) = ChannelId::new(channel_id_str.parse()?) {
         channel_id
     } else {
@@ -21,10 +24,29 @@ fn check_guild_channel(
             if c.value().guild_id() != rt_ctx.guild_id {
                 Err(anyhow::anyhow!("Unknown channel"))
             } else {
-                Ok(channel_id)
+                Ok(c.value().resource().clone())
             }
         }
-        None => Err(anyhow::anyhow!("Unknown channel")),
+        None => {
+            let channel = rt_ctx
+                .dapi
+                .channel(channel_id)
+                .exec()
+                .await?
+                .model()
+                .await?;
+
+            let gc = match channel {
+                twilight_model::channel::Channel::Guild(gc) => gc,
+                _ => return Err(anyhow::anyhow!("Unknown channel")),
+            };
+
+            if matches!(gc.guild_id(), Some(guild_id) if guild_id == rt_ctx.guild_id) {
+                Ok(gc)
+            } else {
+                Err(anyhow::anyhow!("Unknown channel"))
+            }
+        }
     }
 }
 
