@@ -10,6 +10,9 @@ export type EventDataType<T extends EventType> =
     T extends "MESSAGE_DELETE" ? MessageDelete
     : never;
 
+/**
+ * @internal
+ */
 export class ScriptEventMuxer {
 
     listeners: EventListener[] = [];
@@ -28,6 +31,9 @@ interface EventListener {
     event: EventType;
 }
 
+/**
+ * @internal
+ */
 export namespace InternalEventSystem {
 
     const eventMuxers: ScriptEventMuxer[] = [];
