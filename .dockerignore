@@ -5,3 +5,6 @@ botloader-vscode/out
 frontend-common/dist
 frontend-common/node_modules
 .env
+
+components/runtime/docgen/node_modules
+components/runtime/docgen/docs
