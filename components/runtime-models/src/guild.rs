@@ -30,7 +30,7 @@ pub struct Guild {
     pub(crate) member_count: Option<u64>,
     pub(crate) mfa_level: MfaLevel,
     pub(crate) name: String,
-    pub(crate) nsfw_level: NSFWLevel,
+    pub(crate) nsfw_level: NsfwLevel,
     pub(crate) owner_id: String,
     pub(crate) preferred_locale: String,
     pub(crate) premium_subscription_count: Option<u64>,
@@ -137,14 +137,14 @@ impl From<TwilightMfaLevel> for MfaLevel {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub enum NSFWLevel {
+pub enum NsfwLevel {
     Default,
     Explicit,
     Safe,
     AgeRestricted,
 }
 
-impl From<TwilightNSFWLevel> for NSFWLevel {
+impl From<TwilightNSFWLevel> for NsfwLevel {
     fn from(v: TwilightNSFWLevel) -> Self {
         match v {
             TwilightNSFWLevel::Default => Self::Default,
