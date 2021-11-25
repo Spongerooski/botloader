@@ -91,16 +91,4 @@ fn check_description_field(ctx: &mut ValidationContext, field: &str, value: &str
     if value.chars().count() > 100 {
         ctx.push_error(field, "can be max 100 characters long".to_string());
     }
-
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r#"^([\w-]| )+$"#).unwrap();
-    }
-
-    if !RE.is_match(value) {
-        ctx.push_error(field, "can only contain 'word' characters".to_string());
-    }
-
-    if value.to_lowercase() != value {
-        ctx.push_error(field, "has to be lower-case".to_string());
-    }
 }
