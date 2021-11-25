@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -19,5 +21,11 @@ impl ts_rs::TS for NotBigU64 {
     }
     fn transparent() -> bool {
         false
+    }
+}
+
+impl Display for NotBigU64 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
     }
 }

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use contrib_manager::LoadedScript;
 use deno_core::{op_async, op_sync, Extension, OpState};
+use guild_logger::{GuildLogger, LogEntry};
 use runtime_models::script::ScriptMeta;
 use tracing::info;
 use twilight_cache_inmemory::InMemoryCache;
@@ -84,13 +85,14 @@ pub fn dummy_op(_state: &mut OpState, _args: JsValue, _: ()) -> Result<(), AnyEr
     ))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RuntimeContext {
     pub guild_id: GuildId,
     pub bot_state: Arc<InMemoryCache>,
     pub dapi: Arc<twilight_http::Client>,
     pub role: VmRole,
     pub contrib_manager_handle: contrib_manager::ContribManagerHandle,
+    pub guild_logger: GuildLogger,
 }
 
 pub fn op_script_start(state: &mut OpState, args: JsValue, _: ()) -> Result<(), AnyError> {
@@ -103,10 +105,48 @@ pub fn op_script_start(state: &mut OpState, args: JsValue, _: ()) -> Result<(), 
     );
 
     let ctx = state.borrow::<RuntimeContext>();
+
+    if let Err(err) = validate_script_meta(&des) {
+        // error!(%err, "script meta valication failed");
+        ctx.guild_logger.log(LogEntry::script_error(
+            ctx.guild_id,
+            format!("script meta validation failed: {}", err),
+            format!("{}", des.script_id),
+            None,
+        ));
+        return Err(err);
+    }
+
     ctx.contrib_manager_handle.send(LoadedScript {
         guild_id: ctx.guild_id,
         meta: des,
     });
 
     Ok(())
+}
+
+pub(crate) fn validate_script_meta(meta: &ScriptMeta) -> Result<(), anyhow::Error> {
+    let mut outbuf = String::new();
+
+    for command in &meta.commands {
+        if let Err(verrs) = validation::validate(command) {
+            for verr in verrs {
+                outbuf.push_str(format!("\ncommand {}: {}", command.name, verr).as_str());
+            }
+        }
+    }
+
+    for group in &meta.command_groups {
+        if let Err(verrs) = validation::validate(group) {
+            for verr in verrs {
+                outbuf.push_str(format!("\ncommand group {}: {}", group.name, verr).as_str());
+            }
+        }
+    }
+
+    if outbuf.is_empty() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!("failed validating script: {}", outbuf))
+    }
 }

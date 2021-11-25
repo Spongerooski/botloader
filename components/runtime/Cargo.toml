@@ -9,6 +9,11 @@ edition = "2018"
 vmthread = {path="../../components/vmthread"}
 vm = {path="../../components/vm"}
 guild-logger = {path="../../components/guild-logger"}
+stores = {path="../../components/stores"}
+tscompiler = {path="../../components/tscompiler"}
+scriptscheduler = {path="../../components/scriptscheduler"}
+runtime-models = {path="../../components/runtime-models"}
+validation = {path="../../components/validation"}
 
 twilight-cache-inmemory = "0.7"
 twilight-http = {version = "0.7", features = ["tracing"]}
@@ -30,10 +35,6 @@ async-trait = "0.1"
 ts-rs = "6.0"
 lazy_static = "1.4"
 
-stores = {path="../../components/stores"}
-tscompiler = {path="../../components/tscompiler"}
-scriptscheduler = {path="../../components/scriptscheduler"}
-runtime-models = {path="../../components/runtime-models"}
 
 [build-dependencies]
 tscompiler = {path="../../components/tscompiler"}

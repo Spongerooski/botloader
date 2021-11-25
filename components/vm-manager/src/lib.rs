@@ -148,6 +148,7 @@ where
             guild_id,
             role: VmRole::Main,
             contrib_manager_handle: self.inner.contrib_manager_handle.clone(),
+            guild_logger: self.inner.guild_logger.clone(),
         };
 
         info!("spawning guild vm for {}", guild_id);
@@ -230,6 +231,7 @@ where
                 guild_id,
                 role: VmRole::Main,
                 contrib_manager_handle: self.inner.contrib_manager_handle.clone(),
+                guild_logger: self.inner.guild_logger.clone(),
             };
 
             info!("spawning guild vm for {}", guild_id);
