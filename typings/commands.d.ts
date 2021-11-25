@@ -46,9 +46,6 @@ export declare namespace Commands {
     }
     export type OptionType = OpCommandOptionType;
     type OptionTypeToParsedType<T extends BaseOption<boolean>> = T extends StringOption<boolean> ? string : T extends NumberOption<boolean> ? number : T extends IntOption<boolean> ? number : T extends BoolOption<boolean> ? boolean : T extends UserOption<boolean> ? PartialMember : T extends ChannelOption<boolean> ? {} : T extends RoleOption<boolean> ? {} : T extends MentionableOption<boolean> ? {} : unknown;
-    export interface Group {
-        commands: CommandDef<any>[];
-    }
     export class Group {
         name: string;
         description: string;

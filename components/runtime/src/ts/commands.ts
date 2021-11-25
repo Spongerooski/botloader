@@ -67,10 +67,6 @@ export namespace Commands {
         T extends MentionableOption<boolean> ? {} :
         unknown;
 
-    export interface Group {
-        commands: CommandDef<any>[],
-    }
-
     export class Group {
         name: string;
         description: string;
