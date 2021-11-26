@@ -12,6 +12,23 @@ pub struct ScriptMeta {
     pub script_id: NotBigU64,
     pub commands: Vec<Command>,
     pub command_groups: Vec<CommandGroup>,
+    pub interval_timers: Vec<IntervalTimer>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+#[serde(rename_all = "camelCase")]
+pub struct IntervalTimer {
+    pub name: String,
+    pub interval: IntervalType,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, TS)]
+#[ts(export)]
+#[serde(rename_all = "camelCase")]
+pub enum IntervalType {
+    Minutes(NotBigU64),
+    Cron(String),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]

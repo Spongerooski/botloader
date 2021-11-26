@@ -124,6 +124,13 @@ pub struct CreateScript {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScriptContributes {
     pub commands: Vec<twilight_model::application::command::Command>,
+    pub interval_timers: Vec<IntervalTimerContrib>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct IntervalTimerContrib {
+    pub name: String,
+    pub interval: crate::timers::IntervalType,
 }
 
 /// A guilds config, for storing core botloader settings

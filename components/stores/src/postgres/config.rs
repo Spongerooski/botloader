@@ -17,8 +17,8 @@ impl Postgres {
     ) -> StoreResult<DbScript, sqlx::Error> {
         match sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, original_source, name, enabled, contributes_commands FROM \
-             guild_scripts WHERE guild_id = $1 AND name = $2;",
+            "SELECT id, guild_id, original_source, name, enabled, contributes_commands, \
+             contributes_interval_timers FROM guild_scripts WHERE guild_id = $1 AND name = $2;",
             guild_id.get() as i64,
             script_name
         )
@@ -38,8 +38,8 @@ impl Postgres {
     ) -> StoreResult<DbScript, sqlx::Error> {
         Ok(sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, name, original_source, enabled, contributes_commands FROM \
-             guild_scripts WHERE guild_id = $1 AND id = $2;",
+            "SELECT id, guild_id, name, original_source, enabled, contributes_commands, \
+             contributes_interval_timers FROM guild_scripts WHERE guild_id = $1 AND id = $2;",
             guild_id.0.get() as i64,
             id
         )
@@ -103,7 +103,8 @@ impl crate::config::ConfigStore for Postgres {
             "
                 INSERT INTO guild_scripts (guild_id, name, original_source, enabled) 
                 VALUES ($1, $2, $3, $4)
-                RETURNING id, guild_id, name, original_source, enabled, contributes_commands;
+                RETURNING id, guild_id, name, original_source, enabled, contributes_commands, \
+             contributes_interval_timers;
             ",
             guild_id.0.get() as i64,
             script.name,
@@ -132,7 +133,8 @@ impl crate::config::ConfigStore for Postgres {
                     enabled = $4,
                     contributes_commands = $5
                     WHERE guild_id = $1 AND id=$2
-                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands;
+                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands, \
+                 contributes_interval_timers;
                 ",
                 guild_id.0.get() as i64,
                 script.id as i64,
@@ -150,7 +152,8 @@ impl crate::config::ConfigStore for Postgres {
                     original_source = $3,
                     enabled = $4
                     WHERE guild_id = $1 AND id=$2
-                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands;
+                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands, \
+                 contributes_interval_timers;
                 ",
                 guild_id.0.get() as i64,
                 script.id as i64,
@@ -171,18 +174,22 @@ impl crate::config::ConfigStore for Postgres {
         contribs: ScriptContributes,
     ) -> StoreResult<Script, Self::Error> {
         let commands_enc = serde_json::to_value(contribs.commands).unwrap();
+        let intervals_enc = serde_json::to_value(contribs.interval_timers).unwrap();
 
         let res = sqlx::query_as!(
             DbScript,
             "
                     UPDATE guild_scripts SET
-                    contributes_commands = $3
+                    contributes_commands = $3,
+                    contributes_interval_timers = $4
                     WHERE guild_id = $1 AND id=$2
-                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands;
+                    RETURNING id, name, original_source, guild_id, enabled, contributes_commands, \
+             contributes_interval_timers;
                 ",
             guild_id.0.get() as i64,
             script_id as i64,
             commands_enc,
+            intervals_enc,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -213,8 +220,8 @@ impl crate::config::ConfigStore for Postgres {
     async fn list_scripts(&self, guild_id: GuildId) -> StoreResult<Vec<Script>, Self::Error> {
         let res = sqlx::query_as!(
             DbScript,
-            "SELECT id, guild_id, original_source, name, enabled, contributes_commands FROM \
-             guild_scripts WHERE guild_id = $1",
+            "SELECT id, guild_id, original_source, name, enabled, contributes_commands, \
+             contributes_interval_timers FROM guild_scripts WHERE guild_id = $1",
             guild_id.0.get() as i64,
         )
         .fetch_all(&self.pool)
@@ -321,11 +328,14 @@ struct DbScript {
     name: String,
     enabled: bool,
     contributes_commands: serde_json::Value,
+    contributes_interval_timers: serde_json::Value,
 }
 
 impl From<DbScript> for Script {
     fn from(script: DbScript) -> Self {
         let commands_dec = serde_json::from_value(script.contributes_commands).unwrap_or_default();
+        let intervals_dec =
+            serde_json::from_value(script.contributes_interval_timers).unwrap_or_default();
 
         Self {
             id: script.id as u64,
@@ -334,6 +344,7 @@ impl From<DbScript> for Script {
             enabled: script.enabled,
             contributes: ScriptContributes {
                 commands: commands_dec,
+                interval_timers: intervals_dec,
             },
         }
     }

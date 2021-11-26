@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use stores::config::{ConfigStore, CreateScript, UpdateScript};
+use stores::{
+    config::{ConfigStore, CreateScript, UpdateScript},
+    timers::TimerStore,
+};
 use tracing::{error, info, instrument};
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Cluster;
@@ -176,7 +179,7 @@ fn cmd_parse_string_word<T: Iterator<Item = String>>(iter: &mut T) -> Result<Str
 }
 
 #[instrument(skip(ctx, cmd))]
-pub(crate) async fn handle_command<CT: ConfigStore + Send + Sync + 'static>(
+pub(crate) async fn handle_command<CT: ConfigStore + TimerStore + Send + Sync + 'static>(
     ctx: CommandContext<CT>,
     cmd: ParsedCommand,
 ) {
@@ -218,7 +221,7 @@ pub(crate) async fn handle_command<CT: ConfigStore + Send + Sync + 'static>(
 }
 
 #[instrument(skip(ctx, cmd))]
-async fn run_command<CT: ConfigStore + Send + Sync + 'static>(
+async fn run_command<CT: ConfigStore + TimerStore + Send + Sync + 'static>(
     ctx: &CommandContext<CT>,
     cmd: &ParsedCommand,
 ) -> Result<Option<String>, String> {

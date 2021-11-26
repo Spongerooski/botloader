@@ -1,7 +1,8 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use stores::config::{ConfigStore, Script, ScriptContributes};
+use stores::config::{ConfigStore, IntervalTimerContrib, Script, ScriptContributes};
+use stores::timers::TimerStore;
 use tokio::sync::mpsc;
 use tracing::{error, info};
 use twilight_model::application::command::{
@@ -11,6 +12,7 @@ use twilight_model::application::command::{
 use twilight_model::id::GuildId;
 
 use runtime_models::script::{Command, CommandGroup, ScriptMeta};
+use vm::vm::VmCommand;
 
 #[derive(Clone, Debug)]
 pub struct ContribManagerHandle {
@@ -28,12 +30,14 @@ pub struct ContribManager<CT> {
     discord_client: Arc<twilight_http::Client>,
     rcv_loaded_script: mpsc::UnboundedReceiver<LoadedScript>,
     pending_checks: Vec<PendingCheckGroup>,
+    timers_scheduler_tx: mpsc::UnboundedSender<timers::Command>,
 }
 
-pub fn create_manager_pair<CT: ConfigStore>(
+pub fn create_manager_pair<CT: ConfigStore + TimerStore + Clone + Send + Sync + 'static>(
     config_store: CT,
     discord_client: Arc<twilight_http::Client>,
 ) -> (ContribManager<CT>, ContribManagerHandle) {
+    let timer_tx = timers::Scheduler::create(config_store.clone());
     let (send, rcv) = mpsc::unbounded_channel();
 
     (
@@ -42,6 +46,7 @@ pub fn create_manager_pair<CT: ConfigStore>(
             discord_client,
             rcv_loaded_script: rcv,
             pending_checks: Vec::new(),
+            timers_scheduler_tx: timer_tx,
         },
         ContribManagerHandle {
             send_loaded_script: send,
@@ -73,7 +78,41 @@ where
     }
 
     async fn handle_evt(&mut self, evt: LoadedScript) {
-        self.update_db_contribs(&evt).await;
+        let interval_contribs: Vec<IntervalTimerContrib> = evt
+            .meta
+            .interval_timers
+            .iter()
+            .map(|v| stores::config::IntervalTimerContrib {
+                name: v.name.clone(),
+                interval: match &v.interval {
+                    runtime_models::script::IntervalType::Cron(c) => {
+                        stores::timers::IntervalType::Cron(c.clone())
+                    }
+                    runtime_models::script::IntervalType::Minutes(m) => {
+                        stores::timers::IntervalType::Minutes(m.0)
+                    }
+                },
+            })
+            .collect();
+
+        self.update_db_contribs(&evt, interval_contribs.clone())
+            .await;
+
+        let wrapped_timers = interval_contribs
+            .iter()
+            .map(|v| timers::ScriptTimer {
+                script_id: evt.meta.script_id.0,
+                timer: v.clone(),
+            })
+            .collect();
+
+        self.timers_scheduler_tx
+            .send(timers::Command::SyncGuild(timers::SyncGuildCommand {
+                dispath_tx: evt.vm_cmd_dispath_tx.clone(),
+                guild_id: evt.guild_id,
+                timers: wrapped_timers,
+            }))
+            .ok();
 
         if let Some(item) = self
             .pending_checks
@@ -102,7 +141,11 @@ where
         }
     }
 
-    async fn update_db_contribs(&mut self, evt: &LoadedScript) {
+    async fn update_db_contribs(
+        &mut self,
+        evt: &LoadedScript,
+        interval_contribs: Vec<IntervalTimerContrib>,
+    ) {
         let twilight_commands =
             to_twilight_commands(evt.guild_id, &evt.meta.commands, &evt.meta.command_groups);
 
@@ -114,6 +157,7 @@ where
                 evt.meta.script_id.0,
                 ScriptContributes {
                     commands: twilight_commands,
+                    interval_timers: interval_contribs,
                 },
             )
             .await
@@ -410,4 +454,5 @@ fn command_option_name(opt: &TwilightCommandOption) -> String {
 pub struct LoadedScript {
     pub guild_id: GuildId,
     pub meta: ScriptMeta,
+    pub vm_cmd_dispath_tx: mpsc::UnboundedSender<VmCommand>,
 }

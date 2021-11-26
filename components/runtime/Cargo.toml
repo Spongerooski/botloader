@@ -11,9 +11,9 @@ vm = {path="../../components/vm"}
 guild-logger = {path="../../components/guild-logger"}
 stores = {path="../../components/stores"}
 tscompiler = {path="../../components/tscompiler"}
-scriptscheduler = {path="../../components/scriptscheduler"}
 runtime-models = {path="../../components/runtime-models"}
 validation = {path="../../components/validation"}
+timers = {path="../../components/timers"}
 
 twilight-cache-inmemory = "0.7"
 twilight-http = {version = "0.7", features = ["tracing"]}

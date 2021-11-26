@@ -1,5 +1,5 @@
 import { Commands } from "./commands";
-import { OpCreateMessageFields, OpEditMessageFields, Guild, Message, Role, GuildChannel } from "./models/index";
+import { OpCreateMessageFields, OpEditMessageFields, Guild, Message, Role, GuildChannel, IntervalTimer, IntervalTimerEvent } from "./models/index";
 import { EventDataType, EventListenerFunction, EventType, InternalEventSystem, ScriptEventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
 
@@ -10,6 +10,7 @@ export class Script {
 
     eventMuxer = new ScriptEventMuxer();
     commandSystem = new Commands.System();
+    intervalTimers: IntervalTimerListener[] = [];
 
     private runCalled = false;
 
@@ -29,6 +30,23 @@ export class Script {
         this.commandSystem.commands.push(cmd as Commands.CommandDef<Commands.OptionsMap>);
     }
 
+    registerIntervalTimer(name: string, interval: string | number, callback: () => any) {
+        let timerType;
+        if (typeof interval === "number") {
+            timerType = { minutes: interval };
+        } else {
+            timerType = { cron: interval };
+        }
+
+        this.intervalTimers.push({
+            callback,
+            timer: {
+                name: name,
+                interval: timerType,
+            }
+        });
+    }
+
     run() {
         if (this.runCalled) {
             throw new Error("run already called");
@@ -43,10 +61,22 @@ export class Script {
             commands: cmds,
             commandGroups: groups,
             scriptId: this.scriptId,
+            intervalTimers: this.intervalTimers.map(inner => inner.timer),
         });
 
         this.commandSystem.addEventListeners(this.eventMuxer);
         InternalEventSystem.registerEventMuxer(this.eventMuxer);
+        this.eventMuxer.listeners.push({
+            f: this.onInterval.bind(this),
+            event: "BOTLOADER_INTERVAL_TIMER_FIRED",
+        })
+    }
+
+    private onInterval(evt: IntervalTimerEvent) {
+        const timer = this.intervalTimers.find(timer => timer.timer.name === evt.name && this.scriptId === evt.scriptId);
+        if (timer) {
+            timer.callback();
+        }
     }
 
     // Guild functions
@@ -131,4 +161,9 @@ export class Script {
     // createSticker() { }
     // editSticker() { }
     // deleteSticker() { }
+}
+
+interface IntervalTimerListener {
+    timer: IntervalTimer,
+    callback: () => any,
 }

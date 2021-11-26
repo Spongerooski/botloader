@@ -6,6 +6,7 @@ use futures::StreamExt;
 use futures_core::Stream;
 use stores::config::{ConfigStore, JoinedGuild};
 use stores::postgres::Postgres;
+use stores::timers::TimerStore;
 use tracing::{error, info};
 use twilight_cache_inmemory::{InMemoryCache, InMemoryCacheBuilder};
 use twilight_gateway::{Cluster, Event, Intents};
@@ -71,7 +72,7 @@ pub struct BotContext<CT> {
     discord_config: DiscordConfig,
 }
 
-async fn handle_events<CT: Clone + ConfigStore + Send + Sync + 'static>(
+async fn handle_events<CT: Clone + ConfigStore + TimerStore + Send + Sync + 'static>(
     ctx: BotContext<CT>,
     mut stream: impl Stream<Item = (u64, Event)> + Unpin,
 ) {

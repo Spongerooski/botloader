@@ -2221,10 +2221,10 @@ dependencies = [
  "lazy_static",
  "runtime-models",
  "rusty_v8",
- "scriptscheduler",
  "serde",
  "serde_json",
  "stores",
+ "timers",
  "tokio",
  "tracing",
  "tracing-futures",
@@ -2329,20 +2329,6 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
-
-[[package]]
-name = "scriptscheduler"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "cron",
- "serde",
- "serde_json",
- "tokio",
- "twilight-model",
-]
 
 [[package]]
 name = "sct"
@@ -3292,6 +3278,24 @@ checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "timers"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "cron",
+ "runtime-models",
+ "serde",
+ "serde_json",
+ "stores",
+ "tokio",
+ "tracing",
+ "twilight-model",
+ "vm",
 ]
 
 [[package]]

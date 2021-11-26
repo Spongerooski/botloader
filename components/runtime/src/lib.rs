@@ -4,10 +4,14 @@ use contrib_manager::LoadedScript;
 use deno_core::{op_async, op_sync, Extension, OpState};
 use guild_logger::{GuildLogger, LogEntry};
 use runtime_models::script::ScriptMeta;
+use tokio::sync::mpsc;
 use tracing::info;
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_model::id::GuildId;
-use vm::{vm::VmRole, AnyError, JsValue};
+use vm::{
+    vm::{VmCommand, VmRole},
+    AnyError, JsValue,
+};
 
 pub mod contrib_manager;
 pub mod dispatchevents;
@@ -93,6 +97,7 @@ pub struct RuntimeContext {
     pub role: VmRole,
     pub contrib_manager_handle: contrib_manager::ContribManagerHandle,
     pub guild_logger: GuildLogger,
+    pub vm_cmd_dispatch_tx: mpsc::UnboundedSender<VmCommand>,
 }
 
 pub fn op_script_start(state: &mut OpState, args: JsValue, _: ()) -> Result<(), AnyError> {
@@ -120,6 +125,7 @@ pub fn op_script_start(state: &mut OpState, args: JsValue, _: ()) -> Result<(), 
     ctx.contrib_manager_handle.send(LoadedScript {
         guild_id: ctx.guild_id,
         meta: des,
+        vm_cmd_dispath_tx: ctx.vm_cmd_dispatch_tx.clone(),
     });
 
     Ok(())

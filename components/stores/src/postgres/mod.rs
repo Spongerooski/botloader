@@ -1,6 +1,7 @@
 use sqlx::{postgres::PgPoolOptions, PgPool};
 
 pub mod config;
+pub mod timers;
 pub mod web;
 
 #[derive(Clone)]

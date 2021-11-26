@@ -4,7 +4,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use guild_logger::{GuildLogger, LogEntry};
 use runtime::{contrib_manager::ContribManagerHandle, RuntimeContext};
-use stores::config::{ConfigStore, Script};
+use stores::{config::{ConfigStore, Script}, timers::TimerStore};
 use tokio::sync::{
     mpsc::{self, UnboundedReceiver, UnboundedSender},
     RwLock,
@@ -37,7 +37,7 @@ pub struct Manager<CT> {
 /// The manager is responsible for managing all the js vm's
 impl<CT> Manager<CT>
 where
-    CT: ConfigStore + Send + 'static + Sync,
+    CT: ConfigStore+TimerStore + Send + 'static + Sync,
 {
     pub fn new(
         guild_logger: guild_logger::GuildLogger,
@@ -149,6 +149,7 @@ where
             role: VmRole::Main,
             contrib_manager_handle: self.inner.contrib_manager_handle.clone(),
             guild_logger: self.inner.guild_logger.clone(),
+            vm_cmd_dispatch_tx: tx.clone(),
         };
 
         info!("spawning guild vm for {}", guild_id);
@@ -232,6 +233,7 @@ where
                 role: VmRole::Main,
                 contrib_manager_handle: self.inner.contrib_manager_handle.clone(),
                 guild_logger: self.inner.guild_logger.clone(),
+                vm_cmd_dispatch_tx: tx.clone(),
             };
 
             info!("spawning guild vm for {}", guild_id);
