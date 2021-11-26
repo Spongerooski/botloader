@@ -318,6 +318,17 @@ impl crate::config::ConfigStore for Postgres {
 
         Ok(guilds.into_iter().map(|e| e.into()).collect())
     }
+
+    async fn is_guild_whitelisted(&self, guild_id: GuildId) -> StoreResult<bool, Self::Error> {
+        let result = sqlx::query!(
+            "SELECT count(*) FROM guild_whitelist WHERE guild_id = $1;",
+            guild_id.get() as i64,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(result.count.unwrap_or_default() > 0)
+    }
 }
 
 #[allow(dead_code)]

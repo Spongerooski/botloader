@@ -90,6 +90,8 @@ pub trait ConfigStore: Clone + Sync {
         &self,
         ids: &[GuildId],
     ) -> StoreResult<Vec<JoinedGuild>, Self::Error>;
+
+    async fn is_guild_whitelisted(&self, id: GuildId) -> StoreResult<bool, Self::Error>;
 }
 
 /// Struct you get back from the store

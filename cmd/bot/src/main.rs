@@ -123,6 +123,18 @@ async fn handle_events<CT: Clone + ConfigStore + TimerStore + Send + Sync + 'sta
                 )
             }
             Event::GuildCreate(gc) => {
+                match ctx.config_store.is_guild_whitelisted(gc.id).await {
+                    Ok(false) => {
+                        info!("leaving non whitelisted guild: {}", gc.id);
+                        ctx.http.leave_guild(gc.id).exec().await.ok();
+                        continue;
+                    }
+                    Err(err) => {
+                        error!(%err, "failed checking whitelist");
+                    }
+                    _ => {}
+                };
+
                 vm_manager.init_guild(gc.id).await.unwrap();
                 cmd_context
                     .config_store
