@@ -4,6 +4,7 @@ import { useCurrentGuild } from "../components/GuildsProvider";
 import { useSession } from "../components/Session";
 import './GuildPage.css'
 import { AsyncOpButton } from "../components/AsyncOpButton";
+import { BuildConfig } from "../BuildConfig";
 
 export function GuildPage() {
     let guild = useCurrentGuild();
@@ -19,7 +20,7 @@ export function GuildPage() {
 }
 
 function InviteGuildPage(props: { guild: BotGuild }) {
-    return <p>Yeah ill need to display an invite link here</p>;
+    return <a href={`https://discord.com/api/oauth2/authorize?client_id=${BuildConfig.botloaderClientId}&permissions=532844244928&scope=bot%20applications.commands&guild_id=${props.guild.guild.id}`} className="add-to-server">Click here to add to server!</a>;
 }
 
 function NoGuildPage() {

@@ -6,3 +6,8 @@
     border-radius: 5px;
     margin-bottom: 10px;
 }
+
+.add-to-server {
+    font-size: 2em;
+    color: rgb(247, 0, 255);
+}
