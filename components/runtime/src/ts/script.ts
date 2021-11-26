@@ -83,11 +83,11 @@ export class Script {
     getGuild(): Guild {
         return OpWrappers.getGuild()
     }
-    editGuild() { }
+    // editGuild() { }
 
     // Message functions
-    getMessage() { }
-    getMessages() { }
+    // getMessage() { }
+    // getMessages() { }
 
     createMessage(channelId: string, fields: OpCreateMessageFields): Promise<Message> {
         return OpWrappers.createChannelMessage({
@@ -125,9 +125,9 @@ export class Script {
         return OpWrappers.getRoles();
     }
 
-    createRole() { }
-    editRole() { }
-    deleteRole() { }
+    // createRole() { }
+    // editRole() { }
+    // deleteRole() { }
 
     // Channel functions
     getChannel(channelId: string): Promise<GuildChannel> {
@@ -137,15 +137,15 @@ export class Script {
         return OpWrappers.getChannels();
     }
 
-    createChannel() { }
-    editChannel() { }
-    deleteChannel() { }
+    // createChannel() { }
+    // editChannel() { }
+    // deleteChannel() { }
 
     // Invite functions
-    getInvite() { }
-    getInvites() { }
-    createInvite() { }
-    deleteInvite() { }
+    // getInvite() { }
+    // getInvites() { }
+    // createInvite() { }
+    // deleteInvite() { }
 
     // // Emoji functions
     // getEmoji() { }

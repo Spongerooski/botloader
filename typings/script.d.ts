@@ -15,27 +15,14 @@ export declare class Script {
     run(): void;
     private onInterval;
     getGuild(): Guild;
-    editGuild(): void;
-    getMessage(): void;
-    getMessages(): void;
     createMessage(channelId: string, fields: OpCreateMessageFields): Promise<Message>;
     editMessage(channelId: string, messageId: string, fields: OpEditMessageFields): Promise<Message>;
     deleteMessage(channelId: string, messageId: string): Promise<void>;
     bulkDeleteMessages(channelId: string, ...messageIds: string[]): Promise<void>;
     getRole(roleId: string): Promise<Role>;
     getRoles(): Promise<Role[]>;
-    createRole(): void;
-    editRole(): void;
-    deleteRole(): void;
     getChannel(channelId: string): Promise<GuildChannel>;
     getChannels(): Promise<GuildChannel[]>;
-    createChannel(): void;
-    editChannel(): void;
-    deleteChannel(): void;
-    getInvite(): void;
-    getInvites(): void;
-    createInvite(): void;
-    deleteInvite(): void;
 }
 interface IntervalTimerListener {
     timer: IntervalTimer;
