@@ -161,6 +161,7 @@ async fn handle_events<CT: Clone + ConfigStore + TimerStore + Send + Sync + 'sta
             }
             Event::GuildDelete(gd) => {
                 ctx.config_store.remove_joined_guild(gd.id).await.ok();
+                vm_manager.remove_guild(gd.id).await;
             }
             Event::MessageCreate(m) => {
                 if let Some(cmd) = commands::check_for_command(&ctx, *(m).clone()) {

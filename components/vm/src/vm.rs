@@ -20,7 +20,7 @@ use tracing::info;
 use twilight_model::id::GuildId;
 use url::Url;
 use v8::{CreateParams, HeapStatistics, IsolateHandle};
-use vmthread::{CreateVmSuccess, VmInterface};
+use vmthread::{CreateVmSuccess, ShutdownReason, VmInterface};
 
 #[derive(Debug, Clone)]
 pub enum VmCommand {
@@ -39,12 +39,6 @@ pub enum VmCommand {
 #[derive(Debug)]
 pub enum VmEvent {
     Shutdown(ShutdownReason),
-}
-
-#[derive(Debug, Clone)]
-pub enum ShutdownReason {
-    Unknown,
-    RunawayScript,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -70,7 +64,7 @@ pub struct Vm {
 
     loaded_scripts: Vec<ScriptLoad>,
 
-    timeout_handle: TimeoutHandle,
+    timeout_handle: ShutdownHandle,
     guild_logger: GuildLogger,
 
     isolate_cell: Rc<IsolateCell>,
@@ -80,6 +74,7 @@ pub struct Vm {
 
     script_dispatch_tx: UnboundedSender<ScriptDispatchData>,
     js_polling_events: Arc<AtomicBool>,
+    wakeup_rx: UnboundedReceiver<()>,
 }
 
 #[derive(Debug, Clone)]
@@ -96,8 +91,9 @@ pub struct CoreCtxData {
 impl Vm {
     async fn new(
         create_req: CreateRt,
-        timeout_handle: TimeoutHandle,
+        timeout_handle: ShutdownHandle,
         isolate_cell: Rc<IsolateCell>,
+        wakeup_rx: UnboundedReceiver<()>,
     ) -> Self {
         let module_manager = Rc::new(ModuleManager {
             module_map: create_req.extension_modules,
@@ -132,6 +128,7 @@ impl Vm {
             extension_factory: create_req.extension_factory,
             module_manager,
             js_polling_events: is_polling,
+            wakeup_rx,
         };
 
         rt.emit_isolate_handle();
@@ -193,6 +190,7 @@ impl Vm {
                 rx: &mut self.rx,
                 rt: &mut self.runtime,
                 cell: &self.isolate_cell,
+                wakeup: &mut self.wakeup_rx,
             };
 
             match fut.await {
@@ -217,6 +215,13 @@ impl Vm {
                 .shutdown_reason
                 .clone()
         };
+
+        if let Some(ShutdownReason::ThreadTermination) = shutdown_reason {
+            info!("running vm until completion...");
+            // cleanly finish the futures
+            self.stop_vm().await;
+            info!("done running vm until completion!");
+        }
 
         self.tx
             .send((
@@ -542,6 +547,7 @@ struct TickFuture<'a> {
     rx: &'a mut UnboundedReceiver<VmCommand>,
     rt: &'a mut ManagedIsolate,
     cell: &'a IsolateCell,
+    wakeup: &'a mut UnboundedReceiver<()>,
 }
 
 // Future which drives the js event loop while at the same time retrieving commands
@@ -559,6 +565,11 @@ impl<'a> core::future::Future for TickFuture<'a> {
                 // error!("Got a error in polling: {}", e)
                 return Poll::Ready(Err(e));
             }
+        }
+
+        match self.wakeup.poll_recv(cx) {
+            Poll::Ready(_) => return Poll::Ready(Ok(None)),
+            Poll::Pending => {}
         }
 
         match self.rx.poll_recv(cx) {
@@ -635,37 +646,39 @@ impl VmInterface for Vm {
     fn create_vm(
         b: Self::BuildDesc,
         isolate_cell: Rc<IsolateCell>,
-    ) -> vmthread::VmCreateResult<Self::VmId, Self::Future, Self::TimeoutHandle> {
-        let timeout_handle = TimeoutHandle {
+    ) -> vmthread::VmCreateResult<Self::VmId, Self::Future, Self::ShutdownHandle> {
+        let (wakeup_tx, wakeup_rx) = mpsc::unbounded_channel();
+        let shutdown_handle = ShutdownHandle {
             terminated: Arc::new(AtomicBool::new(false)),
-            inner: Arc::new(StdRwLock::new(TimeoutHandleInner {
+            inner: Arc::new(StdRwLock::new(ShutdownHandleInner {
                 isolate_handle: None,
                 shutdown_reason: None,
             })),
+            wakeup: wakeup_tx,
         };
         let id = RtId {
             guild_id: b.ctx.guild_id,
             role: b.ctx.role,
         };
 
-        let thandle_clone = timeout_handle.clone();
+        let thandle_clone = shutdown_handle.clone();
         let fut = Box::pin(async move {
-            let mut rt = Vm::new(b, thandle_clone, isolate_cell).await;
+            let mut rt = Vm::new(b, thandle_clone, isolate_cell, wakeup_rx).await;
             rt.run().await;
         });
 
         Ok(CreateVmSuccess {
             future: fut,
             id,
-            timeout_handle,
+            shutdown_handle,
         })
     }
 
-    type TimeoutHandle = TimeoutHandle;
+    type ShutdownHandle = ShutdownHandle;
 
-    fn shutdown_runaway(shutdown_handle: &Self::TimeoutHandle) {
+    fn shutdown(shutdown_handle: &Self::ShutdownHandle, reason: ShutdownReason) {
         let mut inner = shutdown_handle.inner.write().unwrap();
-        inner.shutdown_reason = Some(ShutdownReason::RunawayScript);
+        inner.shutdown_reason = Some(reason);
         if let Some(iso_handle) = &inner.isolate_handle {
             shutdown_handle
                 .terminated
@@ -674,16 +687,20 @@ impl VmInterface for Vm {
         } else {
             inner.shutdown_reason = None;
         }
+
+        // trigger a shutdown check if we weren't in the js runtime
+        shutdown_handle.wakeup.send(()).ok();
     }
 }
 
 #[derive(Clone)]
-pub struct TimeoutHandle {
+pub struct ShutdownHandle {
     terminated: Arc<AtomicBool>,
-    inner: Arc<StdRwLock<TimeoutHandleInner>>,
+    inner: Arc<StdRwLock<ShutdownHandleInner>>,
+    wakeup: mpsc::UnboundedSender<()>,
 }
 
-struct TimeoutHandleInner {
+struct ShutdownHandleInner {
     shutdown_reason: Option<ShutdownReason>,
     isolate_handle: Option<IsolateHandle>,
 }

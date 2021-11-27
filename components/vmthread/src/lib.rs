@@ -21,15 +21,17 @@ use tracing::info;
 pub enum VmThreadCommand<T> {
     StartVM(T),
     Ping(oneshot::Sender<bool>),
+    Shutdown,
 }
 
 type RunningVmTimeout<T, U> = Arc<RwLock<Option<VmHandle<T, U>>>>;
 
 pub struct VmThreadFuture<T: VmInterface> {
     rcv_cmd: UnboundedReceiver<VmThreadCommand<T::BuildDesc>>,
-    vms: Vec<VmContext<T::Future, T::TimeoutHandle, T::VmId>>,
-    running_vm: RunningVmTimeout<T::VmId, T::TimeoutHandle>,
+    vms: Vec<VmContext<T::Future, T::ShutdownHandle, T::VmId>>,
+    running_vm: RunningVmTimeout<T::VmId, T::ShutdownHandle>,
     isolate_cell: Rc<IsolateCell>,
+    shutting_down: bool,
 }
 
 impl<T> VmThreadFuture<T>
@@ -52,6 +54,7 @@ where
                 running_vm: running_clone,
                 vms: Vec::new(),
                 isolate_cell: Rc::new(Default::default()),
+                shutting_down: false,
             };
 
             tokio_current.block_on(t);
@@ -70,12 +73,8 @@ where
 
     fn handle_cmd(&mut self, cmd: Option<VmThreadCommand<T::BuildDesc>>) {
         match cmd {
-            None => {
-                // panic as opposed to leaking threads silently
-                // better to be made aware of the problem and forced to fix it
-                // then having it silently break and eventually turn into a problem
-                // that could lead to longer downtimes
-                panic!("all senders dropped. we have now leaked a vm thread which is really bad.");
+            Some(VmThreadCommand::Shutdown) | None => {
+                self.shutdown_thread();
             }
 
             // respond to pings from runaway script detection
@@ -89,14 +88,29 @@ where
                 let CreateVmSuccess {
                     id,
                     future,
-                    timeout_handle,
+                    shutdown_handle,
                 } = T::create_vm(desc, self.isolate_cell.clone()).unwrap();
 
                 self.vms.push(VmContext {
                     run_future: future,
-                    handle: VmHandle { id, timeout_handle },
+                    handle: VmHandle {
+                        id,
+                        shutdown_handle,
+                    },
                 });
             }
+        }
+    }
+
+    fn shutdown_thread(&mut self) {
+        info!("shutting down vm thread...");
+        self.shutting_down = true;
+
+        for vm in &self.vms {
+            T::shutdown(
+                &vm.handle.shutdown_handle,
+                ShutdownReason::ThreadTermination,
+            );
         }
     }
 
@@ -130,7 +144,7 @@ where
                             // if there's a bad actor
                             let maybe_handle = handle.running_vm.read().unwrap();
                             match &*maybe_handle {
-                                Some(h) => T::shutdown_runaway(&h.timeout_handle),
+                                Some(h) => T::shutdown(&h.shutdown_handle, ShutdownReason::Runaway),
                                 None => {
                                     // This could be possible during very high load scenarios where the thread never gets
                                     // cpu time form something else on the system, so for now we just ignore this case
@@ -167,8 +181,12 @@ where
         // Intelligently keep track of what vm's called cx.waker() and only poll those
         //
         // There is a potential bottleneck here with a lot of vms, the above would help that
-        while let Poll::Ready(cmd) = self.rcv_cmd.poll_recv(cx) {
-            self.handle_cmd(cmd);
+
+        // TODO: force shut down stuck vm's in shut down state
+        if !self.shutting_down {
+            while let Poll::Ready(cmd) = self.rcv_cmd.poll_recv(cx) {
+                self.handle_cmd(cmd);
+            }
         }
 
         let running_handle = self.running_vm.clone();
@@ -200,7 +218,11 @@ where
             self.vms.remove(index);
         }
 
-        Poll::Pending
+        if self.vms.is_empty() && self.shutting_down {
+            Poll::Ready(())
+        } else {
+            Poll::Pending
+        }
     }
 }
 
@@ -212,7 +234,7 @@ fn set_running_vm<T>(slot: &RwLock<Option<T>>, new_val: Option<T>) {
 /// A handle to the thread, this is `Send` and `Sync`
 pub struct VmThreadHandle<T: VmInterface> {
     pub send_cmd: UnboundedSender<VmThreadCommand<T::BuildDesc>>,
-    running_vm: RunningVmTimeout<T::VmId, T::TimeoutHandle>,
+    running_vm: RunningVmTimeout<T::VmId, T::ShutdownHandle>,
 }
 
 impl<T: VmInterface> Clone for VmThreadHandle<T> {
@@ -238,7 +260,7 @@ where
 #[derive(Clone)]
 struct VmHandle<T: Display, U> {
     id: T,
-    timeout_handle: U,
+    shutdown_handle: U,
 }
 
 /// This defines the actual implementation for running vms
@@ -257,32 +279,22 @@ pub trait VmInterface {
     fn create_vm(
         b: Self::BuildDesc,
         cell: Rc<IsolateCell>,
-    ) -> VmCreateResult<Self::VmId, Self::Future, Self::TimeoutHandle>;
+    ) -> VmCreateResult<Self::VmId, Self::Future, Self::ShutdownHandle>;
 
     // this is a handle that can contain for example a v8 isolate handle to interrupt execution
     // this is to stop runaway scripts.
-    type TimeoutHandle: Send + Sync + Unpin + Clone;
+    type ShutdownHandle: Send + Sync + Unpin + Clone;
 
     // shut down a runaway vm using the provided timeout handle
     // note that this means the vm thread is  currently busy executing the future
-    fn shutdown_runaway(shutdown_handle: &Self::TimeoutHandle);
+    fn shutdown(shutdown_handle: &Self::ShutdownHandle, reason: ShutdownReason);
 }
 
-pub trait VmFactory {
-    type BuildDesc: Send;
-
-    /// the future for running vms
-    /// should only complete when the vm has shut down
-    type Future: Future;
-
-    /// the type for the vm ID's
-    type VmId: Display + Send + Sync + Clone + Unpin;
-
-    type TimeoutHandle: Send + Sync + Unpin + Clone;
-
-    fn create_vm(
-        b: Self::BuildDesc,
-    ) -> VmCreateResult<Self::VmId, Self::Future, Self::TimeoutHandle>;
+#[derive(Debug, Clone)]
+pub enum ShutdownReason {
+    Unknown,
+    Runaway,
+    ThreadTermination,
 }
 
 pub type VmCreateResult<T, U, V> = Result<CreateVmSuccess<T, U, V>, String>;
@@ -290,5 +302,5 @@ pub type VmCreateResult<T, U, V> = Result<CreateVmSuccess<T, U, V>, String>;
 pub struct CreateVmSuccess<T, U, V> {
     pub id: T,
     pub future: U,
-    pub timeout_handle: V,
+    pub shutdown_handle: V,
 }

@@ -4,7 +4,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use guild_logger::{GuildLogger, LogEntry};
 use runtime::{contrib_manager::ContribManagerHandle, RuntimeContext};
-use stores::{config::{ConfigStore, Script}, timers::TimerStore};
+use stores::{
+    config::{ConfigStore, Script},
+    timers::TimerStore,
+};
 use tokio::sync::{
     mpsc::{self, UnboundedReceiver, UnboundedSender},
     RwLock,
@@ -19,7 +22,6 @@ use vmthread::{VmThreadCommand, VmThreadFuture, VmThreadHandle};
 type GuildMap = HashMap<GuildId, GuildState>;
 pub struct InnerManager<CT> {
     guilds: RwLock<GuildMap>,
-    worker_thread: VmThreadHandle<Vm>,
 
     http: Arc<twilight_http::Client>,
     state: Arc<InMemoryCache>,
@@ -37,7 +39,7 @@ pub struct Manager<CT> {
 /// The manager is responsible for managing all the js vm's
 impl<CT> Manager<CT>
 where
-    CT: ConfigStore+TimerStore + Send + 'static + Sync,
+    CT: ConfigStore + TimerStore + Send + 'static + Sync,
 {
     pub fn new(
         guild_logger: guild_logger::GuildLogger,
@@ -58,7 +60,6 @@ where
         let manager = Manager {
             inner: Arc::new(InnerManager {
                 guilds: RwLock::new(Default::default()),
-                worker_thread: VmThreadFuture::create(),
 
                 http: twilight_http_client,
                 rt_evt_tx: tx,
@@ -79,6 +80,16 @@ where
 
     pub async fn init_guild(&self, guild_id: GuildId) -> Result<(), String> {
         self.restart_guild_vm(guild_id).await
+    }
+
+    pub async fn remove_guild(&self, guild_id: GuildId) {
+        info!("removing guild {}", guild_id);
+        if let Some(gs) = self.inner.guilds.write().await.remove(&guild_id) {
+            gs.worker_thread
+                .send_cmd
+                .send(VmThreadCommand::Shutdown)
+                .ok();
+        }
     }
 
     pub async fn restart_guild_vm(&self, guild_id: GuildId) -> Result<(), String> {
@@ -111,17 +122,7 @@ where
             }) => self.crate_new_guild_rt(&mut guilds, guild_id).await,
 
             // not tracking this guild yet, create a new state for it
-            None => {
-                guilds.insert(
-                    guild_id,
-                    GuildState {
-                        id: guild_id,
-                        main_vm: VmState::Stopped,
-                        pack_vms: Vec::new(),
-                    },
-                );
-                self.crate_new_guild_rt(&mut guilds, guild_id).await
-            }
+            None => self.crate_new_guild_rt(&mut guilds, guild_id).await,
         }
     }
 
@@ -152,9 +153,15 @@ where
             vm_cmd_dispatch_tx: tx.clone(),
         };
 
+        let worker_thread = if let Some(gs) = guilds.get(&guild_id) {
+            gs.worker_thread.clone()
+        } else {
+            VmThreadFuture::create()
+        };
+
         info!("spawning guild vm for {}", guild_id);
-        self.inner
-            .worker_thread
+
+        worker_thread
             .send_cmd
             .send(VmThreadCommand::StartVM(CreateRt {
                 guild_logger: self.inner.guild_logger.clone(),
@@ -181,6 +188,7 @@ where
                 id: guild_id,
                 main_vm: VmState::Running(VmRunningState { tx }),
                 pack_vms: Vec::new(),
+                worker_thread,
             },
         );
 
@@ -237,8 +245,7 @@ where
             };
 
             info!("spawning guild vm for {}", guild_id);
-            self.inner
-                .worker_thread
+            g.worker_thread
                 .send_cmd
                 .send(VmThreadCommand::StartVM(CreateRt {
                     guild_logger: self.inner.guild_logger.clone(),
@@ -467,6 +474,7 @@ struct GuildState {
     id: GuildId,
     main_vm: VmState,
     pack_vms: Vec<(u64, VmState)>,
+    worker_thread: VmThreadHandle<Vm>,
 }
 
 impl GuildState {
