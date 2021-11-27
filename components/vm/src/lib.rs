@@ -39,7 +39,7 @@ fn gen_script_source_header(script: Option<&Script>) -> String {
             )
         }
     }
-}
+} 
 
 pub fn init_v8_flags(v8_flags: &[String]) {
     let v8_flags_includes_help = v8_flags

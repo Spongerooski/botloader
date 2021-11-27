@@ -1,10 +1,10 @@
 use std::{rc::Rc, time::Duration};
 
 use deno_core::{op_sync, Extension, JsRuntime, OpState, RuntimeOptions, Snapshot};
-use rusty_v8::{CreateParams, IsolateHandle};
 use tokio::sync::oneshot;
 use tracing::info;
 use url::Url;
+use v8::{CreateParams, IsolateHandle};
 
 use vm::{
     moduleloader::{ModuleEntry, ModuleManager},
@@ -70,14 +70,15 @@ async fn validator_thread(
     iso_handle_back.send(iso_handle).unwrap();
 
     let module_id = rt
-        .load_module(
+        .load_main_module(
             &Url::parse("file:///user/validating").unwrap(),
             Some(prepend_script_source_header(&source, None)),
         )
         .await?;
-    rt.mod_evaluate(module_id);
+    let eval_complete = rt.mod_evaluate(module_id);
 
     tokio::select! {
+        _ = eval_complete => {},
         _ = rt.run_event_loop(false) =>{},
         _ = term_rx => {
             return Err(anyhow::anyhow!(

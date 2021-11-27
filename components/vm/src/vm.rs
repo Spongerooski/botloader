@@ -2,11 +2,11 @@ use crate::moduleloader::{ModuleEntry, ModuleManager};
 use crate::{prepend_script_source_header, AnyError};
 use anyhow::anyhow;
 use deno_core::{op_async, Extension, OpState, RuntimeOptions, Snapshot};
-use futures::{future::LocalBoxFuture, FutureExt, StreamExt};
+use futures::{future::LocalBoxFuture, FutureExt};
 use guild_logger::{GuildLogger, LogEntry};
 use isolatecell::{IsolateCell, ManagedIsolate};
-use rusty_v8::{CreateParams, HeapStatistics, IsolateHandle};
 use serde::Serialize;
+use std::pin::Pin;
 use std::{
     cell::RefCell,
     fmt::Display,
@@ -19,6 +19,7 @@ use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tracing::info;
 use twilight_model::id::GuildId;
 use url::Url;
+use v8::{CreateParams, HeapStatistics, IsolateHandle};
 use vmthread::{CreateVmSuccess, VmInterface};
 
 #[derive(Debug, Clone)]
@@ -158,7 +159,9 @@ impl Vm {
         let options = RuntimeOptions {
             extensions,
             module_loader: Some(module_manager),
-            create_params: Some(CreateParams::default().heap_limits(512_000, 10_240_000)),
+            // yeah i have no idea what these values needs to be aligned to, but this seems to work so whatever
+            // if it breaks when you update deno or v8 try different values until it works, if only they'd document the alignment requirements somewhere...
+            create_params: Some(CreateParams::default().heap_limits(512 * 1024, 20 * 512 * 1024)),
             startup_snapshot: Some(Snapshot::Static(crate::BOTLOADER_CORE_SNAPSHOT)),
             ..Default::default()
         };
@@ -298,7 +301,7 @@ impl Vm {
             let parsed_uri =
                 Url::parse(format!("file:///guild/{}.js", script.inner.name).as_str()).unwrap();
 
-            let fut = rt.load_module(
+            let fut = rt.load_main_module(
                 &parsed_uri,
                 Some(prepend_script_source_header(
                     &script.compiled_js,
@@ -464,7 +467,7 @@ impl Vm {
 
     async fn complete_module_eval(
         &mut self,
-        rcv: futures::channel::mpsc::Receiver<Result<(), AnyError>>,
+        rcv: futures::channel::oneshot::Receiver<Result<(), AnyError>>,
     ) {
         let fut = CompleteModuleEval {
             cell: &self.isolate_cell,
@@ -591,7 +594,7 @@ impl<'a> core::future::Future for RunUntilCompletion<'a> {
 struct CompleteModuleEval<'a> {
     rt: &'a mut ManagedIsolate,
     cell: &'a IsolateCell,
-    rcv: futures::channel::mpsc::Receiver<Result<(), AnyError>>,
+    rcv: futures::channel::oneshot::Receiver<Result<(), AnyError>>,
 }
 
 impl<'a> core::future::Future for CompleteModuleEval<'a> {
@@ -601,7 +604,8 @@ impl<'a> core::future::Future for CompleteModuleEval<'a> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        match self.rcv.poll_next_unpin(cx) {
+        let pinned = Pin::new(&mut self.rcv);
+        match pinned.poll(cx) {
             Poll::Ready(_) => return Poll::Ready(Ok(())),
             Poll::Pending => {}
         }
