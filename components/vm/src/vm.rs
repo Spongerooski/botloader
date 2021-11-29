@@ -306,7 +306,7 @@ impl Vm {
             let parsed_uri =
                 Url::parse(format!("file:///guild/{}.js", script.inner.name).as_str()).unwrap();
 
-            let fut = rt.load_main_module(
+            let fut = rt.load_side_module(
                 &parsed_uri,
                 Some(prepend_script_source_header(
                     &script.compiled_js,
