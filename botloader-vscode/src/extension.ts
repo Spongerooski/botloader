@@ -78,16 +78,26 @@ export async function activate(context: vscode.ExtensionContext) {
 			await context.secrets.store("botloader-api-key", key as string);
 		}
 	}), vscode.commands.registerCommand('botloader-vscode.push', async (arg: any) => {
-		if (isScmGroup(arg)) {
+		if (arg === undefined) {
+			if (vscode.window.activeTextEditor) {
+				await manager.pushUri(vscode.window.activeTextEditor.document.uri);
+			}
+		} else if (isScmGroup(arg)) {
 			await manager.pushScmGroup(arg);
 		} else if (containsResourceUri(arg)) {
 			await manager.pushUri(arg.resourceUri);
 		}
+	}), vscode.commands.registerCommand('botloader-vscode.push-repo', async (arg: any) => {
+		if (arg === undefined) {
+			await manager.pushOneRepo();
+		} else if (isScmProvider(arg)) {
+			await manager.pushRepo(arg);
+		}
 	}), vscode.commands.registerCommand('botloader-vscode.sync', async (arg: any) => {
 		if (arg === undefined) {
-			manager.syncOne();
+			await manager.syncOne();
 		} else if (isScmProvider(arg)) {
-			manager.syncScm(arg);
+			await manager.syncScm(arg);
 		}
 	}));
 

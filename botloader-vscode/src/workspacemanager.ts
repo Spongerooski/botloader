@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ApiClient } from 'botloader-common';
-import { GuildScriptWorkspace } from './guildspace';
+import { BotloaderSourceControl, GuildScriptWorkspace } from './guildspace';
 import { IndexFile } from './models';
 import { BotloaderWS } from './ws';
 
@@ -86,6 +86,19 @@ export class WorkspaceManager implements vscode.Disposable {
     async syncOne() {
         if (this.openGuildWorkspaces.length > 0) {
             await this.openGuildWorkspaces[0].syncWorkspaceWithProgress();
+        }
+    }
+
+    async pushOneRepo() {
+        if (this.openGuildWorkspaces.length > 0) {
+            await this.openGuildWorkspaces[0].pushAll();
+        }
+    }
+
+    async pushRepo(repo: BotloaderSourceControl) {
+        const guildSpace = this.openGuildWorkspaces.find(e => e.folder.toString() === repo.rootUri?.toString());
+        if (guildSpace) {
+            await guildSpace.pushAll();
         }
     }
 

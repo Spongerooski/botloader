@@ -252,6 +252,19 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
         });
     }
 
+    async pushAll() {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, async progress => {
+            let index = await this.readIndexFile();
+
+            for (let state of this.changedFilesGroup.resourceStates) {
+                await this.pushSingleChange(state.resourceUri, index);
+            }
+
+            await this.syncWorkspace();
+            await this.apiClient.reloadGuildVm(index.guild.id);
+        });
+    }
+
     async pushScmGroup(group: vscode.SourceControlResourceGroup) {
         await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl }, async progress => {
             let index = await this.readIndexFile();
