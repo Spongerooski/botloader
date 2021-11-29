@@ -2,7 +2,7 @@
   "name": "botloader-vscode",
   "displayName": "botloader",
   "description": "Botloader integration for vs code",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "publisher": "botloader",
   "repository": {
     "url": "https://github.com/BotLoader/botloader"
