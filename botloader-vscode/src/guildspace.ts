@@ -90,6 +90,7 @@ export class GuildScriptWorkspace implements vscode.Disposable, vscode.FileDecor
 
         for (let file of filesWorking) {
             await this.checkWorkingFile(file[0]);
+            this.onChangeFileDecosEmitter.fire(vscode.Uri.joinPath(this.folder, "/" + file[0]));
         }
 
         let filesIndex = await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(this.folder, "/.botloader/scripts"));
