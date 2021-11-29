@@ -1,3 +1,4 @@
+![circleci Status](https://circleci.com/gh/BotLoader/botloader.svg?style=shield)
 # Status
 
 
