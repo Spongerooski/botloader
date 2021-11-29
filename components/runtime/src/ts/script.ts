@@ -86,8 +86,21 @@ export class Script {
     // editGuild() { }
 
     // Message functions
-    // getMessage() { }
-    // getMessages() { }
+    getMessage(channelId: string, messageId: string): Promise<Message> {
+        return OpWrappers.getMessage({
+            channelId,
+            messageId,
+        })
+    }
+
+    getMessages(channelId: string, options?: GetMessagesOptions): Promise<Message[]> {
+        return OpWrappers.getMessages({
+            channelId,
+            after: options?.after,
+            before: options?.before,
+            limit: options?.limit,
+        })
+    }
 
     createMessage(channelId: string, fields: OpCreateMessageFields): Promise<Message> {
         return OpWrappers.createChannelMessage({
@@ -166,4 +179,10 @@ export class Script {
 interface IntervalTimerListener {
     timer: IntervalTimer,
     callback: () => any,
+}
+
+interface GetMessagesOptions {
+    limit?: number,
+    after?: string,
+    before?: string,
 }

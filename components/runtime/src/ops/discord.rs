@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use deno_core::OpState;
-use twilight_model::id::RoleId;
+use twilight_model::id::{MessageId, RoleId};
 use vm::{AnyError, JsValue};
 
 use crate::RuntimeContext;
@@ -10,7 +10,7 @@ use runtime_models::{
     message::Message,
     ops::messages::{
         OpCreateChannelMessage, OpCreateFollowUpMessage, OpDeleteMessage, OpDeleteMessagesBulk,
-        OpEditChannelMessage,
+        OpEditChannelMessage, OpGetMessage, OpGetMessages,
     },
 };
 
@@ -23,6 +23,88 @@ pub fn op_get_guild(state: &mut OpState, _args: JsValue, _: ()) -> Result<Guild,
         Some(c) => Ok(c.value().into()),
         None => Err(anyhow::anyhow!("guild not in state")),
     }
+}
+
+pub async fn op_get_message(
+    state: Rc<RefCell<OpState>>,
+    args: OpGetMessage,
+    _: (),
+) -> Result<Message, AnyError> {
+    let rt_ctx = {
+        let state = state.borrow();
+        state.borrow::<RuntimeContext>().clone()
+    };
+
+    let channel = get_guild_channel(&rt_ctx, &args.channel_id).await?;
+    let message_id = if let Some(id) = MessageId::new(args.message_id.parse()?) {
+        id
+    } else {
+        return Err(anyhow::anyhow!("invalid message id"));
+    };
+
+    let message = rt_ctx
+        .dapi
+        .message(channel.id(), message_id)
+        .exec()
+        .await?
+        .model()
+        .await?;
+
+    Ok(message.into())
+}
+
+pub async fn op_get_messages(
+    state: Rc<RefCell<OpState>>,
+    args: OpGetMessages,
+    _: (),
+) -> Result<Vec<Message>, AnyError> {
+    let rt_ctx = {
+        let state = state.borrow();
+        state.borrow::<RuntimeContext>().clone()
+    };
+
+    let channel = get_guild_channel(&rt_ctx, &args.channel_id).await?;
+
+    let limit = if let Some(limit) = args.limit {
+        if limit > 100 {
+            100
+        } else if limit < 1 {
+            1
+        } else {
+            limit
+        }
+    } else {
+        50
+    };
+
+    let req = rt_ctx
+        .dapi
+        .channel_messages(channel.id())
+        .limit(limit as u64)
+        .unwrap();
+
+    let res = if let Some(before) = args.before {
+        let message_id = if let Some(id) = MessageId::new(before.parse()?) {
+            id
+        } else {
+            return Err(anyhow::anyhow!("invalid message id"));
+        };
+
+        req.before(message_id).exec().await
+    } else if let Some(after) = args.after {
+        let message_id = if let Some(id) = MessageId::new(after.parse()?) {
+            id
+        } else {
+            return Err(anyhow::anyhow!("invalid message id"));
+        };
+
+        req.after(message_id).exec().await
+    } else {
+        req.exec().await
+    };
+
+    let messages = res?.model().await?;
+    Ok(messages.into_iter().map(Into::into).collect())
 }
 
 pub async fn op_create_channel_message(

@@ -15,6 +15,8 @@ export declare class Script {
     run(): void;
     private onInterval;
     getGuild(): Guild;
+    getMessage(channelId: string, messageId: string): Promise<Message>;
+    getMessages(channelId: string, options?: GetMessagesOptions): Promise<Message[]>;
     createMessage(channelId: string, fields: OpCreateMessageFields): Promise<Message>;
     editMessage(channelId: string, messageId: string, fields: OpEditMessageFields): Promise<Message>;
     deleteMessage(channelId: string, messageId: string): Promise<void>;
@@ -27,5 +29,10 @@ export declare class Script {
 interface IntervalTimerListener {
     timer: IntervalTimer;
     callback: () => any;
+}
+interface GetMessagesOptions {
+    limit?: number;
+    after?: string;
+    before?: string;
 }
 export {};

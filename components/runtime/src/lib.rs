@@ -29,8 +29,14 @@ pub fn create_extension(ctx: RuntimeContext) -> Extension {
             // discord stuff
             ("discord_get_guild", op_sync(ops::discord::op_get_guild)),
             ("discord_edit_guild", op_sync(dummy_op)),
-            ("discord_get_message", op_sync(dummy_op)),
-            ("discord_get_messages", op_sync(dummy_op)),
+            (
+                "discord_get_message",
+                op_async(ops::discord::op_get_message),
+            ),
+            (
+                "discord_get_messages",
+                op_async(ops::discord::op_get_messages),
+            ),
             (
                 "discord_create_message",
                 op_async(ops::discord::op_create_channel_message),
