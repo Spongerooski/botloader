@@ -80,7 +80,7 @@ jobs:
       - run:
           name: Build docker image
           command: |
-            docker build --build-arg BOTLOADER_API_BASE="https://botloader.io" --build-arg BOTLOADER_CLIENT_ID="907015513073397870" -t jonas747/botloader-frontend . -f frontend/Dockerfile
+            docker build --build-arg BOTLOADER_API_BASE="https://api.botloader.io" --build-arg BOTLOADER_CLIENT_ID="907015513073397870" -t jonas747/botloader-frontend . -f frontend/Dockerfile
       - run:
           name: Archive image
           command: |
