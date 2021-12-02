@@ -14,50 +14,13 @@ executors:
           POSTGRES_HOST_AUTH_METHOD: trust
 
 jobs:
-  build:
-    # environment:
-    #   DATABASE_URL: postgres://postgres@localhost/circle_test
-
-    executor: main
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            # Note, we shouldn't need to invalidate the cache, cargo will handle that itself
-            # this does create the problem of the cache constantly growing, but its probably fine
-            # if we update the key on each new rust version
-            - cargo-3-rust.1.56
-      # - run:
-      #     name: Install sqlx-cli
-      #     command: cargo install sqlx-cli
-      # - run:
-      #     name: Create database
-      #     command: cargo sqlx database create
-      # - run:
-      #     name: Apply db migrations
-      #     command: cargo sqlx migrate --source components/stores/migrations run
-      - run:
-          name: Add rustfmt
-          command: rustup component add rustfmt
-      - run:
-          name: Build
-          command: cargo build --release
-      - save_cache:
-          key: cargo-3-rust.1.56
-          paths:
-            - target/release/build
-            - target/release/deps
-            - target/release/incremental
-            - target/release/gn_out
-            - target/release/.fingerprint
-            - target/release/.cargo-lock
   build-docker-images:
-    docker:
-      - image: cimg/base:2021.04
+    resource_class: xlarge
+    machine:
+      image: ubuntu-2004:202111-01
+      docker_layer_caching: true
     steps:
       - checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
       - run:
           name: Build base Docker image
           command: |
@@ -81,6 +44,7 @@ jobs:
             - ./image-webapi.tar
             - ./image-bot.tar
   publish-images:
+    resource_class: medium
     docker:
       - image: cimg/base:2021.04
     steps:
@@ -105,24 +69,6 @@ jobs:
             docker tag jonas747/botloader-bot:latest "jonas747/botloader-bot:$CIRCLE_BUILD_NUM"
             docker push "jonas747/botloader-webapi:$CIRCLE_BUILD_NUM"
             docker push "jonas747/botloader-bot:$CIRCLE_BUILD_NUM"
-  deploy-alpha:
-    docker:
-      # replace with your preferred image
-      - image: cimg/base:stable
-    steps:
-      - kubernetes/install
-      - kubernetes/install-kubeconfig:
-          kubeconfig: KUBECONFIG_DATA
-      - kubernetes/update-container-image:
-          container-image-updates: botloader-bot=jonas747/botloader-bot:$CIRCLE_PREVIOUS_BUILD_NUM
-          get-rollout-status: true
-          resource-name: statefulset/botloader-bot
-          show-kubectl-command: true
-      - kubernetes/update-container-image:
-          container-image-updates: botloader-webapi=jonas747/botloader-webapi:$CIRCLE_PREVIOUS_BUILD_NUM
-          get-rollout-status: true
-          resource-name: deployment/botloader-webapi
-          show-kubectl-command: true
 workflows:
   build-n-publish:
     jobs:
@@ -133,16 +79,3 @@ workflows:
               only: master
           requires:
             - build-docker-images
-      - hold-deploy-alpha:
-          type: approval
-          filters:
-            branches:
-              only: master
-          requires:
-            - publish-images
-      - deploy-alpha:
-          filters:
-            branches:
-              only: master
-          requires:
-            - hold-deploy-alpha
