@@ -70,12 +70,13 @@ jobs:
             docker push "jonas747/botloader-webapi:$CIRCLE_BUILD_NUM"
             docker push "jonas747/botloader-bot:$CIRCLE_BUILD_NUM"
   build-frontend-image:
-    resource_class: xlarge
-    machine:
-      image: ubuntu-2004:202111-01
-      docker_layer_caching: true
+    resource_class: medium
+    docker:
+      - image: cimg/base:2021.04
     steps:
       - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
       - run:
           name: Build docker image
           command: |
@@ -111,6 +112,15 @@ jobs:
             docker tag jonas747/botloader-frontend:latest "jonas747/botloader-frontend:$CIRCLE_BUILD_NUM"
             docker push "jonas747/botloader-frontend:$CIRCLE_BUILD_NUM"
 workflows:
+  build-n-publish-frontend:
+    jobs:
+      - build-frontend-image
+      - publish-frontend-images:
+          filters:
+            branches:
+              only: master
+          requires:
+            - build-frontend-image
   build-n-publish-backend:
     jobs:
       - build-backend-docker-images
@@ -120,10 +130,3 @@ workflows:
               only: master
           requires:
             - build-backend-docker-images
-      - build-frontend-image
-      - publish-frontend-images:
-          filters:
-            branches:
-              only: master
-          requires:
-            - build-frontend-image
