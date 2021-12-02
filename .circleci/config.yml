@@ -14,7 +14,7 @@ executors:
           POSTGRES_HOST_AUTH_METHOD: trust
 
 jobs:
-  build-docker-images:
+  build-backend-docker-images:
     resource_class: xlarge
     machine:
       image: ubuntu-2004:202111-01
@@ -43,7 +43,7 @@ jobs:
           paths:
             - ./image-webapi.tar
             - ./image-bot.tar
-  publish-images:
+  publish-backend-images:
     resource_class: medium
     docker:
       - image: cimg/base:2021.04
@@ -69,13 +69,61 @@ jobs:
             docker tag jonas747/botloader-bot:latest "jonas747/botloader-bot:$CIRCLE_BUILD_NUM"
             docker push "jonas747/botloader-webapi:$CIRCLE_BUILD_NUM"
             docker push "jonas747/botloader-bot:$CIRCLE_BUILD_NUM"
+  build-frontend-image:
+    resource_class: xlarge
+    machine:
+      image: ubuntu-2004:202111-01
+      docker_layer_caching: true
+    steps:
+      - checkout
+      - run:
+          name: Build docker image
+          command: |
+            docker build --build-arg BOTLOADER_API_BASE="https://botloader.io" --build-arg BOTLOADER_CLIENT_ID="907015513073397870" -t jonas747/botloader-frontend . -f frontend/Dockerfile
+      - run:
+          name: Archive image
+          command: |
+            docker save -o image-frontend.tar jonas747/botloader-frontend
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./image-frontend.tar
+  publish-frontend-images:
+    resource_class: medium
+    docker:
+      - image: cimg/base:2021.04
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - setup_remote_docker
+      - run:
+          name: Load archived images
+          command: |
+            docker load -i /tmp/workspace/image-frontend.tar
+      - run:
+          name: Docker login
+          command: |
+            echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - run:
+          name: Publish Docker Image to Docker Hub
+          command: |
+            docker push "jonas747/botloader-frontend:latest"
+            docker tag jonas747/botloader-frontend:latest "jonas747/botloader-frontend:$CIRCLE_BUILD_NUM"
+            docker push "jonas747/botloader-frontend:$CIRCLE_BUILD_NUM"
 workflows:
-  build-n-publish:
+  build-n-publish-backend:
     jobs:
-      - build-docker-images
-      - publish-images:
+      - build-backend-docker-images
+      - publish-backend-images:
           filters:
             branches:
               only: master
           requires:
-            - build-docker-images
+            - build-backend-docker-images
+      - build-frontend-image
+      - publish-frontend-images:
+          filters:
+            branches:
+              only: master
+          requires:
+            - build-frontend-image
