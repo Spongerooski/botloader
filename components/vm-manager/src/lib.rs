@@ -17,7 +17,7 @@ use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Event;
 use twilight_model::id::GuildId;
 use vm::vm::{CreateRt, GuildVmEvent, ScriptLoad, Vm, VmCommand, VmContext, VmEvent, VmRole};
-use vmthread::{VmThreadCommand, VmThreadFuture, VmThreadHandle};
+use vmthread::{ShutdownReason, VmThreadCommand, VmThreadFuture, VmThreadHandle};
 
 type GuildMap = HashMap<GuildId, GuildState>;
 pub struct InnerManager<CT> {
@@ -309,15 +309,24 @@ where
                 .await
                 .ok();
 
-                // report the shutdown to the guild
-                self.inner.guild_logger.log(LogEntry::critical(
-                    guild_id,
-                    format!(
-                        "Runtime for your guild has shut down. (use the command `!jack startvm` \
-                         to start again)\nReason: {:?}",
-                        reason
-                    ),
-                ));
+                if matches!(reason, ShutdownReason::Runaway) {
+                    // report the shutdown to the guild
+                    self.inner.guild_logger.log(LogEntry::critical(
+                        guild_id,
+                        "Runtime for your guild has shut down because of a runaway script. (use \
+                         the command `!jack startvm` to start again)"
+                            .to_string(),
+                    ));
+                } else {
+                    self.inner.guild_logger.log(LogEntry::info(
+                        guild_id,
+                        format!(
+                            "Runtime for your guild has shut down, bot is most likely restarting. \
+                             \nReason: {:?}",
+                            reason
+                        ),
+                    ));
+                }
             }
         }
     }
