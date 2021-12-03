@@ -6,30 +6,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-stores = {path="../../components/stores"}
-runtime = {path="../../components/runtime"}
-tscompiler = {path="../../components/tscompiler"}
-vmthread = {path="../../components/vmthread"}
-vm-manager = {path="../../components/vm-manager"}
-vm = {path="../../components/vm"}
-botrpc = {path="../../components/botrpc"}
-guild-logger = {path="../../components/guild-logger"}
-validation = {path="../../components/validation"}
-
 twilight-http = {version = "0.7", features = ["tracing"]}
 twilight-model = "0.7"
-twilight-util = {version = "0.7", features=["permission-calculator"]}
  
 tracing = "0.1"
-tracing-futures= "0.2"
 tracing-subscriber = "0.2"
 tracing-log = "0.1"
 
 tokio = { version = "1.5.0", features = ["full"] }
 futures-core = "0.3"
-futures = "0.3"
-
-dashmap = "4.0"
 dotenv = "0.15"
 structopt = "0.3"
 oauth2 = "4.1"

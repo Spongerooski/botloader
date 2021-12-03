@@ -294,33 +294,6 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "axum"
-version = "0.2.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f08f95a202e827209db1491047aa57c18c8adb4c5efcfcfd4a2da4838ee3a72"
-dependencies = [
- "async-trait",
- "bitflags",
- "bytes",
- "futures-util",
- "http",
- "http-body",
- "hyper",
- "pin-project-lite",
- "regex",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "sync_wrapper",
- "tokio",
- "tokio-util",
- "tower",
- "tower-http",
- "tower-layer",
- "tower-service",
-]
-
-[[package]]
-name = "axum"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b4e96976b2022b23b2199168ff9b281e9ddc1aa795607d5cb7146868ca5c101"
@@ -349,32 +322,6 @@ dependencies = [
  "tower-http",
  "tower-layer",
  "tower-service",
-]
-
-[[package]]
-name = "axum-debug"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08b7c2138c8c7b0021324df698036e003ad2ab05f622dbc95de55eed661629c6"
-dependencies = [
- "axum 0.2.8",
- "axum-debug-macros",
- "bytes",
- "http",
- "http-body",
- "tower-service",
-]
-
-[[package]]
-name = "axum-debug-macros"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d71956f60ac01c313acfbccdc5a1aa8c54ba1543e80df1abc2266c1c2d6200fa"
-dependencies = [
- "axum 0.2.8",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -434,7 +381,6 @@ dependencies = [
  "structopt",
  "tokio",
  "tracing",
- "tracing-futures",
  "tracing-log",
  "tracing-subscriber",
  "tscompiler",
@@ -463,7 +409,6 @@ dependencies = [
  "tonic",
  "tonic-build",
  "tracing",
- "tracing-futures",
  "twilight-model",
  "vm-manager",
 ]
@@ -564,29 +509,16 @@ dependencies = [
 name = "common"
 version = "0.1.0"
 dependencies = [
- "botrpc",
- "dashmap",
  "dotenv",
- "futures",
  "futures-core",
- "guild-logger",
  "oauth2",
- "runtime",
- "stores",
  "structopt",
  "tokio",
  "tracing",
- "tracing-futures",
  "tracing-log",
  "tracing-subscriber",
- "tscompiler",
  "twilight-http",
  "twilight-model",
- "twilight-util",
- "validation",
- "vm",
- "vm-manager",
- "vmthread",
 ]
 
 [[package]]
@@ -2227,7 +2159,6 @@ dependencies = [
  "timers",
  "tokio",
  "tracing",
- "tracing-futures",
  "ts-rs",
  "tscompiler",
  "twilight-cache-inmemory",
@@ -3673,7 +3604,6 @@ dependencies = [
 name = "tscompiler"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "swc_common 0.14.7",
  "swc_ecmascript 0.84.1",
 ]
@@ -3947,7 +3877,6 @@ dependencies = [
  "stores",
  "tokio",
  "tracing",
- "tracing-futures",
  "twilight-model",
  "url",
  "v8",
@@ -3964,7 +3893,6 @@ dependencies = [
  "stores",
  "tokio",
  "tracing",
- "tracing-futures",
  "tscompiler",
  "twilight-cache-inmemory",
  "twilight-gateway",
@@ -3981,7 +3909,6 @@ dependencies = [
  "isolatecell",
  "tokio",
  "tracing",
- "tracing-futures",
 ]
 
 [[package]]
@@ -4094,8 +4021,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum 0.3.4",
- "axum-debug",
+ "axum",
  "base64 0.13.0",
  "botrpc",
  "chrono",
@@ -4118,7 +4044,6 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
- "tracing-futures",
  "tracing-log",
  "tracing-subscriber",
  "twilight-http",
