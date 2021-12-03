@@ -4,16 +4,9 @@ use crate::LogEntry;
 use tokio::sync::broadcast::{self, Receiver};
 use twilight_model::id::GuildId;
 
+#[derive(Default)]
 pub struct GuildSubscriberBackend {
     subscriptions: RwLock<HashMap<GuildId, broadcast::Sender<LogEntry>>>,
-}
-
-impl Default for GuildSubscriberBackend {
-    fn default() -> Self {
-        Self {
-            subscriptions: Default::default(),
-        }
-    }
 }
 
 impl GuildSubscriberBackend {

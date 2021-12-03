@@ -33,16 +33,9 @@ impl LoggerTask {
     }
 }
 
+#[derive(Default)]
 pub struct GuildLoggerBuilder {
     backends: Vec<Arc<dyn GuildLoggerBackend + Send + Sync>>,
-}
-
-impl Default for GuildLoggerBuilder {
-    fn default() -> Self {
-        Self {
-            backends: Vec::new(),
-        }
-    }
 }
 
 impl GuildLoggerBuilder {

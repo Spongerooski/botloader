@@ -1,5 +1,5 @@
 use axum::{
-    body::{box_body, BoxBody},
+    body::{boxed, BoxBody},
     http::{header, HeaderMap, HeaderValue, Method, Request, Response},
 };
 use common::config::RunConfig;
@@ -54,7 +54,7 @@ where
 
         if matches!(req.method(), &Method::OPTIONS) {
             Box::pin(async move {
-                let mut resp = Response::new(box_body(Empty::new()));
+                let mut resp = Response::new(boxed(Empty::new()));
                 insert_headers(&host_base, resp.headers_mut());
                 Ok(resp)
             })
