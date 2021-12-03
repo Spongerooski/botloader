@@ -148,7 +148,11 @@ async fn main() {
     // run it with hyper on configured address
     info!("Starting hype on address: {}", conf.listen_addr);
     let addr = conf.listen_addr.parse().unwrap();
-    axum::Server::bind(&addr).serve(make_service).await.unwrap();
+    axum::Server::bind(&addr)
+        .serve(make_service)
+        .with_graceful_shutdown(common::shutdown::wait_shutdown_signal())
+        .await
+        .unwrap();
 }
 
 #[allow(dead_code)]
