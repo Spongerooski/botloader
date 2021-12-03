@@ -11,12 +11,15 @@ pub async fn wait_shutdown_signal() {
         _ = interrupt.recv() =>{},
         _ = terminate.recv() =>{},
     }
+
+    info!("got shutdown signal, shutting down...");
 }
 
 // TODO: implement this for other platforms
 // realistically though, this wont be run in production outside linux, so it is needed?
 #[cfg(not(target_os = "linux"))]
 pub async fn wait_shutdown_signal() {
+    info!("custom signal handling not implemented for this target, graceful shutdown disabled");
     Empty.await
 }
 

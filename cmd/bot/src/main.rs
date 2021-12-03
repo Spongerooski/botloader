@@ -83,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     common::shutdown::wait_shutdown_signal().await;
 
-    info!("shutting down, cluster going down...");
+    info!("cluster going down...");
     cluster.down();
 
     info!("shutting down vm's");
