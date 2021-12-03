@@ -1,14 +1,14 @@
-import type { Embed } from "./Embed";
-import type { MessageReference } from "./MessageReference";
-import type { Attachment } from "./Attachment";
-import type { MessageApplication } from "./MessageApplication";
-import type { MessageReaction } from "./MessageReaction";
-import type { Mention } from "./Mention";
-import type { MessageActivity } from "./MessageActivity";
-import type { ChannelMention } from "./ChannelMention";
 import type { PartialMember } from "./PartialMember";
+import type { MessageReference } from "./MessageReference";
+import type { Embed } from "./Embed";
+import type { Mention } from "./Mention";
+import type { MessageApplication } from "./MessageApplication";
 import type { MessageType } from "./MessageType";
+import type { ChannelMention } from "./ChannelMention";
+import type { MessageReaction } from "./MessageReaction";
+import type { MessageActivity } from "./MessageActivity";
 import type { User } from "./User";
+import type { Attachment } from "./Attachment";
 export interface Message {
     activity: MessageActivity | null;
     application: MessageApplication | null;

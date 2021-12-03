@@ -1,9 +1,9 @@
+import type { MfaLevel } from "./MfaLevel";
+import type { NsfwLevel } from "./NsfwLevel";
 import type { VerificationLevel } from "./VerificationLevel";
+import type { DefaultMessageNotificationLevel } from "./DefaultMessageNotificationLevel";
 import type { PremiumTier } from "./PremiumTier";
 import type { ExplicitContentFilter } from "./ExplicitContentFilter";
-import type { NsfwLevel } from "./NsfwLevel";
-import type { DefaultMessageNotificationLevel } from "./DefaultMessageNotificationLevel";
-import type { MfaLevel } from "./MfaLevel";
 export interface Guild {
     afkChannelId: string | null;
     afkTimeout: number;

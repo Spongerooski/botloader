@@ -1,5 +1,5 @@
-import type { ThreadMember } from "./ThreadMember";
 import type { AutoArchiveDuration } from "./AutoArchiveDuration";
+import type { ThreadMember } from "./ThreadMember";
 import type { ThreadMetadata } from "./ThreadMetadata";
 export interface PublicThread {
     default_auto_archive_duration: AutoArchiveDuration | null;

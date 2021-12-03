@@ -248,6 +248,7 @@ pub fn to_twilight_commands(
             default_permission: None,
             id: None,
             kind: TwilightCommandType::ChatInput,
+            version: twilight_model::id::CommandVersionId::new(1).unwrap(),
         })
         .collect::<Vec<_>>();
 
@@ -319,6 +320,7 @@ fn make_unknown_group(guild_id: GuildId, name: String) -> TwilightCommand {
         kind: TwilightCommandType::ChatInput,
         options: Vec::new(),
         name,
+        version: twilight_model::id::CommandVersionId::new(1).unwrap(),
     }
 }
 
@@ -345,6 +347,7 @@ pub fn group_to_twilight_command(guild_id: GuildId, group: &CommandGroup) -> Twi
         kind: TwilightCommandType::ChatInput,
         name: group.name.clone(),
         options: opts,
+        version: twilight_model::id::CommandVersionId::new(1).unwrap(),
     }
 }
 

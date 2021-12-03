@@ -2,7 +2,7 @@ import type { User } from "./User";
 export interface Member {
     deaf: boolean;
     guild_id: string;
-    joined_at: number | null;
+    joined_at: number;
     mute: boolean;
     nick: string | null;
     pending: boolean;

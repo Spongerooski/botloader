@@ -1,5 +1,5 @@
-import type { CommandInteractionOption } from "./CommandInteractionOption";
 import type { PartialMember } from "../PartialMember";
+import type { CommandInteractionOption } from "./CommandInteractionOption";
 
 export interface CommandInteraction {
   channelId: string;

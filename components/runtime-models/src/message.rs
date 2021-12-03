@@ -224,7 +224,7 @@ impl From<twilight_model::channel::message::MessageType> for MessageType {
 #[serde(rename_all = "camelCase")]
 pub struct PartialMember {
     pub deaf: bool,
-    pub joined_at: Option<NotBigU64>,
+    pub joined_at: NotBigU64,
     pub mute: bool,
     pub nick: Option<String>,
     pub premium_since: Option<NotBigU64>,
@@ -235,7 +235,7 @@ impl From<twilight_model::guild::PartialMember> for PartialMember {
     fn from(v: twilight_model::guild::PartialMember) -> Self {
         Self {
             deaf: v.deaf,
-            joined_at: v.joined_at.map(|ts| NotBigU64(ts.as_micros() / 1000)),
+            joined_at: NotBigU64(v.joined_at.as_micros() / 1000),
             mute: v.mute,
             nick: v.nick,
             premium_since: v.premium_since.map(|ts| NotBigU64(ts.as_micros() / 1000)),

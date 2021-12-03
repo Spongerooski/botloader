@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+use twilight_model::application::command::NumberCommandOptionData;
 
 use crate::util::NotBigU64;
 
@@ -128,7 +129,7 @@ impl From<CommandOption> for twilight_model::application::command::CommandOption
                 required: v.required,
                 ..Default::default()
             }),
-            CommandOptionType::Integer => Self::Integer(ChoiceCommandOptionData {
+            CommandOptionType::Integer => Self::Integer(NumberCommandOptionData {
                 name: v.name,
                 description: v.description,
                 required: v.required,
@@ -160,7 +161,7 @@ impl From<CommandOption> for twilight_model::application::command::CommandOption
                 description: v.description,
                 required: v.required,
             }),
-            CommandOptionType::Number => Self::Number(ChoiceCommandOptionData {
+            CommandOptionType::Number => Self::Number(NumberCommandOptionData {
                 name: v.name,
                 description: v.description,
                 required: v.required,

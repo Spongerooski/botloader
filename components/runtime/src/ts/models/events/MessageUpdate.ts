@@ -1,8 +1,8 @@
 import type { Embed } from "../Embed";
-import type { Attachment } from "../Attachment";
 import type { Mention } from "../Mention";
 import type { MessageType } from "../MessageType";
 import type { User } from "../User";
+import type { Attachment } from "../Attachment";
 
 export interface MessageUpdate {
   attachments: Array<Attachment> | null;

@@ -7,7 +7,7 @@ use ts_rs::TS;
 pub struct Member {
     pub deaf: bool,
     pub guild_id: String,
-    pub joined_at: Option<NotBigU64>,
+    pub joined_at: NotBigU64,
     pub mute: bool,
     pub nick: Option<String>,
     pub pending: bool,
@@ -21,7 +21,7 @@ impl From<twilight_model::guild::Member> for Member {
         Self {
             deaf: v.deaf,
             guild_id: v.guild_id.to_string(),
-            joined_at: v.joined_at.map(|v| NotBigU64(v.as_micros() / 1000)),
+            joined_at: NotBigU64(v.joined_at.as_micros() / 1000),
             mute: v.mute,
             nick: v.nick,
             pending: v.pending,

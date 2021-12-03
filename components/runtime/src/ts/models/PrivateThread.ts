@@ -1,7 +1,7 @@
-import type { ThreadMember } from "./ThreadMember";
-import type { PermissionOverwrite } from "./PermissionOverwrite";
 import type { AutoArchiveDuration } from "./AutoArchiveDuration";
+import type { ThreadMember } from "./ThreadMember";
 import type { ThreadMetadata } from "./ThreadMetadata";
+import type { PermissionOverwrite } from "./PermissionOverwrite";
 
 export interface PrivateThread {
   default_auto_archive_duration: AutoArchiveDuration | null;
