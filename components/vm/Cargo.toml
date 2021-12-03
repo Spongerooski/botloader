@@ -19,7 +19,7 @@ deno_core = "0.109"
 v8 = "0.35"
 
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.5.0", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 anyhow = "1.0"
 url = "2.2"

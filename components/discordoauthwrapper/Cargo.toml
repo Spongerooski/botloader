@@ -10,7 +10,7 @@ stores = {path="../../components/stores"}
 
 async-trait = "0.1"
 oauth2 = "4.1"
-tokio = { version = "1.5.0", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 anyhow = "1.0"
 lru = "0.7"
 
