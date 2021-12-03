@@ -92,6 +92,25 @@ where
         }
     }
 
+    pub async fn shutdown(&self) {
+        // issue shutdown to all threads
+        let guilds = self.inner.guilds.read().await;
+        for (_, gs) in guilds.iter() {
+            gs.worker_thread
+                .send_cmd
+                .send(VmThreadCommand::Shutdown)
+                .ok();
+        }
+    }
+
+    pub async fn guilds_running(&self) -> usize {
+        let guilds = self.inner.guilds.read().await;
+        return guilds
+            .iter()
+            .filter(|(_, gs)| matches!(gs.main_vm, VmState::Running(_)))
+            .count();
+    }
+
     pub async fn restart_guild_vm(&self, guild_id: GuildId) -> Result<(), String> {
         let mut guilds = self.inner.guilds.write().await;
 

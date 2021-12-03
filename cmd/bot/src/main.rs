@@ -1,14 +1,13 @@
 use std::sync::Arc;
+use std::time::Duration;
 
-use common::config::RunConfig;
-use common::DiscordConfig;
 use futures::StreamExt;
 use futures_core::Stream;
 use stores::config::{ConfigStore, JoinedGuild};
 use stores::postgres::Postgres;
 use stores::timers::TimerStore;
 use tracing::{error, info};
-use twilight_cache_inmemory::{InMemoryCache, InMemoryCacheBuilder};
+use twilight_cache_inmemory::InMemoryCacheBuilder;
 use twilight_gateway::{Cluster, Event, Intents};
 use twilight_model::application::callback::{CallbackData, InteractionResponse};
 use vm::init_v8_flags;
@@ -46,69 +45,67 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config_store = Postgres::new_with_url(&config.database_url).await?;
 
-    handle_events(
-        BotContext {
-            http: discord_config.client.clone(),
-            cluster,
-            state,
-            config_store,
-            config,
-            discord_config,
-        },
-        events,
-    )
-    .await;
-
-    Ok(())
-}
-
-#[derive(Clone)]
-pub struct BotContext<CT> {
-    config: RunConfig,
-    http: Arc<twilight_http::Client>,
-    cluster: Arc<Cluster>,
-    state: Arc<InMemoryCache>,
-    config_store: CT,
-    discord_config: DiscordConfig,
-}
-
-async fn handle_events<CT: Clone + ConfigStore + TimerStore + Send + Sync + 'static>(
-    ctx: BotContext<CT>,
-    mut stream: impl Stream<Item = (u64, Event)> + Unpin,
-) {
     let guild_log_sub_backend =
         Arc::new(guild_logger::guild_subscriber_backend::GuildSubscriberBackend::default());
     let logger = guild_logger::GuildLoggerBuilder::new()
         .add_backend(Arc::new(guild_logger::discord_backend::DiscordLogger::new(
-            ctx.http.clone(),
-            ctx.config_store.clone(),
+            discord_config.client.clone(),
+            config_store.clone(),
         )))
         .add_backend(guild_log_sub_backend.clone())
         .run();
 
     let vm_manager = vm_manager::Manager::new(
         logger.clone(),
-        ctx.http.clone(),
-        ctx.state.clone(),
-        ctx.config_store.clone(),
+        discord_config.client.clone(),
+        state.clone(),
+        config_store.clone(),
     );
 
     let bot_rpc_server = botrpc::Server::new(
         guild_log_sub_backend,
         vm_manager.clone(),
-        ctx.config.bot_rpc_listen_addr.clone(),
+        config.bot_rpc_listen_addr.clone(),
     );
+
+    tokio::spawn(handle_events(
+        commands::CommandContext {
+            http: discord_config.client.clone(),
+            cluster: cluster.clone(),
+            state,
+            config_store,
+            vm_manager: vm_manager.clone(),
+        },
+        events,
+    ));
 
     tokio::spawn(bot_rpc_server.run());
 
-    let cmd_context = commands::CommandContext {
-        http: ctx.http.clone(),
-        cluster: ctx.cluster.clone(),
-        state: ctx.state.clone(),
-        config_store: ctx.config_store.clone(),
-        vm_manager: vm_manager.clone(),
-    };
+    common::shutdown::wait_shutdown_signal().await;
 
+    info!("shutting down, cluster going down...");
+    cluster.down();
+
+    info!("shutting down vm's");
+    vm_manager.shutdown().await;
+
+    loop {
+        let remaining = vm_manager.guilds_running().await;
+        if remaining == 0 {
+            break;
+        }
+
+        info!("waiting on {} guilds to shut down...", remaining);
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+
+    Ok(())
+}
+
+async fn handle_events<CT: Clone + ConfigStore + TimerStore + Send + Sync + 'static>(
+    ctx: commands::CommandContext<CT>,
+    mut stream: impl Stream<Item = (u64, Event)> + Unpin,
+) {
     while let Some((_, event)) = stream.next().await {
         ctx.state.update(&event);
 
@@ -135,9 +132,8 @@ async fn handle_events<CT: Clone + ConfigStore + TimerStore + Send + Sync + 'sta
                     _ => {}
                 };
 
-                vm_manager.init_guild(gc.id).await.unwrap();
-                cmd_context
-                    .config_store
+                ctx.vm_manager.init_guild(gc.id).await.unwrap();
+                ctx.config_store
                     .add_update_joined_guild(JoinedGuild {
                         id: gc.id,
                         name: gc.name.clone(),
@@ -161,11 +157,11 @@ async fn handle_events<CT: Clone + ConfigStore + TimerStore + Send + Sync + 'sta
             }
             Event::GuildDelete(gd) => {
                 ctx.config_store.remove_joined_guild(gd.id).await.ok();
-                vm_manager.remove_guild(gd.id).await;
+                ctx.vm_manager.remove_guild(gd.id).await;
             }
             Event::MessageCreate(m) => {
                 if let Some(cmd) = commands::check_for_command(&ctx, *(m).clone()) {
-                    commands::handle_command(cmd_context.clone(), cmd).await
+                    commands::handle_command(ctx.clone(), cmd).await
                 }
             }
             Event::InteractionCreate(evt) => match &evt.0 {
@@ -194,7 +190,7 @@ async fn handle_events<CT: Clone + ConfigStore + TimerStore + Send + Sync + 'sta
             _ => {}
         }
 
-        vm_manager.handle_discord_event(event).await;
+        ctx.vm_manager.handle_discord_event(event).await;
 
         // println!("Event: {:?}", event);
     }

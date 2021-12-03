@@ -11,8 +11,6 @@ use twilight_model::{gateway::payload::incoming::MessageCreate, guild::Permissio
 use twilight_util::permission_calculator::PermissionCalculator;
 use validation::{validate, ValidationError};
 
-use crate::BotContext;
-
 #[derive(Clone)]
 pub struct CommandContext<CT> {
     pub(crate) http: Arc<twilight_http::Client>,
@@ -44,7 +42,7 @@ pub struct ParsedCommand {
 }
 
 pub(crate) fn check_for_command<CT>(
-    ctx: &BotContext<CT>,
+    ctx: &CommandContext<CT>,
     m: MessageCreate,
 ) -> Option<ParsedCommand> {
     if let Some(mem) = &m.member {

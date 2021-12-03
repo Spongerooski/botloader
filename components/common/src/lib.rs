@@ -9,6 +9,7 @@ use twilight_model::{
 };
 
 pub mod config;
+pub mod shutdown;
 
 use crate::config::RunConfig;
 
