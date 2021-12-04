@@ -1,5 +1,5 @@
 use crate::moduleloader::{ModuleEntry, ModuleManager};
-use crate::{prepend_script_source_header, AnyError};
+use crate::{prepend_script_source_header, AnyError, JsValue};
 use anyhow::anyhow;
 use deno_core::{op_async, Extension, OpState, RuntimeOptions, Snapshot};
 use futures::{future::LocalBoxFuture, FutureExt};
@@ -73,7 +73,6 @@ pub struct Vm {
     module_manager: Rc<ModuleManager>,
 
     script_dispatch_tx: UnboundedSender<ScriptDispatchData>,
-    js_polling_events: Arc<AtomicBool>,
     wakeup_rx: UnboundedReceiver<()>,
 }
 
@@ -84,8 +83,7 @@ pub struct VmContext {
 }
 
 pub struct CoreCtxData {
-    rcv_events: UnboundedReceiver<ScriptDispatchData>,
-    is_polling: Arc<AtomicBool>,
+    rcv_events: Option<UnboundedReceiver<ScriptDispatchData>>,
 }
 
 impl Vm {
@@ -101,15 +99,10 @@ impl Vm {
 
         let (script_dispatch_tx, script_dispatch_rx) = mpsc::unbounded_channel();
 
-        let is_polling = Arc::new(AtomicBool::new(false));
-
         let sandbox = Self::create_isolate(
             &create_req.extension_factory,
             module_manager.clone(),
-            CoreCtxData {
-                rcv_events: script_dispatch_rx,
-                is_polling: is_polling.clone(),
-            },
+            script_dispatch_rx,
         )
         .await;
         // sandbox.add_state_data(create_req.ctx.clone());
@@ -127,7 +120,6 @@ impl Vm {
             runtime: sandbox,
             extension_factory: create_req.extension_factory,
             module_manager,
-            js_polling_events: is_polling,
             wakeup_rx,
         };
 
@@ -143,7 +135,7 @@ impl Vm {
     async fn create_isolate(
         extension_factory: &ExtensionFactory,
         module_manager: Rc<ModuleManager>,
-        core_data: CoreCtxData,
+        evt_rx: UnboundedReceiver<ScriptDispatchData>,
     ) -> ManagedIsolate {
         let mut extensions = extension_factory();
         extensions.insert(
@@ -163,7 +155,12 @@ impl Vm {
             ..Default::default()
         };
 
-        ManagedIsolate::new_with_state(options, core_data)
+        ManagedIsolate::new_with_state(
+            options,
+            CoreCtxData {
+                rcv_events: Some(evt_rx),
+            },
+        )
     }
 
     fn emit_isolate_handle(&mut self) {
@@ -406,32 +403,35 @@ impl Vm {
         // iso.low_memory_notification();
     }
 
-    async fn stop_vm(&mut self) -> CoreCtxData {
+    async fn stop_vm(&mut self) -> UnboundedReceiver<ScriptDispatchData> {
         info!("rt {} stopping sandbox", self.ctx.guild_id,);
-        // TODO: more robust solution for this.
-        if self
-            .js_polling_events
-            .load(std::sync::atomic::Ordering::SeqCst)
-        {
-            self.script_dispatch_tx
-                .send(ScriptDispatchData {
-                    name: "STOP".to_string(),
-                    data: serde_json::Value::Null,
-                })
-                .ok();
-        }
+
+        // take the rcv event channel, this way we keep the queued up events
+        let evt_rx = {
+            let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
+            let op_state_rc = rt.op_state();
+            let mut op_state = op_state_rc.borrow_mut();
+            let core = op_state.borrow_mut::<CoreCtxData>();
+            core.rcv_events.take().unwrap()
+        };
+
+        // wake up the event loop, wihtout this script evt rx wont be polled and it will effectively hang
+        self.script_dispatch_tx
+            .send(ScriptDispatchData {
+                name: "NOOP".to_string(),
+                data: serde_json::Value::Null,
+            })
+            .ok();
 
         // complete the event loop and extract our core data (script event receiver)
         // TODO: we could potentially have some long running futures
         // so maybe call a function that cancels all long running futures or something?
+        // or at the very least have a timeout?
         {
             self.run_until_completion().await;
         }
 
-        let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
-        let op_state = rt.op_state();
-        let val = op_state.borrow_mut().take();
-        val
+        evt_rx
     }
 
     // Simply recreates the vm and loads the scripts in self.loaded_scripts
@@ -517,6 +517,11 @@ impl Vm {
         for script in new_scripts {
             self.load_script(script).await;
         }
+
+        self.guild_logger.log(LogEntry::info(
+            self.ctx.guild_id,
+            "vm restarted".to_string(),
+        ));
     }
 }
 
@@ -530,14 +535,17 @@ async fn op_rcv_event(
         let mut op_state = cloned_state.borrow_mut();
         let core_data = op_state.borrow_mut::<CoreCtxData>();
 
-        core_data
-            .is_polling
-            .store(true, std::sync::atomic::Ordering::SeqCst);
-
-        match core_data.rcv_events.poll_recv(ctx) {
-            Poll::Ready(Some(v)) => Poll::Ready(Ok(v)),
-            Poll::Ready(None) => Poll::Ready(Err(anyhow!("no more events!"))),
-            Poll::Pending => Poll::Pending,
+        if let Some(rx) = &mut core_data.rcv_events {
+            match rx.poll_recv(ctx) {
+                Poll::Ready(Some(v)) => Poll::Ready(Ok(v)),
+                Poll::Ready(None) => Poll::Ready(Err(anyhow!("no more events!"))),
+                Poll::Pending => Poll::Pending,
+            }
+        } else {
+            Poll::Ready(Ok(ScriptDispatchData {
+                name: "STOP".to_string(),
+                data: JsValue::Null,
+            }))
         }
     })
     .await;
@@ -562,7 +570,6 @@ impl<'a> core::future::Future for TickFuture<'a> {
             let mut rt = self.cell.enter_isolate(self.rt);
 
             if let Poll::Ready(Err(e)) = rt.poll_event_loop(cx, false) {
-                // error!("Got a error in polling: {}", e)
                 return Poll::Ready(Err(e));
             }
         }
