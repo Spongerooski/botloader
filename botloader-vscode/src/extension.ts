@@ -31,7 +31,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	let ws = new BotloaderWS(wsApiBase, handleLogMessage, token);
 	let apiClient = new ApiClient(createFetcher(), httpApiBase, token);
 
-	let manager = new WorkspaceManager(apiClient, ws);
+	let manager = new WorkspaceManager(apiClient, ws, outputChannel);
 	context.subscriptions.push(manager);
 
 	await updateTypeDecls(context);
@@ -163,8 +163,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		let full = `[${tag}] ${item.message}`;
 		outputChannel.appendLine(full);
-		// TODO: remove this?
-		outputChannel.show(true);
 	}
 }
 

@@ -8,12 +8,14 @@ export class WorkspaceManager implements vscode.Disposable {
     openGuildWorkspaces: GuildScriptWorkspace[] = [];
     apiClient: ApiClient;
     ws: BotloaderWS;
+    outputChannel: vscode.OutputChannel;
 
     otherDisposables: vscode.Disposable[] = [];
 
-    constructor(apiClient: ApiClient, ws: BotloaderWS) {
+    constructor(apiClient: ApiClient, ws: BotloaderWS, outputChannel: vscode.OutputChannel) {
         this.apiClient = apiClient;
         this.ws = ws;
+        this.outputChannel = outputChannel;
 
         this.otherDisposables.push(vscode.workspace.onDidChangeWorkspaceFolders(this.workspaceFoldersChange.bind(this)));
 
@@ -49,6 +51,7 @@ export class WorkspaceManager implements vscode.Disposable {
             if (!this.openGuildWorkspaces.some(elem => elem.folder === folder)) {
                 this.openGuildWorkspaces.push(new GuildScriptWorkspace(folder, this.apiClient));
             }
+            this.outputChannel.show(true);
         } catch { }
     }
 
