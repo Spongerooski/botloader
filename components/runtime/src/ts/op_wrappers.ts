@@ -85,13 +85,13 @@ export namespace OpWrappers {
     }
 
     export async function getChannels(): Promise<GuildChannel[]> {
-        return await Deno.core.opSync(
+        return await Deno.core.opAsync(
             "discord_get_channels",
         );
     }
 
     export async function getChannel(channelId: string): Promise<GuildChannel> {
-        return await Deno.core.opSync(
+        return await Deno.core.opAsync(
             "discord_get_channel",
             channelId,
         );
