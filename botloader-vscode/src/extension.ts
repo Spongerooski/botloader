@@ -139,7 +139,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		// await vscode.workspace.fs.copy(vscode.Uri.joinPath(context.extensionUri, "/out/typings/lib.deno_core.d.ts"), vscode.Uri.joinPath(dirUri, "/.botloader/lib.global.d.ts"));
 		const typingsGlobal = vscode.Uri.joinPath(context.globalStorageUri, "/typings/index");
-		const typingsPath = typingsGlobal.path;
+		const typingsPath = typingsGlobal.fsPath;
 		await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/tsconfig.json`), textEncoder.encode(JSON.stringify(generateTsConfig(typingsPath), undefined, 4)));
 
 		vscode.workspace.updateWorkspaceFolders(0, 0, {
