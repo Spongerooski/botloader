@@ -160,6 +160,7 @@ function generateTsConfig(extensionPath: string) {
 			"strict": true,
 			"strictNullChecks": true,
 			"baseUrl": "./",
+			"lib": ["ES2020"],
 			"paths": {
 				"botloader": [
 					extensionPath + "/out/typings/index"
