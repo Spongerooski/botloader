@@ -10,6 +10,9 @@
         "strict": true,
         "strictNullChecks": true,
         "baseUrl": "../",
+        "lib": [
+            "ES2020"
+        ],
         // "typeRoots": [
         //     "../typedecls"
         // ],
