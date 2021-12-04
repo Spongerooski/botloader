@@ -26,6 +26,7 @@ pub fn create_extension(ctx: RuntimeContext) -> Extension {
         .ops(vec![
             // botloader stuff
             ("op_botloader_script_start", op_sync(op_script_start)),
+            ("op_botloader_log", op_sync(ops::log::console_log)),
             // discord stuff
             ("discord_get_guild", op_sync(ops::discord::op_get_guild)),
             ("discord_edit_guild", op_sync(dummy_op)),
@@ -82,6 +83,11 @@ pub fn create_extension(ctx: RuntimeContext) -> Extension {
             state.put(ctx.clone());
             Ok(())
         })
+        .middleware(Box::new(|name, b| match name {
+            // we have our own custom print function
+            "op_print" => op_sync(disabled_op),
+            _ => b,
+        }))
         .build()
 }
 
@@ -93,6 +99,10 @@ pub fn dummy_op(_state: &mut OpState, _args: JsValue, _: ()) -> Result<(), AnyEr
     Err(anyhow::anyhow!(
         "unimplemented, this op is not implemented yet"
     ))
+}
+
+pub fn disabled_op(_state: &mut OpState, _args: JsValue, _: ()) -> Result<(), AnyError> {
+    Err(anyhow::anyhow!("this op is disabled"))
 }
 
 #[derive(Clone)]

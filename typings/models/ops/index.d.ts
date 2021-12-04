@@ -1,4 +1,5 @@
 export * from './AllowedMentions';
+export * from './ConsoleLogMessage';
 export * from './CreateChannelMessage';
 export * from './CreateFollowUpMessage';
 export * from './CreateMessageFields';

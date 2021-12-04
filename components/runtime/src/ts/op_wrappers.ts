@@ -1,4 +1,4 @@
-import { OpCreateChannelMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk, Role, GuildChannel, OpGetMessage, OpGetMessages } from "./models/index";
+import { OpCreateChannelMessage, LogMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk, Role, GuildChannel, OpGetMessage, OpGetMessages } from "./models/index";
 
 // This file contains op wrappers
 // They are used internally and you should generally not need to use them in your own scripts.
@@ -9,6 +9,13 @@ export namespace OpWrappers {
         Deno.core.opSync(
             "op_botloader_script_start",
             meta
+        );
+    }
+
+    export function consoleLog(args: LogMessage) {
+        Deno.core.opSync(
+            "op_botloader_log",
+            args
         );
     }
 

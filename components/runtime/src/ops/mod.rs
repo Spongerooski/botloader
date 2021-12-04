@@ -7,6 +7,7 @@ use vm::AnyError;
 use crate::RuntimeContext;
 
 pub mod discord;
+pub mod log;
 
 // ensures the provided channel is in the guild, also checking the api as fallback
 async fn get_guild_channel(
