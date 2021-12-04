@@ -17,11 +17,11 @@ guild-logger = {path="../../components/guild-logger"}
 validation = {path="../../components/validation"}
 common = {path="../../components/common"}
 
-twilight-cache-inmemory = "0.7"
-twilight-gateway = "0.7"
-twilight-http = {version = "0.7", features = ["tracing"]}
-twilight-model = "0.7"
-twilight-util = {version = "0.7", features=["permission-calculator"]}
+twilight-cache-inmemory = "0.8"
+twilight-gateway = "0.8"
+twilight-http = {version = "0.8", features = ["tracing"]}
+twilight-model = "0.8"
+twilight-util = {version = "0.8", features=["permission-calculator"]}
  
 tracing = "0.1"
 tracing-log = "0.1"

@@ -79,7 +79,7 @@ impl From<Embed> for twilight_model::channel::embed::Embed {
             thumbnail: v.thumbnail.map(From::from),
             timestamp: v
                 .timestamp
-                .map(|v| Timestamp::from_micros(v.0 * 1000))
+                .map(|v| Timestamp::from_micros(v.0 as i64 * 1000).ok())
                 .flatten(),
             title: v.title,
             url: v.url,
@@ -108,7 +108,9 @@ impl From<twilight_model::channel::embed::Embed> for Embed {
             },
             provider: v.provider.map(From::from),
             thumbnail: v.thumbnail.map(From::from),
-            timestamp: v.timestamp.map(|ts| NotBigU64(ts.as_micros() / 1000)),
+            timestamp: v
+                .timestamp
+                .map(|ts| NotBigU64(ts.as_micros() as u64 / 1000)),
             title: v.title,
             url: v.url,
             video: v.video.map(From::from),
@@ -121,7 +123,7 @@ impl From<twilight_model::channel::embed::Embed> for Embed {
 #[serde(rename_all = "camelCase")]
 pub struct EmbedAuthor {
     pub icon_url: Option<String>,
-    pub name: Option<String>,
+    pub name: String,
     #[serde(default)]
     #[ts(optional)]
     pub proxy_icon_url: Option<String>,
@@ -213,7 +215,7 @@ impl From<twilight_model::channel::embed::EmbedFooter> for EmbedFooter {
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedImage {
-    pub url: Option<String>,
+    pub url: String,
 
     #[serde(default)]
     #[ts(optional)]
@@ -277,7 +279,7 @@ impl From<twilight_model::channel::embed::EmbedProvider> for EmbedProvider {
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbedThumbnail {
-    pub url: Option<String>,
+    pub url: String,
 
     #[serde(default)]
     #[ts(optional)]

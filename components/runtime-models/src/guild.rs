@@ -63,7 +63,9 @@ impl From<&CachedGuild> for Guild {
             features: v.features().map(ToString::to_string).collect(),
             icon: v.icon().map(ToString::to_string),
             id: v.id().to_string(),
-            joined_at: v.joined_at().map(|ts| NotBigU64(ts.as_micros() / 1000)),
+            joined_at: v
+                .joined_at()
+                .map(|ts| NotBigU64(ts.as_micros() as u64 / 1000)),
             large: v.large(),
             max_members: v.max_members().map(NotBigU64),
             max_presences: v.max_presences().map(NotBigU64),

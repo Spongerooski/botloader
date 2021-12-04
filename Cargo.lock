@@ -484,7 +484,7 @@ dependencies = [
  "num-integer",
  "num-traits",
  "serde",
- "time",
+ "time 0.1.43",
  "winapi",
 ]
 
@@ -626,15 +626,6 @@ checksum = "bff07008ec701e8028e2ceb8f83f0e4274ee62bd2dbdc4fefff2e9a91824081a"
 dependencies = [
  "generic-array",
  "subtle",
-]
-
-[[package]]
-name = "ct-logs"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1a816186fa68d9e426e3cb4ae4dff1fcd8e4a2c34b781bf7a822574a0d0aac8"
-dependencies = [
- "sct 0.6.1",
 ]
 
 [[package]]
@@ -1225,23 +1216,6 @@ dependencies = [
 
 [[package]]
 name = "hyper-rustls"
-version = "0.22.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f9f7a97316d44c0af9b0301e65010573a853a9fc97046d7331d7f6bc0fd5a64"
-dependencies = [
- "ct-logs",
- "futures-util",
- "hyper",
- "log",
- "rustls 0.19.1",
- "rustls-native-certs",
- "tokio",
- "tokio-rustls 0.22.0",
- "webpki 0.21.4",
-]
-
-[[package]]
-name = "hyper-rustls"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d87c48c02e0dc5e3b849a2041db3029fd066650f8f717c07bf8ed78ccb895cac"
@@ -1249,8 +1223,9 @@ dependencies = [
  "http",
  "hyper",
  "rustls 0.20.2",
+ "rustls-native-certs",
  "tokio",
- "tokio-rustls 0.23.1",
+ "tokio-rustls",
 ]
 
 [[package]]
@@ -1296,15 +1271,6 @@ checksum = "824845a0bf897a9042383849b02c1bc219c2383772efcd5c6f9766fa4b81aef3"
 dependencies = [
  "autocfg",
  "hashbrown 0.9.1",
-]
-
-[[package]]
-name = "input_buffer"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f97967975f448f1a7ddb12b0bc41069d09ed6a1c161a92687e057325db35d413"
-dependencies = [
- "bytes",
 ]
 
 [[package]]
@@ -2102,7 +2068,7 @@ dependencies = [
  "http",
  "http-body",
  "hyper",
- "hyper-rustls 0.23.0",
+ "hyper-rustls",
  "ipnet",
  "js-sys",
  "lazy_static",
@@ -2116,7 +2082,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "tokio",
- "tokio-rustls 0.23.1",
+ "tokio-rustls",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2221,12 +2187,12 @@ dependencies = [
 
 [[package]]
 name = "rustls-native-certs"
-version = "0.5.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a07b7c1885bd8ed3831c289b7870b13ef46fe0e856d288c30d9cc17d75a2092"
+checksum = "5ca9ebdfa27d3fc180e42879037b5338ab1c040c06affd00d8338598e7800943"
 dependencies = [
  "openssl-probe",
- "rustls 0.19.1",
+ "rustls-pemfile",
  "schannel",
  "security-framework",
 ]
@@ -3239,6 +3205,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "time"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "timers"
 version = "0.1.0"
 dependencies = [
@@ -3314,17 +3289,6 @@ dependencies = [
 
 [[package]]
 name = "tokio-rustls"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc6844de72e57df1980054b38be3a9f4702aba4858be64dd700181a8a6d0e1b6"
-dependencies = [
- "rustls 0.19.1",
- "tokio",
- "webpki 0.21.4",
-]
-
-[[package]]
-name = "tokio-rustls"
 version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4baa378e417d780beff82bf54ceb0d195193ea6a00c14e22359e7f39456b5689"
@@ -3347,23 +3311,6 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e96bb520beab540ab664bd5a9cfeaa1fcd846fa68c830b42e2c8963071251d2"
-dependencies = [
- "futures-util",
- "log",
- "pin-project",
- "rustls 0.19.1",
- "tokio",
- "tokio-rustls 0.22.0",
- "tungstenite 0.13.0",
- "webpki 0.21.4",
- "webpki-roots",
-]
-
-[[package]]
-name = "tokio-tungstenite"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "511de3f85caf1c98983545490c3d09685fa8eb634e57eec22bb4db271f46cbd8"
@@ -3373,6 +3320,22 @@ dependencies = [
  "pin-project",
  "tokio",
  "tungstenite 0.14.0",
+]
+
+[[package]]
+name = "tokio-tungstenite"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e057364a4dd37870b33bf8dc1885d29187d90770f488d599d3ee8d9e4916fbd3"
+dependencies = [
+ "futures-util",
+ "log",
+ "rustls 0.20.2",
+ "rustls-native-certs",
+ "tokio",
+ "tokio-rustls",
+ "tungstenite 0.16.0",
+ "webpki 0.22.0",
 ]
 
 [[package]]
@@ -3594,29 +3557,6 @@ dependencies = [
 
 [[package]]
 name = "tungstenite"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fe8dada8c1a3aeca77d6b51a4f1314e0f4b8e438b7b1b71e3ddaca8080e4093"
-dependencies = [
- "base64 0.13.0",
- "byteorder",
- "bytes",
- "http",
- "httparse",
- "input_buffer",
- "log",
- "rand 0.8.4",
- "rustls 0.19.1",
- "sha-1",
- "thiserror",
- "url",
- "utf-8",
- "webpki 0.21.4",
- "webpki-roots",
-]
-
-[[package]]
-name = "tungstenite"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0b2d8558abd2e276b0a8df5c05a2ec762609344191e5fd23e292c910e9165b5"
@@ -3635,10 +3575,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "twilight-cache-inmemory"
-version = "0.7.2"
+name = "tungstenite"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "776fb9d2fa68dd7a503251bb6d7047f30b48feb56f12036ee0e50a18f5661bf3"
+checksum = "6ad3713a14ae247f22a728a0456a545df14acf3867f905adff84be99e23b3ad1"
+dependencies = [
+ "base64 0.13.0",
+ "byteorder",
+ "bytes",
+ "http",
+ "httparse",
+ "log",
+ "rand 0.8.4",
+ "rustls 0.20.2",
+ "sha-1",
+ "thiserror",
+ "url",
+ "utf-8",
+ "webpki 0.22.0",
+]
+
+[[package]]
+name = "twilight-cache-inmemory"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45f41fb4d18f9f724ee922642c721de03446ee9cae5d40b7ee1f0e9286011122"
 dependencies = [
  "bitflags",
  "dashmap",
@@ -3648,9 +3609,9 @@ dependencies = [
 
 [[package]]
 name = "twilight-gateway"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6685ffde3a0bd225bcb0728692e2170784740e7e69fbd861bc9d0101f8e8a566"
+checksum = "7994eba6d57fa20f630f0a59bcc1151a4903b3582a6073b726888a5219b2acf4"
 dependencies = [
  "bitflags",
  "flate2",
@@ -3659,7 +3620,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "tokio-tungstenite 0.14.0",
+ "tokio-tungstenite 0.16.0",
  "tracing",
  "twilight-gateway-queue",
  "twilight-http",
@@ -3669,51 +3630,63 @@ dependencies = [
 
 [[package]]
 name = "twilight-gateway-queue"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8b41b001f8375b5bdd753dcb10a9227a857537c3b8abdef8073f3177428ce42"
+checksum = "7cd8b10f21852eea54c33b899bf0b7c2cb0811447e3d14782a93322bd5545705"
 dependencies = [
  "tokio",
- "tracing",
  "twilight-http",
 ]
 
 [[package]]
 name = "twilight-http"
-version = "0.7.3"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74d0e6df4d2f3fa5432c027d9568a561de2d8ca58315245191226e102ea02026"
+checksum = "9bf5b89606ec28c09950ccfe13f659d189c5e7a1e3c232bdb15b766bc1b00663"
 dependencies = [
  "brotli",
  "hyper",
- "hyper-rustls 0.22.1",
+ "hyper-rustls",
  "percent-encoding",
  "rand 0.8.4",
  "serde",
  "serde_json",
  "tokio",
  "tracing",
+ "twilight-http-ratelimiting",
  "twilight-model",
 ]
 
 [[package]]
-name = "twilight-model"
-version = "0.7.3"
+name = "twilight-http-ratelimiting"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39ef30c645ec5a58d497879937153d3e720b4099f6377c48f385ac7d72820b32"
+checksum = "a84d3e4c5df6309b91dcea2338e3b3f5e1a9b1fe69a55563251cdccecd238db0"
+dependencies = [
+ "futures-util",
+ "http",
+ "tokio",
+]
+
+[[package]]
+name = "twilight-model"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e11302b781e0368ebce961e97fa7a79e43442a437bf911abc7febc7932e7b316"
 dependencies = [
  "bitflags",
  "serde",
  "serde-value",
  "serde_repr",
+ "time 0.3.5",
  "tracing",
 ]
 
 [[package]]
 name = "twilight-util"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd8aaf1a64c35555e81d5b44e6d9c28c9ec4d4fbadd0c22095d3f708615a823f"
+checksum = "c9773d543e67b16d641a15ae4e2e0a6f4c2562a90dab9a3e46a3e4ac52b1b6f2"
 dependencies = [
  "twilight-model",
 ]

@@ -21,11 +21,13 @@ impl From<twilight_model::guild::Member> for Member {
         Self {
             deaf: v.deaf,
             guild_id: v.guild_id.to_string(),
-            joined_at: NotBigU64(v.joined_at.as_micros() / 1000),
+            joined_at: NotBigU64(v.joined_at.as_micros() as u64 / 1000),
             mute: v.mute,
             nick: v.nick,
             pending: v.pending,
-            premium_since: v.premium_since.map(|v| NotBigU64(v.as_micros() / 1000)),
+            premium_since: v
+                .premium_since
+                .map(|v| NotBigU64(v.as_micros() as u64 / 1000)),
             roles: v.roles.iter().map(ToString::to_string).collect(),
             user: v.user.into(),
         }

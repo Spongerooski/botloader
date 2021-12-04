@@ -11,7 +11,7 @@ isolatecell = {path="../../components/isolatecell"}
 stores = {path="../../components/stores"}
 guild-logger = {path="../../components/guild-logger"}
 
-twilight-model = "0.7"
+twilight-model = "0.8"
 
 tracing = "0.1"
 

@@ -44,7 +44,7 @@ impl From<twilight_model::channel::Message> for Message {
             content: v.content,
             edited_timestamp: v
                 .edited_timestamp
-                .map(|ts| NotBigU64(ts.as_micros() / 1000)),
+                .map(|ts| NotBigU64(ts.as_micros() as u64 / 1000)),
             embeds: v.embeds.into_iter().map(From::from).collect(),
             flags: v.flags.map(|f| NotBigU64(f.bits())),
             guild_id: v.guild_id.as_ref().map(ToString::to_string),
@@ -59,7 +59,7 @@ impl From<twilight_model::channel::Message> for Message {
             reactions: v.reactions.into_iter().map(From::from).collect(),
             reference: v.reference.map(From::from),
             referenced_message: v.referenced_message.map(|e| Box::new((*e).into())),
-            timestamp: NotBigU64(v.timestamp.as_micros() / 1000),
+            timestamp: NotBigU64(v.timestamp.as_micros() as u64 / 1000),
             tts: v.tts,
             webhook_id: v.webhook_id.as_ref().map(ToString::to_string),
         }
@@ -177,7 +177,7 @@ pub enum MessageType {
     GuildDiscoveryGracePeriodFinalWarning,
     Reply,
     GuildInviteReminder,
-    ApplicationCommand,
+    ChatInputCommand,
     ThreadCreated,
     ThreadStarterMessage,
     ContextMenuCommand,
@@ -211,10 +211,10 @@ impl From<twilight_model::channel::message::MessageType> for MessageType {
             }
             TwilightMessageType::Reply => Self::Reply,
             TwilightMessageType::GuildInviteReminder => Self::GuildInviteReminder,
-            TwilightMessageType::ApplicationCommand => Self::ApplicationCommand,
             TwilightMessageType::ThreadCreated => Self::ThreadCreated,
             TwilightMessageType::ThreadStarterMessage => Self::ThreadStarterMessage,
             TwilightMessageType::ContextMenuCommand => Self::ContextMenuCommand,
+            TwilightMessageType::ChatInputCommand => Self::ChatInputCommand,
         }
     }
 }
@@ -235,10 +235,12 @@ impl From<twilight_model::guild::PartialMember> for PartialMember {
     fn from(v: twilight_model::guild::PartialMember) -> Self {
         Self {
             deaf: v.deaf,
-            joined_at: NotBigU64(v.joined_at.as_micros() / 1000),
+            joined_at: NotBigU64(v.joined_at.as_micros() as u64 / 1000),
             mute: v.mute,
             nick: v.nick,
-            premium_since: v.premium_since.map(|ts| NotBigU64(ts.as_micros() / 1000)),
+            premium_since: v
+                .premium_since
+                .map(|ts| NotBigU64(ts.as_micros() as u64 / 1000)),
             roles: v.roles.iter().map(ToString::to_string).collect(),
         }
     }

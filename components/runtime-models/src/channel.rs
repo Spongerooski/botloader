@@ -219,7 +219,7 @@ impl From<twilight_model::channel::TextChannel> for TextChannel {
             last_message_id: v.last_message_id.as_ref().map(ToString::to_string),
             last_pin_timestamp: v
                 .last_pin_timestamp
-                .map(|e| NotBigU64(e.as_micros() / 1000)),
+                .map(|e| NotBigU64(e.as_micros() as u64 / 1000)),
             name: v.name,
             nsfw: v.nsfw,
             parent_id: v.parent_id.as_ref().map(ToString::to_string),
@@ -412,7 +412,7 @@ impl From<twilight_model::channel::thread::ThreadMember> for ThreadMember {
         Self {
             flags: NotBigU64(v.flags),
             id: v.id.as_ref().map(ToString::to_string),
-            join_timestamp: NotBigU64(v.join_timestamp.as_micros() / 1000),
+            join_timestamp: NotBigU64(v.join_timestamp.as_micros() as u64 / 1000),
             member: v.member.map(Into::into),
             user_id: v.user_id.as_ref().map(ToString::to_string),
         }
@@ -434,7 +434,7 @@ impl From<twilight_model::channel::thread::ThreadMetadata> for ThreadMetadata {
         Self {
             archived: v.archived,
             auto_archive_duration: v.auto_archive_duration.into(),
-            archive_timestamp: NotBigU64(v.archive_timestamp.as_micros() / 1000),
+            archive_timestamp: NotBigU64(v.archive_timestamp.as_micros() as u64 / 1000),
             invitable: v.invitable,
             locked: v.locked,
         }
