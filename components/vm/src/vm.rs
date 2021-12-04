@@ -30,7 +30,6 @@ pub enum VmCommand {
     // note that this also reloads the runtime, shutting it down and starting it again
     // we send a message when that has been accomplished
     UnloadScripts(Vec<Script>),
-    UnloadAllScript(u64),
     UpdateScript(ScriptLoad),
     Terminate,
     Restart(Vec<ScriptLoad>),
@@ -63,6 +62,7 @@ pub struct Vm {
     tx: UnboundedSender<GuildVmEvent>,
 
     loaded_scripts: Vec<ScriptLoad>,
+    failed_scripts: Vec<ScriptLoad>,
 
     timeout_handle: ShutdownHandle,
     guild_logger: GuildLogger,
@@ -113,6 +113,7 @@ impl Vm {
             rx: create_req.rx,
             tx: create_req.tx,
             loaded_scripts: vec![],
+            failed_scripts: vec![],
 
             script_dispatch_tx,
             timeout_handle,
@@ -247,20 +248,6 @@ impl Vm {
             }
             VmCommand::DispatchEvent(name, evt) => self.dispatch_event(name, &evt),
             VmCommand::LoadScript(script) => self.load_script(script).await,
-            VmCommand::UnloadScripts(scripts) => {
-                self.unload_scripts(scripts.into_iter().map(|e| e.id).collect())
-                    .await;
-            }
-            VmCommand::UnloadAllScript(id) => {
-                let to_unload = self
-                    .loaded_scripts
-                    .iter()
-                    .filter(|e| e.inner.id == id)
-                    .map(|e| (e.inner.id))
-                    .collect::<Vec<_>>();
-
-                self.unload_scripts(to_unload).await;
-            }
 
             VmCommand::UpdateScript(script) => {
                 let mut need_reset = false;
@@ -272,8 +259,18 @@ impl Vm {
                 }
 
                 if need_reset {
-                    self.reset_sandbox().await;
+                    self.restart(self.loaded_scripts.clone()).await;
                 }
+            }
+            VmCommand::UnloadScripts(scripts) => {
+                let new_scripts = self
+                    .loaded_scripts
+                    .iter()
+                    .filter(|sc| !scripts.iter().any(|isc| isc.id == sc.inner.id))
+                    .cloned()
+                    .collect::<Vec<_>>();
+
+                self.restart(new_scripts).await;
             }
         }
     }
@@ -335,6 +332,7 @@ impl Vm {
         match eval_res {
             Err(e) => {
                 self.log_guild_err(e);
+                self.failed_scripts.push(script.clone())
             }
             Ok(rcv) => {
                 self.complete_module_eval(rcv).await;
@@ -343,30 +341,12 @@ impl Vm {
 
         self.loaded_scripts.push(script);
     }
-
-    async fn unload_scripts(&mut self, scripts: Vec<u64>) {
-        info!(
-            "rt {} unloading scripts: {}",
-            self.ctx.guild_id,
-            scripts.len()
-        );
-
-        let new_scripts = self
-            .loaded_scripts
-            .drain(..)
-            .filter(|e| scripts.iter().any(|x| e.inner.id == *x))
-            .collect::<Vec<_>>();
-
-        self.loaded_scripts = new_scripts;
-
-        self.reset_sandbox().await;
-    }
-
     fn dispatch_event<P>(&mut self, name: &str, args: &P)
     where
         P: Serialize,
     {
-        if self.loaded_scripts.is_empty() {
+        let loaded = self.loaded_scripts.len() - self.failed_scripts.len();
+        if loaded < 1 {
             return;
         }
 
@@ -434,31 +414,6 @@ impl Vm {
         evt_rx
     }
 
-    // Simply recreates the vm and loads the scripts in self.loaded_scripts
-    async fn reset_sandbox(&mut self) {
-        info!("rt {} resetting sandbox", self.ctx.guild_id,);
-
-        let core_data = self.stop_vm().await;
-
-        // create a new sandbox
-        let new_rt = Self::create_isolate(
-            &self.extension_factory,
-            self.module_manager.clone(),
-            core_data,
-        )
-        .await;
-
-        self.runtime = new_rt;
-        self.emit_isolate_handle();
-
-        let initial_scripts = self.loaded_scripts.clone();
-        self.loaded_scripts = Vec::new();
-
-        for script in initial_scripts {
-            self.load_script(script).await;
-        }
-    }
-
     async fn run_until_completion(&mut self) {
         let fut = RunUntilCompletion {
             cell: &self.isolate_cell,
@@ -513,6 +468,7 @@ impl Vm {
         self.emit_isolate_handle();
 
         self.loaded_scripts = Vec::new();
+        self.failed_scripts = Vec::new();
 
         for script in new_scripts {
             self.load_script(script).await;

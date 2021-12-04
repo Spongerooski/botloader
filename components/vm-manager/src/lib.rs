@@ -331,15 +331,6 @@ where
         }
     }
 
-    pub async fn detach_all_script(&self, guild_id: GuildId, script_id: u64) -> Result<(), String> {
-        self.send_vm_command(
-            guild_id,
-            VmRole::Main,
-            VmCommand::UnloadAllScript(script_id),
-        )
-        .await
-    }
-
     pub async fn update_script(&self, guild_id: GuildId, script: Script) -> Result<(), String> {
         let compiled = match tscompiler::compile_typescript(&script.original_source) {
             Ok(compiled) => compiled,

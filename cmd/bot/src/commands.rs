@@ -308,7 +308,7 @@ async fn run_command<CT: ConfigStore + TimerStore + Send + Sync + 'static>(
                 .map_err(|e| format!("unknown script: {}", e))?;
 
             ctx.vm_manager
-                .detach_all_script(cmd.m.guild_id.unwrap(), script.id)
+                .unload_scripts(cmd.m.guild_id.unwrap(), vec![script])
                 .await
                 .ok();
 
