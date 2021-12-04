@@ -34,12 +34,39 @@ export async function activate(context: vscode.ExtensionContext) {
 	let manager = new WorkspaceManager(apiClient, ws);
 	context.subscriptions.push(manager);
 
+	await updateTypeDecls(context);
+
 	context.subscriptions.push(vscode.commands.registerCommand('botloader-vscode.setup-workspace', async () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
 		let resp = await apiClient.getCurrentUserGuilds();
 		if (isErrorResponse(resp)) {
 			vscode.window.showErrorMessage("Invalid token:" + JSON.stringify(resp));
+			return;
+		}
+
+		let typeSelection = await vscode.window.showQuickPick(["Temp folder", "Pick folder"], {
+			canPickMany: false,
+			title: "Workspace folder",
+		});
+
+		let folder: vscode.Uri | undefined = undefined;
+		if (typeSelection === "Temp folder") {
+			let tmpDir = await mkdtemp(join(tmpdir(), "botloader"));
+			folder = vscode.Uri.parse("file:/" + tmpDir);
+		} else {
+			let selected = await vscode.window.showOpenDialog({
+				canSelectFiles: false,
+				canSelectFolders: true,
+				canSelectMany: false,
+				title: "Folder to set up guild workspace in",
+			});
+			if (selected && selected.length > 0) {
+				folder = selected[0];
+			}
+		}
+
+		if (!folder) {
 			return;
 		}
 
@@ -56,8 +83,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		vscode.window.showInformationMessage(`selected as ${selection}`);
 
-		await setupWorkspace(selectedServer!.guild);
-
+		await setupWorkspace(selectedServer!.guild, folder);
 
 	}), vscode.commands.registerCommand('botloader-vscode.set-accesstoken', async () => {
 
@@ -101,10 +127,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	}));
 
-	async function setupWorkspace(guild: UserGuild) {
-		let tmpDir = await mkdtemp(join(tmpdir(), "botloader"));
-		let dirUri = vscode.Uri.parse("file:/" + tmpDir);
-
+	async function setupWorkspace(guild: UserGuild, dirUri: vscode.Uri) {
 		await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(dirUri, "/.botloader"));
 		await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(dirUri, "/.botloader/scripts"));
 
@@ -115,7 +138,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		})));
 
 		// await vscode.workspace.fs.copy(vscode.Uri.joinPath(context.extensionUri, "/out/typings/lib.deno_core.d.ts"), vscode.Uri.joinPath(dirUri, "/.botloader/lib.global.d.ts"));
-		await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/tsconfig.json`), textEncoder.encode(JSON.stringify(generateTsConfig(context.extensionPath), undefined, 4)));
+		const typingsGlobal = vscode.Uri.joinPath(context.globalStorageUri, "/typings/index");
+		const typingsPath = typingsGlobal.path;
+		await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(dirUri, `/tsconfig.json`), textEncoder.encode(JSON.stringify(generateTsConfig(typingsPath), undefined, 4)));
 
 		vscode.workspace.updateWorkspaceFolders(0, 0, {
 			uri: dirUri,
@@ -143,7 +168,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 }
 
-function generateTsConfig(extensionPath: string) {
+function generateTsConfig(indexPath: string) {
 	return {
 		"include": [
 			"*.ts",
@@ -163,7 +188,7 @@ function generateTsConfig(extensionPath: string) {
 			"lib": ["ES2020"],
 			"paths": {
 				"botloader": [
-					extensionPath + "/out/typings/index"
+					indexPath
 				]
 			}
 		}
@@ -227,4 +252,24 @@ function isScmProvider(arg: any): arg is BotloaderSourceControl {
 	}
 
 	return false;
+}
+
+// syncs the extensions tyep decls to the global extension folder
+// the extentionUri is version specific so we can't reference it in tsconfig's
+// (also in the future we might want to downlaod typedecls from)
+async function updateTypeDecls(context: vscode.ExtensionContext) {
+	const typingsUriGlobal = vscode.Uri.joinPath(context.globalStorageUri, "/typings");
+
+	try {
+		// clear the typings folder first
+		await vscode.workspace.fs.delete(typingsUriGlobal, {
+			recursive: true,
+			useTrash: false,
+		});
+	} catch { }
+
+	const extensionTypings = vscode.Uri.joinPath(context.extensionUri, "/out/typings");
+	// await vscode.workspace.fs.createDirectory(typingsUriGlobal);
+	await vscode.workspace.fs.copy(extensionTypings, typingsUriGlobal);
+	console.log(typingsUriGlobal);
 }
