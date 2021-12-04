@@ -2,7 +2,7 @@ use std::{pin::Pin, sync::Arc};
 
 use futures::Stream;
 use guild_logger::guild_subscriber_backend::GuildSubscriberBackend;
-use stores::{config::ConfigStore, timers::TimerStore};
+use stores::{bucketstore::BucketStore, config::ConfigStore, timers::TimerStore};
 use tonic::{Response, Status};
 use twilight_model::id::GuildId;
 
@@ -14,7 +14,7 @@ pub struct Server<CT> {
     vm_manager: vm_manager::Manager<CT>,
 }
 
-impl<CT: ConfigStore + TimerStore + Send + Sync + 'static> Server<CT> {
+impl<CT: ConfigStore + BucketStore + TimerStore + Send + Sync + 'static> Server<CT> {
     pub fn new(
         log_subscriber: Arc<GuildSubscriberBackend>,
         vm_manager: vm_manager::Manager<CT>,
@@ -41,8 +41,8 @@ type ResponseStream =
     Pin<Box<dyn Stream<Item = Result<proto::GuildLogItem, Status>> + Send + Sync>>;
 
 #[tonic::async_trait]
-impl<CT: ConfigStore + TimerStore + Send + Sync + 'static> proto::bot_service_server::BotService
-    for Server<CT>
+impl<CT: ConfigStore + BucketStore + TimerStore + Send + Sync + 'static>
+    proto::bot_service_server::BotService for Server<CT>
 {
     async fn reload_vm(
         &self,

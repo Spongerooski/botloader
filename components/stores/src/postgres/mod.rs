@@ -1,5 +1,6 @@
 use sqlx::{postgres::PgPoolOptions, PgPool};
 
+pub mod bucketstore;
 pub mod config;
 pub mod timers;
 pub mod web;
