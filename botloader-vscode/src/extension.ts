@@ -129,7 +129,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			tag += " " + item.guild_id;
 		}
 		if (item.script_context) {
-			tag += ` ${item.script_context.filename}.ts`;
+			tag += ` ${item.script_context.filename}`;
 			if (item.script_context.line_col) {
 				const [line, col] = item.script_context.line_col;
 				tag += `:${line}:${col}`;
