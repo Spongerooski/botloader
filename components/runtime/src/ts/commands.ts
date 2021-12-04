@@ -115,7 +115,6 @@ export namespace Commands {
                     ...optionsMap
                 }
             }
-            console.log(JSON.stringify(optionsMap));
             command.callback(new ExecutedCommandContext(interaction), optionsMap)
         }
 
