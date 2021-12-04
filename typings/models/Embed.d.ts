@@ -1,10 +1,10 @@
 import type { EmbedFooter } from "./EmbedFooter";
-import type { EmbedVideo } from "./EmbedVideo";
-import type { EmbedThumbnail } from "./EmbedThumbnail";
 import type { EmbedImage } from "./EmbedImage";
-import type { EmbedField } from "./EmbedField";
-import type { EmbedAuthor } from "./EmbedAuthor";
 import type { EmbedProvider } from "./EmbedProvider";
+import type { EmbedField } from "./EmbedField";
+import type { EmbedThumbnail } from "./EmbedThumbnail";
+import type { EmbedAuthor } from "./EmbedAuthor";
+import type { EmbedVideo } from "./EmbedVideo";
 export interface Embed {
     author?: EmbedAuthor;
     color?: number;

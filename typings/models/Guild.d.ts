@@ -1,8 +1,8 @@
-import type { MfaLevel } from "./MfaLevel";
 import type { NsfwLevel } from "./NsfwLevel";
-import type { VerificationLevel } from "./VerificationLevel";
 import type { DefaultMessageNotificationLevel } from "./DefaultMessageNotificationLevel";
 import type { PremiumTier } from "./PremiumTier";
+import type { VerificationLevel } from "./VerificationLevel";
+import type { MfaLevel } from "./MfaLevel";
 import type { ExplicitContentFilter } from "./ExplicitContentFilter";
 export interface Guild {
     afkChannelId: string | null;

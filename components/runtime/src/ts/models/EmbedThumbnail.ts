@@ -1,5 +1,5 @@
 export interface EmbedThumbnail {
-  url: string | null;
+  url: string;
   height?: number;
   proxyUrl?: string;
   width?: number;

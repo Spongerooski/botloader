@@ -18,7 +18,7 @@ export type MessageType =
   | "GuildDiscoveryGracePeriodFinalWarning"
   | "Reply"
   | "GuildInviteReminder"
-  | "ApplicationCommand"
+  | "ChatInputCommand"
   | "ThreadCreated"
   | "ThreadStarterMessage"
   | "ContextMenuCommand";
