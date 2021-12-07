@@ -87,7 +87,7 @@ export namespace Storage {
      * 
      * @typeParam T - The type of values stored in this bucket
      */
-    export class Bucket<T>{
+    export abstract class Bucket<T>{
         name: string;
 
         /**
@@ -102,21 +102,9 @@ export namespace Storage {
             this.name = name;
         }
 
-        protected intoInternalValue(v: T): OpStorageBucketValue {
-            return {
-                // json is handled on the rust side and opcall side
-                json: v,
-            }
-        }
 
-        protected fromInternalValue(v: OpStorageBucketValue): T | undefined {
-            if ('json' in v) {
-                // json is handled on the rust side and opcall side
-                return v.json;
-            }
-
-            return undefined
-        }
+        protected abstract intoInternalValue(v: T): OpStorageBucketValue;
+        protected abstract fromInternalValue(v: OpStorageBucketValue): T | undefined;
 
         protected entryFromInternal(entry: OpStorageBucketEntry): Entry<T> {
             let val = this.fromInternalValue(entry.value);
@@ -227,7 +215,7 @@ export namespace Storage {
      * 
      * The values being numbers allows them to be sorted easily giving you access to {@link incr} and {@link sortedList}.
      * 
-     * See {@link Bucket} for more info on buckets.
+     * {@see} {@link Bucket} for more info on buckets.
      */
     export class NumberBucket extends Bucket<number>{
         protected intoInternalValue(v: number): OpStorageBucketValue {
@@ -274,6 +262,29 @@ export namespace Storage {
             });
 
             return res.map(v => this.entryFromInternal(v));
+        }
+    }
+
+    /**
+     * A Bucket holding json objects
+     * 
+     * {@see} {@link Bucket} for more info on buckets.
+     */
+    export class JsonBucket<T> extends Bucket<T>{
+        protected intoInternalValue(v: T): OpStorageBucketValue {
+            return {
+                // json is handled on the rust side and opcall side
+                json: v,
+            }
+        }
+
+        protected fromInternalValue(v: OpStorageBucketValue): T | undefined {
+            if ('json' in v) {
+                // json is handled on the rust side and opcall side
+                return v.json;
+            }
+
+            return undefined
         }
     }
 }
