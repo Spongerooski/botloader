@@ -1,6 +1,6 @@
 export interface EmbedAuthor {
-  iconUrl: string | null;
   name: string;
+  iconUrl?: string;
   proxyIconUrl?: string;
-  url: string | null;
+  url?: string;
 }

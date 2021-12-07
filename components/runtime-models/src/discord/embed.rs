@@ -124,11 +124,16 @@ impl From<twilight_model::channel::embed::Embed> for Embed {
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "bindings/discord/EmbedAuthor.ts")]
 pub struct EmbedAuthor {
-    pub icon_url: Option<String>,
     pub name: String,
+
+    #[serde(default)]
+    #[ts(optional)]
+    pub icon_url: Option<String>,
     #[serde(default)]
     #[ts(optional)]
     pub proxy_icon_url: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
     pub url: Option<String>,
 }
 impl From<EmbedAuthor> for twilight_model::channel::embed::EmbedAuthor {
@@ -159,14 +164,15 @@ impl From<twilight_model::channel::embed::EmbedAuthor> for EmbedAuthor {
 #[ts(export_to = "bindings/discord/EmbedField.ts")]
 pub struct EmbedField {
     #[serde(default)]
-    pub inline: bool,
+    #[ts(optional)]
+    pub inline: Option<bool>,
     pub name: String,
     pub value: String,
 }
 impl From<EmbedField> for twilight_model::channel::embed::EmbedField {
     fn from(v: EmbedField) -> Self {
         Self {
-            inline: v.inline,
+            inline: v.inline.unwrap_or_default(),
             name: v.name,
             value: v.value,
         }
@@ -176,7 +182,7 @@ impl From<EmbedField> for twilight_model::channel::embed::EmbedField {
 impl From<twilight_model::channel::embed::EmbedField> for EmbedField {
     fn from(v: twilight_model::channel::embed::EmbedField) -> Self {
         Self {
-            inline: v.inline,
+            inline: Some(v.inline),
             name: v.name,
             value: v.value,
         }
@@ -188,11 +194,14 @@ impl From<twilight_model::channel::embed::EmbedField> for EmbedField {
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "bindings/discord/EmbedFooter.ts")]
 pub struct EmbedFooter {
+    pub text: String,
+
+    #[serde(default)]
+    #[ts(optional)]
     pub icon_url: Option<String>,
     #[serde(default)]
     #[ts(optional)]
     pub proxy_icon_url: Option<String>,
-    pub text: String,
 }
 
 impl From<EmbedFooter> for twilight_model::channel::embed::EmbedFooter {
@@ -259,7 +268,11 @@ impl From<twilight_model::channel::embed::EmbedImage> for EmbedImage {
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "bindings/discord/EmbedProvider.ts")]
 pub struct EmbedProvider {
+    #[serde(default)]
+    #[ts(optional)]
     pub name: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
     pub url: Option<String>,
 }
 
@@ -325,8 +338,9 @@ impl From<twilight_model::channel::embed::EmbedThumbnail> for EmbedThumbnail {
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "bindings/discord/EmbedVideo.ts")]
 pub struct EmbedVideo {
+    #[serde(default)]
+    #[ts(optional)]
     pub url: Option<String>,
-
     #[serde(default)]
     #[ts(optional)]
     pub height: Option<i32>,
