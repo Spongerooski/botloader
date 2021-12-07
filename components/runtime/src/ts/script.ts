@@ -4,24 +4,49 @@ import { EventDataType, EventListenerFunction, EventType, InternalEventSystem, S
 import { OpWrappers } from "./op_wrappers";
 import { Storage } from "./storage";
 
+/**
+ * The script class is the main way you interact with botloader and discord.
+ */
 export class Script {
 
-    scriptId: number;
-    description: string;
+    get scriptId() {
+        return this._scriptId;
+    }
 
-    eventMuxer = new ScriptEventMuxer();
-    commandSystem = new Commands.System();
-    intervalTimers: IntervalTimerListener[] = [];
+    get description() {
+        return this._description;
+    }
 
-    storageBuckets: Storage.Bucket<unknown>[] = [];
+    private _scriptId: number;
+    private _description: string;
+
+    protected eventMuxer = new ScriptEventMuxer();
+    protected commandSystem = new Commands.System();
+    protected intervalTimers: IntervalTimerListener[] = [];
+    protected storageBuckets: Storage.Bucket<unknown>[] = [];
 
     private runCalled = false;
 
+    /**
+     * @internal
+     */
     constructor(id: number) {
-        this.description = `script id ${id}`;
-        this.scriptId = id;
+        this._description = `script id ${id}`;
+        this._scriptId = id;
     }
 
+
+    /**
+     * Add a event listenever.
+     * 
+     * See {@link EventType} for available for available event.
+     * 
+     * @example ```ts
+     * script.on('MESSAGE_CREATE', async (message) => {
+     *   // do stuff here
+     * });
+     * ```
+     */
     on<T extends EventType>(eventType: T, f: EventListenerFunction<EventDataType<T>>) {
         this.eventMuxer.listeners.push({
             f: f,
@@ -29,10 +54,46 @@ export class Script {
         });
     }
 
+    /**
+     * Register a command to this guild.
+     * 
+     * @param cmd The command to register
+     * 
+     * @example ```ts
+     * * script.registerCommand({
+     *     name: "sub",
+     *     description: "subtracts 2 numbers",
+     *     group: mathGroup,
+     *     options: {
+     *         "a": { description: "a", kind: "Integer", required: true },
+     *         "b": { description: "b", kind: "Integer", required: true },
+     *     },
+     *     callback: async (ctx, args) => {
+     *         const result = args.a - args.b;
+     *         await ctx.sendResponse(`Result: ${result}`)
+     *     }
+     * });
+     * ```
+     */
     registerCommand<T extends Commands.OptionsMap>(cmd: Commands.CommandDef<T>) {
         this.commandSystem.commands.push(cmd as Commands.CommandDef<Commands.OptionsMap>);
     }
 
+    /**
+     * 
+     * @param name The name of the timer
+     * @param interval The interval, either in minutes for running the callback at every x minutes, or a cron style timer. 
+     * 
+     * https://crontab.guru/ is a neat helper for making cron intervals 
+     * 
+     * @param callback Callback to run at every interval
+     * 
+     * @example ```ts
+     *  script.registerIntervalTimer("gaming", "*\/5 * * * *", () => {
+     *     // do stuff here
+     * });
+     * ```
+     */
     registerIntervalTimer(name: string, interval: string | number, callback: () => any) {
         let timerType;
         if (typeof interval === "number") {
@@ -50,12 +111,29 @@ export class Script {
         });
     }
 
+    /**
+     * Register a storage bucket to the script
+     * 
+     * Note that the same storage bucket can be registered in multiple scripts, and you can use this to share data betweem scripts.
+     *
+     * @param bucket The bucket itself
+     * @returns The registered bucket
+     * 
+     * @example ```ts
+     * interface Data{
+     *     key: string,
+     * }
+     * script.registerStorageBucket(new Storage.JsonBucket<Data>("fun-data"));
+     * ```
+     */
     registerStorageBucket<T extends Storage.Bucket<U>, U>(bucket: T): T {
         this.storageBuckets.push(bucket);
         return bucket;
     }
 
-
+    /**
+     * @internal
+     */
     run() {
         if (this.runCalled) {
             throw new Error("run already called");
@@ -190,8 +268,18 @@ interface IntervalTimerListener {
     callback: () => any,
 }
 
-interface GetMessagesOptions {
+export interface GetMessagesOptions {
+    /**
+     * Limit max results, max 100, default 50
+     */
     limit?: number,
+
+    /**
+     * Return messages made after this message id
+     */
     after?: string,
+    /**
+     * Return messages made before this message id
+     */
     before?: string,
 }
