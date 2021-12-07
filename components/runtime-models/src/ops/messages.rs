@@ -1,4 +1,4 @@
-use crate::embed::Embed;
+use crate::discord::embed::Embed;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use twilight_model::{

@@ -1,5 +1,5 @@
 import { Commands } from "./commands";
-import { OpCreateMessageFields, OpEditMessageFields, Guild, Message, Role, GuildChannel, IntervalTimer, IntervalTimerEvent } from "./models/index";
+import { Ops, Events, Discord } from "./models";
 import { EventDataType, EventListenerFunction, EventType, InternalEventSystem, ScriptEventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
 import { Storage } from "./storage";
@@ -81,7 +81,7 @@ export class Script {
         })
     }
 
-    private onInterval(evt: IntervalTimerEvent) {
+    private onInterval(evt: Events.IntervalTimerEvent) {
         const timer = this.intervalTimers.find(timer => timer.timer.name === evt.name && this.scriptId === evt.scriptId);
         if (timer) {
             timer.callback();
@@ -89,20 +89,20 @@ export class Script {
     }
 
     // Guild functions
-    getGuild(): Guild {
+    getGuild(): Discord.Guild {
         return OpWrappers.getGuild()
     }
     // editGuild() { }
 
     // Message functions
-    getMessage(channelId: string, messageId: string): Promise<Message> {
+    getMessage(channelId: string, messageId: string): Promise<Discord.Message> {
         return OpWrappers.getMessage({
             channelId,
             messageId,
         })
     }
 
-    getMessages(channelId: string, options?: GetMessagesOptions): Promise<Message[]> {
+    getMessages(channelId: string, options?: GetMessagesOptions): Promise<Discord.Message[]> {
         return OpWrappers.getMessages({
             channelId,
             after: options?.after,
@@ -111,13 +111,13 @@ export class Script {
         })
     }
 
-    createMessage(channelId: string, fields: OpCreateMessageFields): Promise<Message> {
+    createMessage(channelId: string, fields: Ops.OpCreateMessageFields): Promise<Discord.Message> {
         return OpWrappers.createChannelMessage({
             channelId,
             fields,
         });
     }
-    editMessage(channelId: string, messageId: string, fields: OpEditMessageFields): Promise<Message> {
+    editMessage(channelId: string, messageId: string, fields: Ops.OpEditMessageFields): Promise<Discord.Message> {
         return OpWrappers.editChannelMessage({
             channelId,
             messageId,
@@ -140,10 +140,10 @@ export class Script {
     }
 
     // Role functions
-    getRole(roleId: string): Promise<Role> {
+    getRole(roleId: string): Promise<Discord.Role> {
         return OpWrappers.getRole(roleId);
     }
-    getRoles(): Promise<Role[]> {
+    getRoles(): Promise<Discord.Role[]> {
         return OpWrappers.getRoles();
     }
 
@@ -152,10 +152,10 @@ export class Script {
     // deleteRole() { }
 
     // Channel functions
-    getChannel(channelId: string): Promise<GuildChannel> {
+    getChannel(channelId: string): Promise<Discord.GuildChannel> {
         return OpWrappers.getChannel(channelId);
     }
-    getChannels(): Promise<GuildChannel[]> {
+    getChannels(): Promise<Discord.GuildChannel[]> {
         return OpWrappers.getChannels();
     }
 
@@ -186,7 +186,7 @@ export class Script {
 }
 
 interface IntervalTimerListener {
-    timer: IntervalTimer,
+    timer: Ops.IntervalTimer,
     callback: () => any,
 }
 

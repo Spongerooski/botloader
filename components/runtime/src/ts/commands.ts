@@ -1,4 +1,4 @@
-import { Command as OpCommand, CommandGroup as OpCommandGroup, CommandInteraction, CommandOption as OpCommandOption, CommandOptionType as OpCommandOptionType, PartialMember, User } from "./models/index";
+import { Discord, Events, Ops } from "./models";
 import { console } from "./core_util";
 import { ScriptEventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
@@ -54,14 +54,14 @@ export namespace Commands {
         kind: "Mentionable";
     };
 
-    export type OptionType = OpCommandOptionType;
+    export type OptionType = Ops.CommandOptionType;
 
     type OptionTypeToParsedType<T extends BaseOption<boolean>> =
         T extends StringOption<boolean> ? string :
         T extends NumberOption<boolean> ? number :
         T extends IntOption<boolean> ? number :
         T extends BoolOption<boolean> ? boolean :
-        T extends UserOption<boolean> ? PartialMember :
+        T extends UserOption<boolean> ? Discord.PartialMember :
         T extends ChannelOption<boolean> ? {} :
         T extends RoleOption<boolean> ? {} :
         T extends MentionableOption<boolean> ? {} :
@@ -102,7 +102,7 @@ export namespace Commands {
             })
         }
 
-        handleInteractionCreate(interaction: CommandInteraction) {
+        handleInteractionCreate(interaction: Events.CommandInteraction) {
             let command = this.commands.find(cmd => matchesCommand(cmd, interaction));
             if (!command) {
                 return;
@@ -118,10 +118,10 @@ export namespace Commands {
             command.callback(new ExecutedCommandContext(interaction), optionsMap)
         }
 
-        genOpBinding(): [OpCommand[], OpCommandGroup[]] {
+        genOpBinding(): [Ops.Command[], Ops.CommandGroup[]] {
 
-            const commands: OpCommand[] = this.commands.map(cmd => {
-                const options: OpCommandOption[] = [];
+            const commands: Ops.Command[] = this.commands.map(cmd => {
+                const options: Ops.CommandOption[] = [];
                 for (let prop in cmd.options) {
                     if (Object.prototype.hasOwnProperty.call(cmd.options, prop)) {
                         let entry = cmd.options[prop];
@@ -154,7 +154,7 @@ export namespace Commands {
                 }
             });
 
-            const groups: OpCommandGroup[] = [];
+            const groups: Ops.CommandGroup[] = [];
 
             OUTER:
             for (let cmd of this.commands) {
@@ -182,7 +182,7 @@ export namespace Commands {
         }
     }
 
-    function matchesCommand(cmd: CommandDef<any>, interaction: CommandInteraction) {
+    function matchesCommand(cmd: CommandDef<any>, interaction: Events.CommandInteraction) {
         if (interaction.parentParentName) {
             if (cmd.group && cmd.group.parent) {
                 return cmd.name === interaction.name && cmd.group.name === interaction.parentName && cmd.group.parent.name === interaction.parentParentName;
@@ -199,9 +199,9 @@ export namespace Commands {
     }
 
     export class ExecutedCommandContext {
-        interaction: CommandInteraction;
+        interaction: Events.CommandInteraction;
 
-        constructor(interaction: CommandInteraction) {
+        constructor(interaction: Events.CommandInteraction) {
             this.interaction = interaction;
         }
 

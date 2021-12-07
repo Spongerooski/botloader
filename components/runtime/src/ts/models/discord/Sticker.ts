@@ -1,6 +1,6 @@
-import type { StickerType } from "./StickerType";
-import type { StickerFormatType } from "./StickerFormatType";
 import type { User } from "./User";
+import type { StickerFormatType } from "./StickerFormatType";
+import type { StickerType } from "./StickerType";
 
 export interface Sticker {
   available: boolean;

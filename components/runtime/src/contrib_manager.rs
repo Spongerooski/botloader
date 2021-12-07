@@ -11,7 +11,7 @@ use twilight_model::application::command::{
 };
 use twilight_model::id::GuildId;
 
-use runtime_models::script::{Command, CommandGroup, ScriptMeta};
+use runtime_models::ops::script::{Command, CommandGroup, ScriptMeta};
 use vm::vm::VmCommand;
 
 #[derive(Clone, Debug)]
@@ -85,10 +85,10 @@ where
             .map(|v| stores::config::IntervalTimerContrib {
                 name: v.name.clone(),
                 interval: match &v.interval {
-                    runtime_models::script::IntervalType::Cron(c) => {
+                    runtime_models::ops::script::IntervalType::Cron(c) => {
                         stores::timers::IntervalType::Cron(c.clone())
                     }
-                    runtime_models::script::IntervalType::Minutes(m) => {
+                    runtime_models::ops::script::IntervalType::Minutes(m) => {
                         stores::timers::IntervalType::Minutes(m.0)
                     }
                 },

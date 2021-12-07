@@ -7,6 +7,7 @@ use crate::util::NotBigU64;
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/Embed.ts")]
 pub struct Embed {
     #[serde(default)]
     #[ts(optional)]
@@ -121,6 +122,7 @@ impl From<twilight_model::channel::embed::Embed> for Embed {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/EmbedAuthor.ts")]
 pub struct EmbedAuthor {
     pub icon_url: Option<String>,
     pub name: String,
@@ -154,6 +156,7 @@ impl From<twilight_model::channel::embed::EmbedAuthor> for EmbedAuthor {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/EmbedField.ts")]
 pub struct EmbedField {
     #[serde(default)]
     pub inline: bool,
@@ -183,6 +186,7 @@ impl From<twilight_model::channel::embed::EmbedField> for EmbedField {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/EmbedFooter.ts")]
 pub struct EmbedFooter {
     pub icon_url: Option<String>,
     #[serde(default)]
@@ -214,6 +218,7 @@ impl From<twilight_model::channel::embed::EmbedFooter> for EmbedFooter {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/EmbedImage.ts")]
 pub struct EmbedImage {
     pub url: String,
 
@@ -252,6 +257,7 @@ impl From<twilight_model::channel::embed::EmbedImage> for EmbedImage {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/EmbedProvider.ts")]
 pub struct EmbedProvider {
     pub name: Option<String>,
     pub url: Option<String>,
@@ -278,6 +284,7 @@ impl From<twilight_model::channel::embed::EmbedProvider> for EmbedProvider {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/EmbedThumbnail.ts")]
 pub struct EmbedThumbnail {
     pub url: String,
 
@@ -316,6 +323,7 @@ impl From<twilight_model::channel::embed::EmbedThumbnail> for EmbedThumbnail {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/EmbedVideo.ts")]
 pub struct EmbedVideo {
     pub url: Option<String>,
 

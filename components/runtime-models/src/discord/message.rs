@@ -1,11 +1,15 @@
 use super::user::User;
-use crate::{channel::ChannelType, embed::Embed, util::NotBigU64};
+use crate::{
+    discord::{channel::ChannelType, embed::Embed},
+    util::NotBigU64,
+};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/Message.ts")]
 pub struct Message {
     pub activity: Option<MessageActivity>,
     pub application: Option<MessageApplication>,
@@ -69,6 +73,7 @@ impl From<twilight_model::channel::Message> for Message {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/MessageActivity.ts")]
 pub struct MessageActivity {
     pub kind: MessageActivityType,
     pub party_id: Option<String>,
@@ -85,6 +90,7 @@ impl From<twilight_model::channel::message::MessageActivity> for MessageActivity
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/MessageActivityType.ts")]
 pub enum MessageActivityType {
     Join,
     Spectate,
@@ -106,6 +112,7 @@ impl From<twilight_model::channel::message::MessageActivityType> for MessageActi
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/MessageApplication.ts")]
 pub struct MessageApplication {
     pub cover_image: Option<String>,
     pub description: String,
@@ -129,6 +136,7 @@ impl From<twilight_model::channel::message::MessageApplication> for MessageAppli
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/Attachment.ts")]
 pub struct Attachment {
     pub content_type: Option<String>,
     pub filename: String,
@@ -157,6 +165,7 @@ impl From<twilight_model::channel::Attachment> for Attachment {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/MessageType.ts")]
 pub enum MessageType {
     Regular,
     RecipientAdd,
@@ -222,6 +231,7 @@ impl From<twilight_model::channel::message::MessageType> for MessageType {
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/PartialMember.ts")]
 pub struct PartialMember {
     pub deaf: bool,
     pub joined_at: NotBigU64,
@@ -249,6 +259,7 @@ impl From<twilight_model::guild::PartialMember> for PartialMember {
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/ChannelMention.ts")]
 pub struct ChannelMention {
     pub guild_id: String,
     pub id: String,
@@ -270,6 +281,7 @@ impl From<twilight_model::channel::ChannelMention> for ChannelMention {
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/Mention.ts")]
 pub struct Mention {
     /// Hash of the user's avatar, if any.
     pub avatar: Option<String>,
@@ -310,6 +322,7 @@ impl From<twilight_model::channel::message::Mention> for Mention {
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/MessageReaction.ts")]
 pub struct MessageReaction {
     pub count: NotBigU64,
     pub emoji: ReactionType,
@@ -330,6 +343,7 @@ impl From<twilight_model::channel::message::MessageReaction> for MessageReaction
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "kind")]
+#[ts(export_to = "bindings/discord/ReactionType.ts")]
 pub enum ReactionType {
     Custom {
         #[serde(default)]
@@ -373,6 +387,7 @@ impl From<twilight_model::channel::ReactionType> for ReactionType {
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/MessageReference.ts")]
 pub struct MessageReference {
     pub channel_id: Option<String>,
     pub guild_id: Option<String>,
@@ -393,6 +408,7 @@ impl From<twilight_model::channel::message::MessageReference> for MessageReferen
 
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/StickerType.ts")]
 pub enum StickerType {
     /// Official sticker in a pack.
     ///
@@ -423,6 +439,7 @@ impl From<StickerType> for twilight_model::channel::message::sticker::StickerTyp
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/Sticker.ts")]
 pub struct Sticker {
     /// Whether the sticker is available.
     pub available: bool,
@@ -468,6 +485,7 @@ impl From<twilight_model::channel::message::Sticker> for Sticker {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/StickerFormatType.ts")]
 pub enum StickerFormatType {
     /// Sticker format is a PNG.
     Png,

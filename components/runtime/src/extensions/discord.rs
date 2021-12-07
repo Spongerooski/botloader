@@ -9,8 +9,7 @@ use super::{get_guild_channel, parse_str_snowflake_id};
 use crate::dummy_op;
 use crate::RuntimeContext;
 use runtime_models::{
-    guild::Guild,
-    message::Message,
+    discord::{guild::Guild, message::Message},
     ops::messages::{
         OpCreateChannelMessage, OpCreateFollowUpMessage, OpDeleteMessage, OpDeleteMessagesBulk,
         OpEditChannelMessage, OpGetMessage, OpGetMessages,
@@ -290,7 +289,7 @@ pub fn op_get_role(
     state: &mut OpState,
     role_id: RoleId,
     _: (),
-) -> Result<runtime_models::role::Role, AnyError> {
+) -> Result<runtime_models::discord::role::Role, AnyError> {
     let rt_ctx = state.borrow::<RuntimeContext>();
 
     match rt_ctx.bot_state.role(role_id) {
@@ -303,7 +302,7 @@ pub fn op_get_roles(
     state: &mut OpState,
     _: (),
     _: (),
-) -> Result<Vec<runtime_models::role::Role>, AnyError> {
+) -> Result<Vec<runtime_models::discord::role::Role>, AnyError> {
     let rt_ctx = state.borrow::<RuntimeContext>();
 
     match rt_ctx.bot_state.guild_roles(rt_ctx.guild_id) {
@@ -326,7 +325,7 @@ pub async fn op_get_channel(
     state: Rc<RefCell<OpState>>,
     channel_id_str: String,
     _: (),
-) -> Result<runtime_models::channel::GuildChannel, AnyError> {
+) -> Result<runtime_models::discord::channel::GuildChannel, AnyError> {
     let rt_ctx = {
         let state = state.borrow();
         state.borrow::<RuntimeContext>().clone()
@@ -340,7 +339,7 @@ pub fn op_get_channels(
     state: &mut OpState,
     _: (),
     _: (),
-) -> Result<Vec<runtime_models::channel::GuildChannel>, AnyError> {
+) -> Result<Vec<runtime_models::discord::channel::GuildChannel>, AnyError> {
     let rt_ctx = state.borrow::<RuntimeContext>();
 
     match rt_ctx.bot_state.guild_channels(rt_ctx.guild_id) {

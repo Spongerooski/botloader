@@ -1,14 +1,14 @@
-import { CommandInteraction, Message, MessageDelete, MessageUpdate, IntervalTimerEvent } from './models/index';
+import { Events, Discord } from './models';
 
 export type EventType = "BOTLOADER_COMMAND_INTERACTION_CREATE" | "BOTLOADER_INTERVAL_TIMER_FIRED" | "MESSAGE_CREATE" | "MESSAGE_UPDATE" | "MESSAGE_DELETE";
 export type EventListenerFunction<T> = (a: T) => void;
 
 export type EventDataType<T extends EventType> =
-    T extends "BOTLOADER_COMMAND_INTERACTION_CREATE" ? CommandInteraction :
-    T extends "BOTLOADER_INTERVAL_TIMER_FIRED" ? IntervalTimerEvent :
-    T extends "MESSAGE_CREATE" ? Message :
-    T extends "MESSAGE_UPDATE" ? MessageUpdate :
-    T extends "MESSAGE_DELETE" ? MessageDelete
+    T extends "BOTLOADER_COMMAND_INTERACTION_CREATE" ? Events.CommandInteraction :
+    T extends "BOTLOADER_INTERVAL_TIMER_FIRED" ? Events.IntervalTimerEvent :
+    T extends "MESSAGE_CREATE" ? Discord.Message :
+    T extends "MESSAGE_UPDATE" ? Events.MessageUpdate :
+    T extends "MESSAGE_DELETE" ? Events.MessageDelete
     : never;
 
 /**

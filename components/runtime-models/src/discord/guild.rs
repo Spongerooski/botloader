@@ -13,6 +13,7 @@ use crate::util::NotBigU64;
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/Guild.ts")]
 pub struct Guild {
     pub(crate) afk_channel_id: Option<String>,
     pub(crate) afk_timeout: NotBigU64,
@@ -91,6 +92,7 @@ impl From<&CachedGuild> for Guild {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/DefaultMessageNotificationLevel.ts")]
 pub enum DefaultMessageNotificationLevel {
     All,
     Mentions,
@@ -107,6 +109,7 @@ impl From<TwilightDefaultMessageNotificationLevel> for DefaultMessageNotificatio
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/ExplicitContentFilter.ts")]
 pub enum ExplicitContentFilter {
     None,
     MembersWithoutRole,
@@ -125,6 +128,7 @@ impl From<TwilightExplicitContentFilter> for ExplicitContentFilter {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/MfaLevel.ts")]
 pub enum MfaLevel {
     None,
     Elevated,
@@ -141,6 +145,7 @@ impl From<TwilightMfaLevel> for MfaLevel {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/NsfwLevel.ts")]
 pub enum NsfwLevel {
     Default,
     Explicit,
@@ -161,6 +166,7 @@ impl From<TwilightNSFWLevel> for NsfwLevel {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/PremiumTier.ts")]
 pub enum PremiumTier {
     None,
     Tier1,
@@ -181,6 +187,7 @@ impl From<TwilightPremiumTier> for PremiumTier {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/VerificationLevel.ts")]
 pub enum VerificationLevel {
     None,
     Low,

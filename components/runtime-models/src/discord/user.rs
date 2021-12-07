@@ -6,6 +6,7 @@ use crate::util::NotBigU64;
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/User.ts")]
 pub struct User {
     pub avatar: Option<String>,
     pub bot: bool,
@@ -43,6 +44,7 @@ impl From<twilight_model::user::User> for User {
 #[derive(Clone, Copy, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/PremiumType.ts")]
 pub enum PremiumType {
     None,
     NitroClassic,

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use contrib_manager::LoadedScript;
 use deno_core::{op_sync, Extension, OpState};
 use guild_logger::{GuildLogger, LogEntry};
-use runtime_models::script::ScriptMeta;
+use runtime_models::ops::script::ScriptMeta;
 use stores::bucketstore::BucketStore;
 use tokio::sync::mpsc;
 use tracing::info;

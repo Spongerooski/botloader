@@ -5,6 +5,7 @@ use twilight_model::guild::{Role as TwilightRole, RoleTags as TwilightRoleTags};
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/Role.ts")]
 pub struct Role {
     pub(crate) color: u32,
     pub(crate) hoist: bool,
@@ -40,6 +41,7 @@ impl From<&TwilightRole> for Role {
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "bindings/discord/RoleTags.ts")]
 pub struct RoleTags {
     pub(crate) bot_id: Option<String>,
     pub(crate) integration_id: Option<String>,

@@ -11,7 +11,7 @@ use vm::{
     prepend_script_source_header, AnyError, JsValue,
 };
 
-use runtime_models::script::ScriptMeta;
+use runtime_models::ops::script::ScriptMeta;
 
 /// Validates a script, making sure it parses correctly and runs the ScriptMeta function to retrieve essential information about this script
 pub async fn validate_script(source: String) -> Result<ScriptMeta, AnyError> {

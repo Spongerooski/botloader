@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{member::Member, util::NotBigU64};
+use crate::{discord::member::Member, util::NotBigU64};
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(untagged)]
@@ -37,7 +37,7 @@ impl From<twilight_model::channel::GuildChannel> for GuildChannel {
 
 // manually implemented for now cause of a bug in the lib
 impl ts_rs::TS for GuildChannel {
-    const EXPORT_TO: Option<&'static str> = Some("bindings/GuildChannel.ts");
+    const EXPORT_TO: Option<&'static str> = Some("bindings/discord/GuildChannel.ts");
     fn decl() -> String {
         format!("type {}{} = {};", "GuildChannel", "", Self::inline())
     }
@@ -131,6 +131,7 @@ fn export_bindings_guildchannel() {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/VoiceChannel.ts")]
 pub struct VoiceChannel {
     pub bitrate: NotBigU64,
     pub guild_id: String,
@@ -174,6 +175,7 @@ impl From<twilight_model::channel::VoiceChannel> for VoiceChannel {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/VideoQualityMode.ts")]
 pub enum VideoQualityMode {
     Auto,
     Full,
@@ -190,6 +192,7 @@ impl From<twilight_model::channel::VideoQualityMode> for VideoQualityMode {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/TextChannel.ts")]
 pub struct TextChannel {
     pub guild_id: String,
     pub id: String,
@@ -237,6 +240,7 @@ impl From<twilight_model::channel::TextChannel> for TextChannel {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/PublicThread.ts")]
 pub struct PublicThread {
     pub default_auto_archive_duration: Option<AutoArchiveDuration>,
     pub guild_id: String,
@@ -280,6 +284,7 @@ impl From<twilight_model::channel::thread::PublicThread> for PublicThread {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/PrivateThread.ts")]
 pub struct PrivateThread {
     pub default_auto_archive_duration: Option<AutoArchiveDuration>,
     pub guild_id: String,
@@ -331,6 +336,7 @@ impl From<twilight_model::channel::thread::PrivateThread> for PrivateThread {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/NewsThread.ts")]
 pub struct NewsThread {
     pub default_auto_archive_duration: Option<AutoArchiveDuration>,
     pub guild_id: String,
@@ -374,6 +380,7 @@ impl From<twilight_model::channel::thread::NewsThread> for NewsThread {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/AutoArchiveDuration.ts")]
 pub enum AutoArchiveDuration {
     Hour,
     Day,
@@ -398,6 +405,7 @@ impl From<twilight_model::channel::thread::AutoArchiveDuration> for AutoArchiveD
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/ThreadMember.ts")]
 pub struct ThreadMember {
     pub flags: NotBigU64,
     pub id: Option<String>,
@@ -421,6 +429,7 @@ impl From<twilight_model::channel::thread::ThreadMember> for ThreadMember {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/ThreadMetadata.ts")]
 pub struct ThreadMetadata {
     pub archived: bool,
     pub auto_archive_duration: AutoArchiveDuration,
@@ -443,6 +452,7 @@ impl From<twilight_model::channel::thread::ThreadMetadata> for ThreadMetadata {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/CategoryChannel.ts")]
 pub struct CategoryChannel {
     pub guild_id: String,
     pub id: String,
@@ -476,6 +486,7 @@ impl From<twilight_model::channel::CategoryChannel> for CategoryChannel {
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/ChannelType.ts")]
 pub enum ChannelType {
     GuildText,
     Private,
@@ -510,6 +521,7 @@ impl From<twilight_model::channel::ChannelType> for ChannelType {
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/PermissionOverwrite.ts")]
 pub struct PermissionOverwrite {
     pub allow: String,
     pub deny: String,
@@ -539,6 +551,7 @@ impl From<twilight_model::channel::permission_overwrite::PermissionOverwrite>
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/PermissionOverwriteType.ts")]
 pub enum PermissionOverwriteType {
     Member,
     Role,

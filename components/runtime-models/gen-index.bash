@@ -22,7 +22,7 @@ gen_index(){
             echo "skipping index..."
         elif [ -d "${f}" ]; then
             echo "$f is a dir"
-            echo "export * from './${FILE_NAME_ONLY}/index'" >> "${1}/index.ts"
+            # echo "export * from './${FILE_NAME_ONLY}/index'" >> "${1}/index.ts"
             gen_index $f
         else
             # strip the .ts suffix

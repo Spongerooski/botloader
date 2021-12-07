@@ -2,9 +2,11 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use crate::{
-    embed::Embed,
-    message::{Attachment, Mention, MessageType},
-    user::User,
+    discord::{
+        embed::Embed,
+        message::{Attachment, Mention, MessageType},
+        user::User,
+    },
     util::NotBigU64,
 };
 

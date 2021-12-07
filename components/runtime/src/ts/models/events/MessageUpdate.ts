@@ -1,8 +1,8 @@
-import type { Mention } from "../Mention";
-import type { Attachment } from "../Attachment";
-import type { User } from "../User";
-import type { MessageType } from "../MessageType";
-import type { Embed } from "../Embed";
+import type { Embed } from "../discord/Embed";
+import type { MessageType } from "../discord/MessageType";
+import type { Attachment } from "../discord/Attachment";
+import type { User } from "../discord/User";
+import type { Mention } from "../discord/Mention";
 
 export interface MessageUpdate {
   attachments: Array<Attachment> | null;

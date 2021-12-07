@@ -1,9 +1,10 @@
-use crate::{user::User, util::NotBigU64};
+use crate::{discord::user::User, util::NotBigU64};
 use serde::Serialize;
 use ts_rs::TS;
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
+#[ts(export_to = "bindings/discord/Member.ts")]
 pub struct Member {
     pub deaf: bool,
     pub guild_id: String,

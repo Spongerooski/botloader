@@ -1,11 +1,4 @@
-pub mod channel;
-pub mod embed;
+pub mod discord;
 pub mod events;
-pub mod guild;
-pub mod member;
-pub mod message;
 pub mod ops;
-pub mod role;
-pub mod script;
-pub mod user;
 pub mod util;

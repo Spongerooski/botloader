@@ -1,5 +1,5 @@
 import type { AllowedMentions } from "./AllowedMentions";
-import type { Embed } from "../Embed";
+import type { Embed } from "../discord/Embed";
 
 export interface OpCreateMessageFields {
   content: string;
