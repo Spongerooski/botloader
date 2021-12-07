@@ -60,7 +60,9 @@ pub struct OpCreateFollowUpMessage {
 #[ts(export_to = "bindings/ops/CreateMessageFields.ts")]
 #[serde(rename_all = "camelCase")]
 pub struct OpCreateMessageFields {
-    pub content: String,
+    #[serde(default)]
+    #[ts(optional)]
+    pub content: Option<String>,
     #[serde(default)]
     #[ts(optional)]
     pub embeds: Option<Vec<Embed>>,

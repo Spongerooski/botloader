@@ -169,8 +169,11 @@ pub async fn op_create_channel_message(
     let mut mc = rt_ctx
         .dapi
         .create_message(channel.id())
-        .content(&args.fields.content)?
         .embeds(&maybe_embeds)?;
+
+    if let Some(content) = &args.fields.content {
+        mc = mc.content(content)?
+    }
 
     if let Some(mentions) = args.fields.allowed_mentions {
         mc = mc.allowed_mentions(mentions.into());
@@ -223,17 +226,25 @@ pub async fn op_create_followup_message(
         state.borrow::<RuntimeContext>().clone()
     };
 
-    let re = rt_ctx
+    let maybe_embeds = args
+        .fields
+        .embeds
+        .unwrap_or_default()
+        .into_iter()
+        .map(Into::into)
+        .collect::<Vec<_>>();
+
+    let mut mc = rt_ctx
         .dapi
         .create_followup_message(&args.interaction_token)
         .unwrap()
-        .content(&args.fields.content)
-        .exec()
-        .await?
-        .model()
-        .await?;
+        .embeds(&maybe_embeds);
 
-    Ok(re.into())
+    if let Some(content) = &args.fields.content {
+        mc = mc.content(content)
+    }
+
+    Ok(mc.exec().await?.model().await?.into())
 }
 
 pub async fn op_delete_message(
