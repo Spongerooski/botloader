@@ -1,6 +1,6 @@
 import type { Command } from "./Command";
-import type { CommandGroup } from "./CommandGroup";
 import type { IntervalTimer } from "./IntervalTimer";
+import type { CommandGroup } from "./CommandGroup";
 
 export interface ScriptMeta {
   description: string;

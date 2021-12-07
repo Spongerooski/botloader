@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use futures::StreamExt;
 use futures_core::Stream;
+use stores::bucketstore::BucketStore;
 use stores::config::{ConfigStore, JoinedGuild};
 use stores::postgres::Postgres;
 use stores::timers::TimerStore;
@@ -102,7 +103,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_events<CT: Clone + ConfigStore + TimerStore + Send + Sync + 'static>(
+async fn handle_events<
+    CT: Clone + BucketStore + ConfigStore + TimerStore + Send + Sync + 'static,
+>(
     ctx: commands::CommandContext<CT>,
     mut stream: impl Stream<Item = (u64, Event)> + Unpin,
 ) {

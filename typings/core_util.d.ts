@@ -1,3 +1,3 @@
 export declare namespace console {
-    function log(msg: string, isErr?: boolean): void;
+    function log(...args: any[]): void;
 }

@@ -5,6 +5,7 @@ use std::{collections::HashMap, sync::Arc};
 use guild_logger::{GuildLogger, LogEntry};
 use runtime::{contrib_manager::ContribManagerHandle, RuntimeContext};
 use stores::{
+    bucketstore::BucketStore,
     config::{ConfigStore, Script},
     timers::TimerStore,
 };
@@ -39,7 +40,7 @@ pub struct Manager<CT> {
 /// The manager is responsible for managing all the js vm's
 impl<CT> Manager<CT>
 where
-    CT: ConfigStore + TimerStore + Send + 'static + Sync,
+    CT: ConfigStore + TimerStore + BucketStore + Send + 'static + Sync,
 {
     pub fn new(
         guild_logger: guild_logger::GuildLogger,
@@ -170,6 +171,7 @@ where
             contrib_manager_handle: self.inner.contrib_manager_handle.clone(),
             guild_logger: self.inner.guild_logger.clone(),
             vm_cmd_dispatch_tx: tx.clone(),
+            bucket_store: Arc::new(self.inner.config_store.clone()),
         };
 
         let worker_thread = if let Some(gs) = guilds.get(&guild_id) {
@@ -193,9 +195,7 @@ where
                     role: VmRole::Main,
                 },
                 load_scripts: to_load,
-                extension_factory: Box::new(move || {
-                    vec![runtime::create_extension(rt_ctx.clone())]
-                }),
+                extension_factory: Box::new(move || runtime::create_extensions(rt_ctx.clone())),
                 extension_modules: runtime::jsmodules::create_module_map(),
             }))
             .map_err(|_| panic!("failed creating vm"))
@@ -261,6 +261,7 @@ where
                 contrib_manager_handle: self.inner.contrib_manager_handle.clone(),
                 guild_logger: self.inner.guild_logger.clone(),
                 vm_cmd_dispatch_tx: tx.clone(),
+                bucket_store: Arc::new(self.inner.config_store.clone()),
             };
 
             info!("spawning guild vm for {}", guild_id);
@@ -277,9 +278,7 @@ where
                         role: VmRole::Pack(pack_id),
                     },
                     load_scripts: to_load,
-                    extension_factory: Box::new(move || {
-                        vec![runtime::create_extension(rt_ctx.clone())]
-                    }),
+                    extension_factory: Box::new(move || runtime::create_extensions(rt_ctx.clone())),
                     extension_modules: runtime::jsmodules::create_module_map(),
                 }))
                 .map_err(|_| panic!("failed creating vm"))

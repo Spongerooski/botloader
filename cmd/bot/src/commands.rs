@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use stores::{
+    bucketstore::BucketStore,
     config::{ConfigStore, CreateScript, UpdateScript},
     timers::TimerStore,
 };
@@ -177,7 +178,9 @@ fn cmd_parse_string_word<T: Iterator<Item = String>>(iter: &mut T) -> Result<Str
 }
 
 #[instrument(skip(ctx, cmd))]
-pub(crate) async fn handle_command<CT: ConfigStore + TimerStore + Send + Sync + 'static>(
+pub(crate) async fn handle_command<
+    CT: ConfigStore + BucketStore + TimerStore + Send + Sync + 'static,
+>(
     ctx: CommandContext<CT>,
     cmd: ParsedCommand,
 ) {
@@ -219,7 +222,7 @@ pub(crate) async fn handle_command<CT: ConfigStore + TimerStore + Send + Sync + 
 }
 
 #[instrument(skip(ctx, cmd))]
-async fn run_command<CT: ConfigStore + TimerStore + Send + Sync + 'static>(
+async fn run_command<CT: ConfigStore + BucketStore + TimerStore + Send + Sync + 'static>(
     ctx: &CommandContext<CT>,
     cmd: &ParsedCommand,
 ) -> Result<Option<String>, String> {

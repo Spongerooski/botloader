@@ -2,6 +2,7 @@ import { Commands } from "./commands";
 import { OpCreateMessageFields, OpEditMessageFields, Guild, Message, Role, GuildChannel, IntervalTimer, IntervalTimerEvent } from "./models/index";
 import { EventDataType, EventListenerFunction, EventType, InternalEventSystem, ScriptEventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
+import { Storage } from "./storage";
 
 export class Script {
 
@@ -11,6 +12,8 @@ export class Script {
     eventMuxer = new ScriptEventMuxer();
     commandSystem = new Commands.System();
     intervalTimers: IntervalTimerListener[] = [];
+
+    storageBuckets: Storage.Bucket<unknown>[] = [];
 
     private runCalled = false;
 
@@ -46,6 +49,12 @@ export class Script {
             }
         });
     }
+
+    registerStorageBucket<T extends Storage.Bucket<U>, U>(bucket: T): T {
+        this.storageBuckets.push(bucket);
+        return bucket;
+    }
+
 
     run() {
         if (this.runCalled) {

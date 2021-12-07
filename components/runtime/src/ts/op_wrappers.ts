@@ -1,4 +1,10 @@
-import { OpCreateChannelMessage, LogMessage, OpCreateFollowUpMessage, OpEditChannelMessage, Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk, Role, GuildChannel, OpGetMessage, OpGetMessages } from "./models/index";
+import {
+    OpCreateChannelMessage, LogMessage, OpCreateFollowUpMessage, OpEditChannelMessage,
+    Guild, Message, ScriptMeta, OpDeleteMessage, OpDeleteMessagesBulk, Role, GuildChannel,
+    OpGetMessage, OpGetMessages,
+
+    OpStorageBucketSetValue, OpStorageBucketIncr, OpStorageBucketList, OpStorageBucketEntry, OpStorageBucketEntryId, OpStorageBucketSortedList, OpStorageBucketSetIf,
+} from "./models/index";
 
 // This file contains op wrappers
 // They are used internally and you should generally not need to use them in your own scripts.
@@ -96,4 +102,34 @@ export namespace OpWrappers {
             channelId,
         );
     }
+
+    // Storage
+    export async function bucketStorageSet(opts: OpStorageBucketSetValue): Promise<OpStorageBucketEntry> {
+        return await Deno.core.opAsync("op_botloader_bucket_storage_set", opts);
+    }
+
+    export async function bucketStorageSetIf(opts: OpStorageBucketSetIf): Promise<OpStorageBucketEntry | null> {
+        return await Deno.core.opAsync("op_botloader_bucket_storage_set_if", opts);
+    }
+
+    export async function bucketStorageGet(opts: OpStorageBucketEntryId): Promise<OpStorageBucketEntry | null> {
+        return await Deno.core.opAsync("op_botloader_bucket_storage_get", opts);
+    }
+
+    export async function bucketStorageDel(opts: OpStorageBucketEntryId): Promise<OpStorageBucketEntry | null> {
+        return await Deno.core.opAsync("op_botloader_bucket_storage_del", opts);
+    }
+
+    export async function bucketStorageList(opts: OpStorageBucketList): Promise<OpStorageBucketEntry[]> {
+        return await Deno.core.opAsync("op_botloader_bucket_storage_list", opts);
+    }
+
+    export async function bucketStorageIncr(opts: OpStorageBucketIncr): Promise<OpStorageBucketEntry> {
+        return await Deno.core.opAsync("op_botloader_bucket_storage_incr", opts);
+    }
+
+    export async function bucketStorageSortedList(opts: OpStorageBucketSortedList): Promise<OpStorageBucketEntry[]> {
+        return await Deno.core.opAsync("op_botloader_bucket_storage_sorted_list", opts);
+    }
+
 }
