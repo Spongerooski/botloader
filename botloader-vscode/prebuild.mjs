@@ -1,7 +1,11 @@
+import { execSync } from 'child_process';
 import { mkdirSync }  from 'fs';
 import fse from 'fs-extra';
+// import {}
 
 console.log("Hello im prebuild!");
+
+execSync('"../components/runtime/src/ts/typedecls.sh"');
 
 try { 
     mkdirSync("out");
@@ -11,7 +15,7 @@ try {
 
 fse.removeSync("out/typings");
 
-fse.copySync("../typings", "out/typings", {
+fse.copySync("../components/runtime/src/ts/typings", "out/typings", {
     overwrite: true,
     recursive: true,
 });

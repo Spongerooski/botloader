@@ -5,4 +5,3 @@ set -e
 cd "${0%/*}"
 
 ./components/runtime-models/gen-move-types.bash
-./components/runtime/src/ts/typedecls.sh
