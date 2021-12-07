@@ -1,4 +1,4 @@
-use crate::discord::message::PartialMember;
+use crate::discord::member::InteractionMember;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use twilight_model::application::interaction::{
@@ -16,7 +16,7 @@ pub struct CommandInteraction {
     pub channel_id: String,
 
     pub id: String,
-    pub member: PartialMember,
+    pub member: InteractionMember,
     pub token: String,
 
     pub name: String,

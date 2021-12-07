@@ -1,10 +1,10 @@
 import type { CommandInteractionOption } from "./CommandInteractionOption";
-import type { PartialMember } from "../discord/PartialMember";
+import type { InteractionMember } from "../discord/InteractionMember";
 
 export interface CommandInteraction {
   channelId: string;
   id: string;
-  member: PartialMember;
+  member: InteractionMember;
   token: string;
   name: string;
   parentName: string | null;

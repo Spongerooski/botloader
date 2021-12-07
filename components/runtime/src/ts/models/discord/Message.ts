@@ -1,3 +1,4 @@
+import type { PartialMember } from "./PartialMember";
 import type { Embed } from "./Embed";
 import type { MessageReference } from "./MessageReference";
 import type { MessageReaction } from "./MessageReaction";
@@ -7,7 +8,6 @@ import type { Attachment } from "./Attachment";
 import type { MessageActivity } from "./MessageActivity";
 import type { MessageApplication } from "./MessageApplication";
 import type { User } from "./User";
-import type { PartialMember } from "./PartialMember";
 import type { Mention } from "./Mention";
 
 export interface Message {
