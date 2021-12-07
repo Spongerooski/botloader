@@ -211,7 +211,7 @@ export namespace Storage {
     }
 
     /**
-     * A Bucked holding number values
+     * A Bucket holding number values
      * 
      * The values being numbers allows them to be sorted easily giving you access to {@link incr} and {@link sortedList}.
      * 
