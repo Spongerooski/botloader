@@ -64,6 +64,7 @@ pub async fn op_storage_set(
     };
 
     check_validate_value_len(&args.value)?;
+    check_validate_key_len(&args.key)?;
     check_validate_storage_usage(rt_ctx.guild_id, &rt_ctx, state.clone()).await?;
 
     let entry = rt_ctx
@@ -91,6 +92,7 @@ pub async fn op_storage_set_if(
     };
 
     check_validate_value_len(&args.value)?;
+    check_validate_key_len(&args.key)?;
     check_validate_storage_usage(rt_ctx.guild_id, &rt_ctx, state.clone()).await?;
 
     let entry = rt_ctx
@@ -196,6 +198,7 @@ pub async fn op_storage_incr(
         state.borrow::<RuntimeContext>().clone()
     };
 
+    check_validate_key_len(&args.key)?;
     check_validate_storage_usage(rt_ctx.guild_id, &rt_ctx, state.clone()).await?;
 
     let entry = rt_ctx
@@ -251,6 +254,14 @@ fn check_validate_value_len(val: &OpStorageBucketValue) -> Result<(), AnyError> 
             }
         }
         OpStorageBucketValue::Double(_) => Ok(()),
+    }
+}
+
+fn check_validate_key_len(key: &str) -> Result<(), AnyError> {
+    if key.len() > 256 {
+        Err(anyhow!("key too long (max 256 bytes)"))
+    } else {
+        Ok(())
     }
 }
 
