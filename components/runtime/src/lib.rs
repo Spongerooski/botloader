@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use contrib_manager::LoadedScript;
-use deno_core::{op_async, op_sync, Extension, OpState};
+use deno_core::{op_sync, Extension, OpState};
 use guild_logger::{GuildLogger, LogEntry};
 use runtime_models::script::ScriptMeta;
 use stores::bucketstore::BucketStore;
@@ -18,81 +18,33 @@ pub mod contrib_manager;
 pub mod dispatchevents;
 pub mod extensions;
 pub mod jsmodules;
-mod ops;
 pub mod validator;
 
 pub use validator::validate_script;
 
 pub fn create_extensions(ctx: RuntimeContext) -> Vec<Extension> {
+    let core_extension = Extension::builder()
+        .ops(vec![
+            // botloader stuff
+            ("op_botloader_script_start", op_sync(op_script_start)),
+            // discord stuff
+        ])
+        .state(move |state| {
+            state.put(ctx.clone());
+            Ok(())
+        })
+        .middleware(Box::new(|name, b| match name {
+            // we have our own custom print function
+            "op_print" => op_sync(disabled_op),
+            _ => b,
+        }))
+        .build();
+
     vec![
-        Extension::builder()
-            .ops(vec![
-                // botloader stuff
-                ("op_botloader_script_start", op_sync(op_script_start)),
-                ("op_botloader_log", op_sync(ops::log::console_log)),
-                // discord stuff
-                ("discord_get_guild", op_sync(ops::discord::op_get_guild)),
-                ("discord_edit_guild", op_sync(dummy_op)),
-                (
-                    "discord_get_message",
-                    op_async(ops::discord::op_get_message),
-                ),
-                (
-                    "discord_get_messages",
-                    op_async(ops::discord::op_get_messages),
-                ),
-                (
-                    "discord_create_message",
-                    op_async(ops::discord::op_create_channel_message),
-                ),
-                (
-                    "discord_create_followup_message",
-                    op_async(ops::discord::op_create_followup_message),
-                ),
-                (
-                    "discord_edit_message",
-                    op_async(ops::discord::op_edit_channel_message),
-                ),
-                (
-                    "discord_delete_message",
-                    op_async(ops::discord::op_delete_message),
-                ),
-                (
-                    "discord_bulk_delete_messages",
-                    op_async(ops::discord::op_delete_messages_bulk),
-                ),
-                ("discord_get_role", op_sync(ops::discord::op_get_role)),
-                ("discord_get_roles", op_sync(ops::discord::op_get_roles)),
-                ("discord_create_role", op_sync(dummy_op)),
-                ("discord_edit_role", op_sync(dummy_op)),
-                ("discord_delete_role", op_sync(dummy_op)),
-                (
-                    "discord_get_channel",
-                    op_async(ops::discord::op_get_channel),
-                ),
-                (
-                    "discord_get_channels",
-                    op_sync(ops::discord::op_get_channels),
-                ),
-                ("discord_create_channel", op_sync(dummy_op)),
-                ("discord_edit_channel", op_sync(dummy_op)),
-                ("discord_delete_channel", op_sync(dummy_op)),
-                ("discord_get_invite", op_sync(dummy_op)),
-                ("discord_get_invites", op_sync(dummy_op)),
-                ("discord_create_invite", op_sync(dummy_op)),
-                ("discord_delete_invite", op_sync(dummy_op)),
-            ])
-            .state(move |state| {
-                state.put(ctx.clone());
-                Ok(())
-            })
-            .middleware(Box::new(|name, b| match name {
-                // we have our own custom print function
-                "op_print" => op_sync(disabled_op),
-                _ => b,
-            }))
-            .build(),
+        core_extension,
         extensions::storage::extension(),
+        extensions::discord::extension(),
+        extensions::console::extension(),
     ]
 }
 

@@ -1,9 +1,12 @@
+use deno_core::{op_async, op_sync, Extension};
 use std::{cell::RefCell, rc::Rc};
 
 use deno_core::OpState;
 use twilight_model::id::{MessageId, RoleId};
 use vm::{AnyError, JsValue};
 
+use super::{get_guild_channel, parse_str_snowflake_id};
+use crate::dummy_op;
 use crate::RuntimeContext;
 use runtime_models::{
     guild::Guild,
@@ -14,7 +17,44 @@ use runtime_models::{
     },
 };
 
-use super::{get_guild_channel, parse_str_snowflake_id};
+pub fn extension() -> Extension {
+    Extension::builder()
+        .ops(vec![
+            ("discord_get_guild", op_sync(op_get_guild)),
+            ("discord_edit_guild", op_sync(dummy_op)),
+            ("discord_get_message", op_async(op_get_message)),
+            ("discord_get_messages", op_async(op_get_messages)),
+            (
+                "discord_create_message",
+                op_async(op_create_channel_message),
+            ),
+            (
+                "discord_create_followup_message",
+                op_async(op_create_followup_message),
+            ),
+            ("discord_edit_message", op_async(op_edit_channel_message)),
+            ("discord_delete_message", op_async(op_delete_message)),
+            (
+                "discord_bulk_delete_messages",
+                op_async(op_delete_messages_bulk),
+            ),
+            ("discord_get_role", op_sync(op_get_role)),
+            ("discord_get_roles", op_sync(op_get_roles)),
+            ("discord_create_role", op_sync(dummy_op)),
+            ("discord_edit_role", op_sync(dummy_op)),
+            ("discord_delete_role", op_sync(dummy_op)),
+            ("discord_get_channel", op_async(op_get_channel)),
+            ("discord_get_channels", op_sync(op_get_channels)),
+            ("discord_create_channel", op_sync(dummy_op)),
+            ("discord_edit_channel", op_sync(dummy_op)),
+            ("discord_delete_channel", op_sync(dummy_op)),
+            ("discord_get_invite", op_sync(dummy_op)),
+            ("discord_get_invites", op_sync(dummy_op)),
+            ("discord_create_invite", op_sync(dummy_op)),
+            ("discord_delete_invite", op_sync(dummy_op)),
+        ])
+        .build()
+}
 
 pub fn op_get_guild(state: &mut OpState, _args: JsValue, _: ()) -> Result<Guild, AnyError> {
     let rt_ctx = state.borrow::<RuntimeContext>();

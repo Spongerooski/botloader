@@ -1,9 +1,15 @@
-use deno_core::OpState;
+use deno_core::{op_sync, Extension, OpState};
 use guild_logger::LogEntry;
 use runtime_models::ops::console::LogMessage;
 use vm::AnyError;
 
 use crate::RuntimeContext;
+
+pub fn extension() -> Extension {
+    Extension::builder()
+        .ops(vec![("op_botloader_log", op_sync(console_log))])
+        .build()
+}
 
 pub fn console_log(state: &mut OpState, args: LogMessage, _: ()) -> Result<(), AnyError> {
     let ctx = state.borrow::<RuntimeContext>();
