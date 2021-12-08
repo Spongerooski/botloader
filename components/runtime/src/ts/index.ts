@@ -1,4 +1,6 @@
+// Important: core_util provides globals so don't remove it
 export * from './core_util';
+
 // export * from './timers';
 export * from './commands';
 export * from './events';
