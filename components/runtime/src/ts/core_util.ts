@@ -2,7 +2,14 @@ import { OpWrappers } from "./op_wrappers";
 
 const non_json = ["boolean", "number", "string"];
 
+/**
+ * @deprecated use global console object instead
+ */
 export namespace console {
+
+    /**
+     * @deprecated use global console.log instead
+     */
     export function log(...args: any[]) {
         let output = "";
         const first = true;
@@ -52,3 +59,7 @@ function getCaller(skip: number): [string | undefined, number | undefined, numbe
 
     return [match[1], parseInt(match[2]), parseInt(match[3])]
 }
+
+(globalThis as any).console = {
+    log: console.log,
+};
