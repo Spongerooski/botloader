@@ -1,7 +1,8 @@
+use anyhow::anyhow;
+use deno_core::OpState;
 use deno_core::{op_async, op_sync, Extension};
 use std::{cell::RefCell, rc::Rc};
-
-use deno_core::OpState;
+use twilight_model::id::UserId;
 use twilight_model::id::{MessageId, RoleId};
 use vm::{AnyError, JsValue};
 
@@ -51,6 +52,7 @@ pub fn extension() -> Extension {
             ("discord_get_invites", op_sync(dummy_op)),
             ("discord_create_invite", op_sync(dummy_op)),
             ("discord_delete_invite", op_sync(dummy_op)),
+            ("discord_get_members", op_async(op_get_members)),
         ])
         .build()
 }
@@ -367,4 +369,60 @@ pub fn op_get_channels(
             .collect()),
         _ => Err(anyhow::anyhow!("guild not in state")),
     }
+}
+
+pub async fn op_get_members(
+    state: Rc<RefCell<OpState>>,
+    user_ids: Vec<String>,
+    _: (),
+) -> Result<Vec<Option<runtime_models::discord::member::Member>>, AnyError> {
+    let rt_ctx = {
+        let state = state.borrow();
+        state.borrow::<RuntimeContext>().clone()
+    };
+
+    if user_ids.len() > 100 {
+        return Err(anyhow!("too many user ids provided, max 100"));
+    }
+
+    if user_ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let ids = user_ids
+        .into_iter()
+        .map(|v| v.parse().map(UserId::new).ok().flatten())
+        .collect::<Vec<_>>();
+
+    let mut res = Vec::new();
+    for item in ids {
+        if let Some(id) = item {
+            // attempt to fetch from cache
+            if let (Some(member), Some(user)) = (
+                rt_ctx.bot_state.member(rt_ctx.guild_id, id),
+                rt_ctx.bot_state.user(id),
+            ) {
+                res.push(Some(runtime_models::discord::member::Member::from_cache(
+                    rt_ctx.guild_id,
+                    user.clone().into(),
+                    member.clone(),
+                )))
+            } else {
+                // fall back to http api
+                let member = rt_ctx
+                    .dapi
+                    .guild_member(rt_ctx.guild_id, id)
+                    .exec()
+                    .await?
+                    .model()
+                    .await?;
+
+                res.push(Some(member.into()))
+            }
+        } else {
+            res.push(None)
+        }
+    }
+
+    Ok(res)
 }

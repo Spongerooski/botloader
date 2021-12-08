@@ -100,6 +100,13 @@ export namespace OpWrappers {
         );
     }
 
+    export async function getMembers(ids: string[]): Promise<(Discord.Member | null)[]> {
+        return await Deno.core.opAsync(
+            "discord_get_members",
+            ids,
+        );
+    }
+
     // Storage
     export async function bucketStorageSet(opts: Ops.OpStorageBucketSetValue): Promise<Ops.OpStorageBucketEntry> {
         return await Deno.core.opAsync("op_botloader_bucket_storage_set", opts);

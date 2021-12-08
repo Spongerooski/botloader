@@ -249,6 +249,14 @@ export class Script {
     // createSticker() { }
     // editSticker() { }
     // deleteSticker() { }
+
+    async getMember(id: string): Promise<Discord.Member | undefined> {
+        return (await OpWrappers.getMembers([id]))[0] || undefined;
+    }
+
+    async getMembers(ids: string[]): Promise<(Discord.Member | null)[]> {
+        return await OpWrappers.getMembers(ids);
+    }
 }
 
 interface IntervalTimerListener {

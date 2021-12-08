@@ -1,6 +1,7 @@
 use crate::{discord::user::User, util::NotBigU64};
 use serde::Serialize;
 use ts_rs::TS;
+use twilight_model::id::GuildId;
 
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
@@ -31,6 +32,28 @@ impl From<twilight_model::guild::Member> for Member {
                 .map(|v| NotBigU64(v.as_micros() as u64 / 1000)),
             roles: v.roles.iter().map(ToString::to_string).collect(),
             user: v.user.into(),
+        }
+    }
+}
+
+impl Member {
+    pub fn from_cache(
+        guild_id: GuildId,
+        user: User,
+        member: twilight_cache_inmemory::model::CachedMember,
+    ) -> Self {
+        Self {
+            guild_id: guild_id.to_string(),
+            user,
+            deaf: member.deaf().unwrap_or_default(),
+            joined_at: NotBigU64(member.joined_at().as_micros() as u64 / 1000),
+            mute: member.mute().unwrap_or_default(),
+            nick: member.nick().map(ToString::to_string),
+            premium_since: member
+                .premium_since()
+                .map(|v| NotBigU64(v.as_micros() as u64 / 1000)),
+            roles: member.roles().iter().map(ToString::to_string).collect(),
+            pending: false,
         }
     }
 }
