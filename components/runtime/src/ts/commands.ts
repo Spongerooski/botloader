@@ -1,5 +1,4 @@
 import { Discord, Events, Ops } from "./models";
-import { console } from "./core_util";
 import { EventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
 
@@ -202,8 +201,18 @@ export namespace Commands {
             this.interaction = interaction;
         }
 
-        async sendResponse(resp: string) {
-            OpWrappers.createInteractionFollowup({ interactionToken: this.interaction.token, fields: { content: resp } })
+        async sendResponse(resp: string | Ops.OpCreateMessageFields) {
+            if (typeof resp === "string") {
+                await OpWrappers.createInteractionFollowup({
+                    interactionToken: this.interaction.token,
+                    fields: { content: resp }
+                })
+            } else {
+                await OpWrappers.createInteractionFollowup({
+                    interactionToken: this.interaction.token,
+                    fields: resp
+                })
+            }
         }
     }
 }
