@@ -1,6 +1,6 @@
 import { Commands } from "./commands";
 import { Ops, Events, Discord } from "./models";
-import { EventDataType, EventListenerFunction, EventType, InternalEventSystem, ScriptEventMuxer } from "./events";
+import { InternalEventSystem, EventMuxer, EventTypes } from "./events";
 import { OpWrappers } from "./op_wrappers";
 import { Storage } from "./storage";
 
@@ -20,10 +20,10 @@ export class Script {
     private _scriptId: number;
     private _description: string;
 
-    protected eventMuxer = new ScriptEventMuxer();
-    protected commandSystem = new Commands.System();
-    protected intervalTimers: IntervalTimerListener[] = [];
-    protected storageBuckets: Storage.Bucket<unknown>[] = [];
+    private events = new EventMuxer();
+    private commandSystem = new Commands.System();
+    private intervalTimers: IntervalTimerListener[] = [];
+    private storageBuckets: Storage.Bucket<unknown>[] = [];
 
     private runCalled = false;
 
@@ -36,22 +36,12 @@ export class Script {
     }
 
 
-    /**
-     * Add a event listenever.
-     * 
-     * See {@link EventType} for available for available event.
-     * 
-     * @example ```ts
-     * script.on('MESSAGE_CREATE', async (message) => {
-     *   // do stuff here
-     * });
-     * ```
-     */
-    on<T extends EventType>(eventType: T, f: EventListenerFunction<EventDataType<T>>) {
-        this.eventMuxer.listeners.push({
-            f: f,
-            event: eventType,
-        });
+
+    on(eventType: "MESSAGE_DELETE", cb: (evt: EventTypes["MESSAGE_DELETE"]) => void): void;
+    on(eventType: "MESSAGE_UPDATE", cb: (evt: EventTypes["MESSAGE_UPDATE"]) => void): void;
+    on(eventType: "MESSAGE_CREATE", cb: (evt: EventTypes["MESSAGE_CREATE"]) => void): void;
+    on<T extends keyof EventTypes>(eventType: T, cb: (evt: EventTypes[T]) => void): void {
+        this.events.on(eventType, cb);
     }
 
     /**
@@ -151,12 +141,10 @@ export class Script {
             intervalTimers: this.intervalTimers.map(inner => inner.timer),
         });
 
-        this.commandSystem.addEventListeners(this.eventMuxer);
-        InternalEventSystem.registerEventMuxer(this.eventMuxer);
-        this.eventMuxer.listeners.push({
-            f: this.onInterval.bind(this),
-            event: "BOTLOADER_INTERVAL_TIMER_FIRED",
-        })
+        this.commandSystem.addEventListeners(this.events);
+        InternalEventSystem.registerEventMuxer(this.events);
+
+        this.events.on("BOTLOADER_INTERVAL_TIMER_FIRED", this.onInterval.bind(this));
     }
 
     private onInterval(evt: Events.IntervalTimerEvent) {

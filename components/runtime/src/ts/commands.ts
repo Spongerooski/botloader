@@ -1,6 +1,6 @@
 import { Discord, Events, Ops } from "./models";
 import { console } from "./core_util";
-import { ScriptEventMuxer } from "./events";
+import { EventMuxer } from "./events";
 import { OpWrappers } from "./op_wrappers";
 
 export namespace Commands {
@@ -95,11 +95,8 @@ export namespace Commands {
     export class System {
         commands: CommandDef<OptionsMap>[] = [];
 
-        addEventListeners(muxer: ScriptEventMuxer) {
-            muxer.listeners.push({
-                event: "BOTLOADER_COMMAND_INTERACTION_CREATE",
-                f: this.handleInteractionCreate.bind(this),
-            })
+        addEventListeners(muxer: EventMuxer) {
+            muxer.on("BOTLOADER_COMMAND_INTERACTION_CREATE", this.handleInteractionCreate.bind(this));
         }
 
         handleInteractionCreate(interaction: Events.CommandInteraction) {

@@ -1,35 +1,17 @@
 import { Events, Discord } from './models';
 
-export type EventType = "BOTLOADER_COMMAND_INTERACTION_CREATE" | "BOTLOADER_INTERVAL_TIMER_FIRED" | "MESSAGE_CREATE" | "MESSAGE_UPDATE" | "MESSAGE_DELETE";
-export type EventListenerFunction<T> = (a: T) => void;
-
-export type EventDataType<T extends EventType> =
-    T extends "BOTLOADER_COMMAND_INTERACTION_CREATE" ? Events.CommandInteraction :
-    T extends "BOTLOADER_INTERVAL_TIMER_FIRED" ? Events.IntervalTimerEvent :
-    T extends "MESSAGE_CREATE" ? Discord.Message :
-    T extends "MESSAGE_UPDATE" ? Events.MessageUpdate :
-    T extends "MESSAGE_DELETE" ? Events.MessageDelete
-    : never;
-
-/**
- * @internal
- */
-export class ScriptEventMuxer {
-
-    listeners: EventListener[] = [];
-
-    handleEvent(evt: DispatchEvent) {
-        for (let listener of this.listeners) {
-            if (listener.event === evt.name) {
-                listener.f(evt.data)
-            }
-        }
-    }
-}
-
-interface EventListener {
-    f: (arg: any) => void;
-    event: EventType;
+export interface EventTypes {
+    /**
+     * @internal
+     */
+    BOTLOADER_COMMAND_INTERACTION_CREATE: Events.CommandInteraction,
+    /**
+     * @internal
+     */
+    BOTLOADER_INTERVAL_TIMER_FIRED: Events.IntervalTimerEvent,
+    MESSAGE_CREATE: Discord.Message,
+    MESSAGE_UPDATE: Events.MessageUpdate,
+    MESSAGE_DELETE: Events.MessageDelete,
 }
 
 /**
@@ -37,9 +19,9 @@ interface EventListener {
  */
 export namespace InternalEventSystem {
 
-    const eventMuxers: ScriptEventMuxer[] = [];
+    const eventMuxers: EventMuxer[] = [];
 
-    export function registerEventMuxer(muxer: ScriptEventMuxer) {
+    export function registerEventMuxer(muxer: EventMuxer) {
         eventMuxers.push(muxer)
     }
 
@@ -58,3 +40,40 @@ interface DispatchEvent {
     name: string,
     data: any,
 }
+
+type ListenerMap = {
+    [Property in keyof EventTypes]+?: ((evt: EventTypes[Property]) => void)[];
+}
+
+export class EventMuxer {
+
+    listeners: ListenerMap = {};
+
+    /**
+     * @internal
+     */
+    handleEvent(evt: DispatchEvent) {
+        let handlers = this.listeners[evt.name as keyof EventTypes];
+        if (handlers) {
+            for (let handler of handlers) {
+                handler(evt.data)
+            }
+        }
+    }
+
+    /**
+     * @internal
+     */
+    on<T extends keyof EventTypes>(eventType: T, cb: (evt: EventTypes[T]) => void) {
+        let handlers = this.listeners[eventType];
+
+        // we cast to any since typescript isn't able to handle this
+        if (handlers) {
+            handlers.push(cb as any);
+        } else {
+            this.listeners[eventType] = [cb as any];
+        }
+    }
+
+}
+
