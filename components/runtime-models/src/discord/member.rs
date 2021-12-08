@@ -58,6 +58,24 @@ impl Member {
     }
 }
 
+impl From<twilight_model::gateway::payload::incoming::MemberUpdate> for Member {
+    fn from(v: twilight_model::gateway::payload::incoming::MemberUpdate) -> Self {
+        Self {
+            deaf: v.deaf.unwrap_or_default(),
+            guild_id: v.guild_id.to_string(),
+            joined_at: NotBigU64(v.joined_at.as_micros() as u64 / 1000),
+            mute: v.mute.unwrap_or_default(),
+            nick: v.nick,
+            pending: v.pending,
+            premium_since: v
+                .premium_since
+                .map(|v| NotBigU64(v.as_micros() as u64 / 1000)),
+            roles: v.roles.iter().map(ToString::to_string).collect(),
+            user: v.user.into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "camelCase")]

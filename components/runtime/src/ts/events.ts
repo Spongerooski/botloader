@@ -9,9 +9,14 @@ export interface EventTypes {
      * @internal
      */
     BOTLOADER_INTERVAL_TIMER_FIRED: Events.IntervalTimerEvent,
+
     MESSAGE_CREATE: Discord.Message,
     MESSAGE_UPDATE: Events.MessageUpdate,
     MESSAGE_DELETE: Events.MessageDelete,
+
+    MEMBER_ADD: Discord.Member,
+    MEMBER_UPDATE: Discord.Member,
+    MEMBER_REMOVE: Events.MemberRemove,
 }
 
 /**

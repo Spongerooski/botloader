@@ -24,6 +24,25 @@ pub fn discord_event_to_dispatch(evt: Event) -> Option<DiscordDispatchEvent> {
             )
             .unwrap(),
         }),
+        Event::MemberAdd(m) => Some(DiscordDispatchEvent {
+            name: "MEMBER_ADD",
+            guild_id: m.guild_id,
+            data: serde_json::to_value(&runtime_models::discord::member::Member::from(m.0))
+                .unwrap(),
+        }),
+        Event::MemberUpdate(m) => Some(DiscordDispatchEvent {
+            name: "MEMBER_UPDATE",
+            guild_id: m.guild_id,
+            data: serde_json::to_value(&runtime_models::discord::member::Member::from(*m)).unwrap(),
+        }),
+        Event::MemberRemove(m) => Some(DiscordDispatchEvent {
+            name: "MEMBER_REMOVE",
+            guild_id: m.guild_id,
+            data: serde_json::to_value(&runtime_models::events::member_remove::MemberRemove::from(
+                m,
+            ))
+            .unwrap(),
+        }),
         Event::InteractionCreate(interaction) => match interaction.0 {
             twilight_model::application::interaction::Interaction::Ping(_) => None,
             twilight_model::application::interaction::Interaction::MessageComponent(_) => None,

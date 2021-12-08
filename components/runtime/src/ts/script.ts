@@ -40,6 +40,9 @@ export class Script {
     on(eventType: "MESSAGE_DELETE", cb: (evt: EventTypes["MESSAGE_DELETE"]) => void): void;
     on(eventType: "MESSAGE_UPDATE", cb: (evt: EventTypes["MESSAGE_UPDATE"]) => void): void;
     on(eventType: "MESSAGE_CREATE", cb: (evt: EventTypes["MESSAGE_CREATE"]) => void): void;
+    on(eventType: "MEMBER_ADD", cb: (evt: EventTypes["MEMBER_ADD"]) => void): void;
+    on(eventType: "MEMBER_UPDATE", cb: (evt: EventTypes["MEMBER_UPDATE"]) => void): void;
+    on(eventType: "MEMBER_REMOVE", cb: (evt: EventTypes["MEMBER_REMOVE"]) => void): void;
     on<T extends keyof EventTypes>(eventType: T, cb: (evt: EventTypes[T]) => void): void {
         this.events.on(eventType, cb);
     }
