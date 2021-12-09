@@ -1,9 +1,11 @@
-pub mod moduleloader;
 use std::{cell::RefCell, rc::Rc};
 
 use deno_core::v8_set_flags;
 use stores::config::Script;
 use tscompiler::CompiledItem;
+
+pub mod error;
+pub mod moduleloader;
 pub mod vm;
 
 /// Represents a value passed to or from JavaScript.

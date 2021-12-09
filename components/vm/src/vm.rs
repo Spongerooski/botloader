@@ -1,7 +1,7 @@
+use crate::error::create_error_fn;
 use crate::moduleloader::{ModuleEntry, ModuleManager};
 use crate::{prepend_script_source_header, AnyError, JsValue, ScriptLoad};
 use anyhow::anyhow;
-use deno_core::error::JsError;
 use deno_core::{op_async, Extension, OpState, RuntimeOptions, Snapshot};
 use futures::{future::LocalBoxFuture, FutureExt};
 use guild_logger::{GuildLogger, LogEntry};
@@ -101,17 +101,17 @@ impl Vm {
         let (script_dispatch_tx, script_dispatch_rx) = mpsc::unbounded_channel();
 
         let loaded_scripts = Rc::new(RefCell::new(vec![]));
+        let scripts_store = super::LoadedScriptsStore {
+            loaded_scripts: loaded_scripts.clone(),
+        };
 
         let sandbox = Self::create_isolate(
             &create_req.extension_factory,
             module_manager.clone(),
             script_dispatch_rx,
-            create_error_fn(loaded_scripts.clone()),
-            super::LoadedScriptsStore {
-                loaded_scripts: loaded_scripts.clone(),
-            },
+            create_error_fn(scripts_store.clone()),
+            scripts_store,
         );
-        // sandbox.add_state_data(create_req.ctx.clone());
 
         let mut rt = Self {
             guild_logger: create_req.guild_logger,
@@ -502,14 +502,16 @@ impl Vm {
         let core_data = self.stop_vm().await;
 
         // create a new sandbox
+        let scripts_store = super::LoadedScriptsStore {
+            loaded_scripts: self.loaded_scripts.clone(),
+        };
+
         let new_rt = Self::create_isolate(
             &self.extension_factory,
             self.module_manager.clone(),
             core_data,
-            create_error_fn(self.loaded_scripts.clone()),
-            super::LoadedScriptsStore {
-                loaded_scripts: self.loaded_scripts.clone(),
-            },
+            create_error_fn(scripts_store.clone()),
+            scripts_store,
         );
 
         self.runtime = new_rt;
@@ -751,16 +753,4 @@ struct NoOpWaker;
 
 impl Wake for NoOpWaker {
     fn wake(self: Arc<Self>) {}
-}
-
-fn create_error_fn(
-    _loaded_scripts: Rc<RefCell<Vec<ScriptLoad>>>,
-) -> Rc<deno_core::JsErrorCreateFn> {
-    Rc::new(move |a: JsError| {
-        // let mut_borrow = loaded_scripts.borrow_mut();
-
-        // info!("in create_error_fn");
-
-        a.into()
-    })
 }
