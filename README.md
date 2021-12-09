@@ -8,9 +8,9 @@ Contact me on discord for more details: Jonas747#0001 (105487308693757952)
 
 https://botloader.io
 
-# BotLoader (or loader) 
+# Botloader
 
-BotLoader is a discord bot where the server admins can program the bot through typescript, it takes care of all the low level things and provides an api for things such as storage, commands, timers and so on.
+Botloader is a discord bot where the server admins can program the bot through typescript, it takes care of all the low level things and provides an api for things such as storage, commands, timers and so on.
 
 In the future you could imagine a steam workshop like marketplace of modules you could add to the server. Want a leveling system? There will probably be multiple available on the marketplace. That is the ultimate goal of this project, right now however it is very far away from that.
 
