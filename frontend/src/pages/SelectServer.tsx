@@ -42,12 +42,12 @@ export function SelectServerPage() {
 function GuildListItem({ guild: g }: { guild: BotGuild }) {
     return <Link to={`/servers/${g.guild.id}`}><div className="guild-list-item">
         <GuildIcon guild={g.guild} />
-        <p>{g.guild.name}</p>
+        <p>{shorten(g.guild.name)}</p>
     </div></Link>
 }
 
 function GuildIcon(props: { guild: UserGuild }) {
-    return <img src={guildIconUrl(props.guild)} alt={`icon`} className="avatar" />
+    return <img src={guildIconUrl(props.guild)} alt={`?`} className="avatar" />
 }
 
 const permAdmin = BigInt("0x0000000008");
@@ -69,4 +69,9 @@ function hasAdmin(g: UserGuild): boolean {
     }
 
     return false
+}
+
+function shorten(name: string): string {
+	const maxLength = 35
+	return name.length > maxLength ? name.slice(0, 34) + '...' : name
 }
