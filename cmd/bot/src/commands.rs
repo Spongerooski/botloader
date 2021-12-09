@@ -228,16 +228,6 @@ async fn run_command<CT: ConfigStore + BucketStore + TimerStore + Send + Sync + 
 ) -> Result<Option<String>, String> {
     match &cmd.command {
         Command::AddScript(name, source) | Command::UpdateScript(name, source) => {
-            let compiled = tscompiler::compile_typescript(source)
-                .map_err(|e| format!("failed compiling: {:}", e))?;
-
-            let _ = match runtime::validate_script(compiled.clone()).await {
-                Ok(h) => h,
-                Err(e) => {
-                    return Ok(Some(format!("failed validating script: {}", e)));
-                }
-            };
-
             match ctx
                 .config_store
                 .get_script(cmd.m.guild_id.unwrap(), name.clone())

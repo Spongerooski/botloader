@@ -10,6 +10,7 @@ vmthread = {path="../../components/vmthread"}
 isolatecell = {path="../../components/isolatecell"}
 stores = {path="../../components/stores"}
 guild-logger = {path="../../components/guild-logger"}
+tscompiler = {path="../../components/tscompiler"}
 
 twilight-model = "0.8"
 

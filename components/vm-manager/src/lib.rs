@@ -17,7 +17,7 @@ use tracing::info;
 use twilight_cache_inmemory::InMemoryCache;
 use twilight_gateway::Event;
 use twilight_model::id::GuildId;
-use vm::vm::{CreateRt, GuildVmEvent, ScriptLoad, Vm, VmCommand, VmContext, VmEvent, VmRole};
+use vm::vm::{CreateRt, GuildVmEvent, Vm, VmCommand, VmContext, VmEvent, VmRole};
 use vmthread::{ShutdownReason, VmThreadCommand, VmThreadFuture, VmThreadHandle};
 
 type GuildMap = HashMap<GuildId, GuildState>;
@@ -129,7 +129,7 @@ where
                     .unwrap();
 
                 // start all the runtimes!
-                let to_load = self.filter_load_scripts(guild_id, scripts);
+                let to_load = self.filter_load_scripts(scripts);
 
                 rs.tx.send(VmCommand::Restart(to_load)).unwrap();
                 Ok(())
@@ -159,7 +159,7 @@ where
             .unwrap();
 
         // start all the runtimes!
-        let to_load = self.filter_load_scripts(guild_id, scripts);
+        let to_load = self.filter_load_scripts(scripts);
 
         let (tx, rx) = mpsc::unbounded_channel();
 
@@ -214,23 +214,8 @@ where
         Ok(())
     }
 
-    fn filter_load_scripts(&self, guild_id: GuildId, scripts: Vec<Script>) -> Vec<ScriptLoad> {
-        scripts
-            .into_iter()
-            .filter(|e| e.enabled)
-            .filter_map(
-                |sc| match tscompiler::compile_typescript(&sc.original_source) {
-                    Ok(compiled) => Some(ScriptLoad {
-                        compiled_js: compiled,
-                        inner: sc,
-                    }),
-                    Err(e) => {
-                        self.handle_script_compilcation_errors(guild_id, e);
-                        None
-                    }
-                },
-            )
-            .collect()
+    fn filter_load_scripts(&self, scripts: Vec<Script>) -> Vec<Script> {
+        scripts.into_iter().filter(|e| e.enabled).collect()
     }
 
     // This function just loads all the guild scripts as a pack vm and is largely just used for bench marking atm
@@ -247,7 +232,7 @@ where
             .unwrap();
 
         // start all the runtimes!
-        let to_load = self.filter_load_scripts(guild_id, scripts);
+        let to_load = self.filter_load_scripts(scripts);
 
         let mut guilds = self.inner.guilds.write().await;
         if let Some(g) = guilds.get_mut(&guild_id) {
@@ -331,20 +316,8 @@ where
     }
 
     pub async fn update_script(&self, guild_id: GuildId, script: Script) -> Result<(), String> {
-        let compiled = match tscompiler::compile_typescript(&script.original_source) {
-            Ok(compiled) => compiled,
-            Err(diag) => return Err(self.handle_script_compilcation_errors(guild_id, diag)),
-        };
-
-        self.send_vm_command(
-            guild_id,
-            VmRole::Main,
-            VmCommand::UpdateScript(ScriptLoad {
-                inner: script,
-                compiled_js: compiled,
-            }),
-        )
-        .await
+        self.send_vm_command(guild_id, VmRole::Main, VmCommand::UpdateScript(script))
+            .await
     }
 
     pub async fn unload_scripts(
@@ -357,28 +330,8 @@ where
     }
 
     pub async fn load_script(&self, guild_id: GuildId, script: Script) -> Result<(), String> {
-        let compiled = match tscompiler::compile_typescript(&script.original_source) {
-            Ok(compiled) => compiled,
-            Err(diag) => return Err(self.handle_script_compilcation_errors(guild_id, diag)),
-        };
-
-        self.send_vm_command(
-            guild_id,
-            VmRole::Main,
-            VmCommand::LoadScript(ScriptLoad {
-                inner: script,
-                compiled_js: compiled,
-            }),
-        )
-        .await
-    }
-
-    fn handle_script_compilcation_errors(&self, guild_id: GuildId, msg: String) -> String {
-        self.inner.guild_logger.log(LogEntry::error(
-            guild_id,
-            format!("Script compilation failed: {}", msg),
-        ));
-        msg
+        self.send_vm_command(guild_id, VmRole::Main, VmCommand::LoadScript(script))
+            .await
     }
 
     pub async fn handle_discord_event(&self, evt: Event) {

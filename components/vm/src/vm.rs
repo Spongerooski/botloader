@@ -1,6 +1,7 @@
 use crate::moduleloader::{ModuleEntry, ModuleManager};
-use crate::{prepend_script_source_header, AnyError, JsValue};
+use crate::{prepend_script_source_header, AnyError, JsValue, ScriptLoad};
 use anyhow::anyhow;
+use deno_core::error::JsError;
 use deno_core::{op_async, Extension, OpState, RuntimeOptions, Snapshot};
 use futures::{future::LocalBoxFuture, FutureExt};
 use guild_logger::{GuildLogger, LogEntry};
@@ -16,7 +17,7 @@ use std::{
 };
 use stores::config::Script;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
-use tracing::info;
+use tracing::{info, instrument};
 use twilight_model::id::GuildId;
 use url::Url;
 use v8::{CreateParams, HeapStatistics, IsolateHandle};
@@ -25,14 +26,14 @@ use vmthread::{CreateVmSuccess, ShutdownReason, VmInterface};
 #[derive(Debug, Clone)]
 pub enum VmCommand {
     DispatchEvent(&'static str, serde_json::Value),
-    LoadScript(ScriptLoad),
+    LoadScript(Script),
 
     // note that this also reloads the runtime, shutting it down and starting it again
     // we send a message when that has been accomplished
     UnloadScripts(Vec<Script>),
-    UpdateScript(ScriptLoad),
+    UpdateScript(Script),
     Terminate,
-    Restart(Vec<ScriptLoad>),
+    Restart(Vec<Script>),
 }
 
 #[derive(Debug)]
@@ -61,7 +62,7 @@ pub struct Vm {
     rx: UnboundedReceiver<VmCommand>,
     tx: UnboundedSender<GuildVmEvent>,
 
-    loaded_scripts: Vec<ScriptLoad>,
+    loaded_scripts: Rc<RefCell<Vec<ScriptLoad>>>,
     failed_scripts: Vec<ScriptLoad>,
 
     timeout_handle: ShutdownHandle,
@@ -99,12 +100,17 @@ impl Vm {
 
         let (script_dispatch_tx, script_dispatch_rx) = mpsc::unbounded_channel();
 
+        let loaded_scripts = Rc::new(RefCell::new(vec![]));
+
         let sandbox = Self::create_isolate(
             &create_req.extension_factory,
             module_manager.clone(),
             script_dispatch_rx,
-        )
-        .await;
+            create_error_fn(loaded_scripts.clone()),
+            super::LoadedScriptsStore {
+                loaded_scripts: loaded_scripts.clone(),
+            },
+        );
         // sandbox.add_state_data(create_req.ctx.clone());
 
         let mut rt = Self {
@@ -112,7 +118,7 @@ impl Vm {
             ctx: create_req.ctx,
             rx: create_req.rx,
             tx: create_req.tx,
-            loaded_scripts: vec![],
+            loaded_scripts,
             failed_scripts: vec![],
 
             script_dispatch_tx,
@@ -133,16 +139,22 @@ impl Vm {
         rt
     }
 
-    async fn create_isolate(
+    fn create_isolate(
         extension_factory: &ExtensionFactory,
         module_manager: Rc<ModuleManager>,
         evt_rx: UnboundedReceiver<ScriptDispatchData>,
+        create_err_fn: Rc<deno_core::JsErrorCreateFn>,
+        script_load_states: super::LoadedScriptsStore,
     ) -> ManagedIsolate {
         let mut extensions = extension_factory();
         extensions.insert(
             0,
             Extension::builder()
                 .ops(vec![("op_botloader_rcv_event", op_async(op_rcv_event))])
+                .state(move |op| {
+                    op.put(script_load_states.clone());
+                    Ok(())
+                })
                 .build(),
         );
 
@@ -153,6 +165,7 @@ impl Vm {
             // if it breaks when you update deno or v8 try different values until it works, if only they'd document the alignment requirements somewhere...
             create_params: Some(CreateParams::default().heap_limits(512 * 1024, 20 * 512 * 1024)),
             startup_snapshot: Some(Snapshot::Static(crate::BOTLOADER_CORE_SNAPSHOT)),
+            js_error_create_fn: Some(create_err_fn),
             ..Default::default()
         };
 
@@ -250,24 +263,38 @@ impl Vm {
             VmCommand::LoadScript(script) => self.load_script(script).await,
 
             VmCommand::UpdateScript(script) => {
+                let mut cloned_scripts = self
+                    .loaded_scripts
+                    .borrow()
+                    .clone()
+                    .into_iter()
+                    .map(|v| v.inner)
+                    .collect::<Vec<_>>();
+
                 let mut need_reset = false;
-                for old in &mut self.loaded_scripts {
-                    if old.inner.id == script.inner.id {
+                for old in &mut cloned_scripts {
+                    if old.id == script.id {
                         *old = script.clone();
                         need_reset = true;
                     }
                 }
 
                 if need_reset {
-                    self.restart(self.loaded_scripts.clone()).await;
+                    self.restart(cloned_scripts).await;
                 }
             }
             VmCommand::UnloadScripts(scripts) => {
                 let new_scripts = self
                     .loaded_scripts
+                    .borrow()
                     .iter()
-                    .filter(|sc| !scripts.iter().any(|isc| isc.id == sc.inner.id))
-                    .cloned()
+                    .filter_map(|sc| {
+                        if !scripts.iter().any(|isc| isc.id == sc.inner.id) {
+                            Some(sc.inner.clone())
+                        } else {
+                            None
+                        }
+                    })
                     .collect::<Vec<_>>();
 
                 self.restart(new_scripts).await;
@@ -275,36 +302,55 @@ impl Vm {
         }
     }
 
-    async fn load_script(&mut self, script: ScriptLoad) {
-        info!(
-            "rt {} loading script: {}",
-            self.ctx.guild_id, script.inner.id
-        );
+    #[instrument(skip(self, script))]
+    fn compile_script(&self, script: Script) -> Option<ScriptLoad> {
+        match tscompiler::compile_typescript(&script.original_source) {
+            Ok(compiled) => Some(ScriptLoad {
+                compiled,
+                inner: script,
+            }),
+            Err(e) => {
+                self.guild_logger.log(LogEntry::error(
+                    self.ctx.guild_id,
+                    format!("Script compilation failed for {}.ts: {}", script.name, e),
+                ));
+                None
+            }
+        }
+    }
 
+    #[instrument(skip(self, script))]
+    async fn load_script(&mut self, script: Script) {
         if self
             .loaded_scripts
+            .borrow()
             .iter()
-            .any(|sc| sc.inner.id == script.inner.id)
+            .any(|sc| sc.inner.id == script.id)
         {
-            info!(
-                "rt {} loading script: {} was already loaded, skipping",
-                self.ctx.guild_id, script.inner.id
-            );
-
+            info!("script: {} was already loaded, skipping", script.id);
             return;
         }
+
+        let compiled = if let Some(compiled) = self.compile_script(script) {
+            compiled
+        } else {
+            return;
+        };
+
+        self.loaded_scripts.borrow_mut().push(compiled.clone());
 
         let eval_res = {
             let mut rt = self.isolate_cell.enter_isolate(&mut self.runtime);
 
             let parsed_uri =
-                Url::parse(format!("file:///guild/{}.js", script.inner.name).as_str()).unwrap();
+                Url::parse(format!("file:///guild_scripts/{}.js", compiled.inner.name).as_str())
+                    .unwrap();
 
             let fut = rt.load_side_module(
                 &parsed_uri,
                 Some(prepend_script_source_header(
-                    &script.compiled_js,
-                    Some(&script.inner),
+                    &compiled.compiled.output,
+                    Some(&compiled.inner),
                 )),
             );
 
@@ -332,20 +378,19 @@ impl Vm {
         match eval_res {
             Err(e) => {
                 self.log_guild_err(e);
-                self.failed_scripts.push(script.clone())
+                self.failed_scripts.push(compiled)
             }
             Ok(rcv) => {
                 self.complete_module_eval(rcv).await;
             }
         }
-
-        self.loaded_scripts.push(script);
     }
+
     fn dispatch_event<P>(&mut self, name: &str, args: &P)
     where
         P: Serialize,
     {
-        let loaded = self.loaded_scripts.len() - self.failed_scripts.len();
+        let loaded = self.loaded_scripts.borrow().len() - self.failed_scripts.len();
         if loaded < 1 {
             return;
         }
@@ -447,7 +492,7 @@ impl Vm {
         ));
     }
 
-    async fn restart(&mut self, new_scripts: Vec<ScriptLoad>) {
+    async fn restart(&mut self, new_scripts: Vec<Script>) {
         info!("rt {} restarting with new scripts", self.ctx.guild_id,);
         self.guild_logger.log(LogEntry::info(
             self.ctx.guild_id,
@@ -461,14 +506,17 @@ impl Vm {
             &self.extension_factory,
             self.module_manager.clone(),
             core_data,
-        )
-        .await;
+            create_error_fn(self.loaded_scripts.clone()),
+            super::LoadedScriptsStore {
+                loaded_scripts: self.loaded_scripts.clone(),
+            },
+        );
 
         self.runtime = new_rt;
         self.emit_isolate_handle();
 
-        self.loaded_scripts = Vec::new();
-        self.failed_scripts = Vec::new();
+        self.loaded_scripts.borrow_mut().clear();
+        self.failed_scripts.clear();
 
         for script in new_scripts {
             self.load_script(script).await;
@@ -673,7 +721,7 @@ pub struct CreateRt {
     pub rx: UnboundedReceiver<VmCommand>,
     pub tx: UnboundedSender<GuildVmEvent>,
     pub ctx: VmContext,
-    pub load_scripts: Vec<ScriptLoad>,
+    pub load_scripts: Vec<Script>,
     pub extension_factory: ExtensionFactory,
     pub extension_modules: Vec<ModuleEntry>,
 }
@@ -705,8 +753,14 @@ impl Wake for NoOpWaker {
     fn wake(self: Arc<Self>) {}
 }
 
-#[derive(Clone, Debug)]
-pub struct ScriptLoad {
-    pub compiled_js: String,
-    pub inner: Script,
+fn create_error_fn(
+    _loaded_scripts: Rc<RefCell<Vec<ScriptLoad>>>,
+) -> Rc<deno_core::JsErrorCreateFn> {
+    Rc::new(move |a: JsError| {
+        // let mut_borrow = loaded_scripts.borrow_mut();
+
+        // info!("in create_error_fn");
+
+        a.into()
+    })
 }

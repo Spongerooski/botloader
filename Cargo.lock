@@ -2768,6 +2768,7 @@ dependencies = [
  "rustc-hash",
  "scoped-tls",
  "serde",
+ "sourcemap",
  "string_cache",
  "swc_eq_ignore_macros",
  "swc_visit",
@@ -3553,6 +3554,7 @@ dependencies = [
 name = "tscompiler"
 version = "0.1.0"
 dependencies = [
+ "sourcemap",
  "swc_common 0.14.7",
  "swc_ecmascript 0.89.0",
 ]
@@ -3836,6 +3838,7 @@ dependencies = [
  "stores",
  "tokio",
  "tracing",
+ "tscompiler",
  "twilight-model",
  "url",
  "v8",

@@ -4,7 +4,7 @@ use swc_common::{
     self, chain,
     errors::{Diagnostic, Emitter, Handler},
     sync::Lrc,
-    FileName, Globals, Mark, SourceMap,
+    BytePos, FileName, Globals, LineCol, Mark, SourceMap,
 };
 // use swc_ecmascript::ast::Module;
 use swc_ecmascript::{
@@ -23,11 +23,11 @@ use swc_ecmascript::{
     visit::FoldWith,
 };
 
-pub fn compile_typescript(input: &str) -> Result<String, String> {
+pub fn compile_typescript(input: &str) -> Result<CompiledItem, String> {
     compile_typescript_inner(input)
 }
 
-fn compile_typescript_inner(input: &str) -> Result<String, String> {
+fn compile_typescript_inner(input: &str) -> Result<CompiledItem, String> {
     let mut result_buf = Vec::new();
 
     swc_common::GLOBALS.set(&Globals::new(), || {
@@ -80,15 +80,16 @@ fn compile_typescript_inner(input: &str) -> Result<String, String> {
             );
 
             module = module.fold_with(&mut pass);
+            let mut src_map = Vec::new();
 
             {
-                let writer = JsWriter::new(cm.clone(), "\n", &mut result_buf, None);
+                let writer = JsWriter::new(cm.clone(), "\n", &mut result_buf, Some(&mut src_map));
 
                 let mut emitter = CodeEmitter {
                     cfg: CodeGenConfig {
                         ..Default::default()
                     },
-                    cm,
+                    cm: cm.clone(),
                     comments: None,
                     wr: Box::new(writer),
                 };
@@ -97,8 +98,13 @@ fn compile_typescript_inner(input: &str) -> Result<String, String> {
                 emitter.emit_module(&module).unwrap();
             }
 
+            let proper_source_map = cm.build_source_map(&mut src_map);
+
             // i really hope this dosen't produce any invalid utf8 stuff :eyes:
-            Ok(String::from_utf8(result_buf).unwrap())
+            Ok(CompiledItem {
+                output: String::from_utf8(result_buf).unwrap(),
+                source_map: proper_source_map,
+            })
         })
     })
 }
@@ -136,4 +142,10 @@ impl std::io::Write for VecLocked {
     //     messages.push((**db).clone());
     //     // println!("[SWC]: {:?}", db);
     // }
+}
+
+#[derive(Debug, Clone)]
+pub struct CompiledItem {
+    pub output: String,
+    pub source_map: sourcemap::SourceMap,
 }

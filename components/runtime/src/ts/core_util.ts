@@ -51,7 +51,7 @@ function getCaller(skip: number): [string | undefined, number | undefined, numbe
     }
 
     // parse it
-    const re = /file:\/\/\/(.+):(\d+):(\d+)/
+    const re = /(file:\/\/\/.+):(\d+):(\d+)/
     const match = selected_line.match(re);
     if (!match || match.length < 4) {
         return [undefined, undefined, undefined]

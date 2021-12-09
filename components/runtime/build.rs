@@ -80,7 +80,7 @@ fn compile_folder(path: &Path) -> Vec<String> {
 
     for (name, file) in loaded_files {
         let output = compile_typescript(&file).unwrap();
-        fs::write(target_dir.join(format!("{}.js", name)), output).unwrap();
+        fs::write(target_dir.join(format!("{}.js", name)), output.output).unwrap();
         result.push(relative_path.join(name).to_string_lossy().into_owned());
     }
 
