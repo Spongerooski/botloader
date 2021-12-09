@@ -5,7 +5,11 @@
 }
 
 .guild-select-list img {
-    /* width: 64px; */
+    width: 64px;
+    height: 64px;
+    text-align: center;
+    color: white;
+    font-size: 45px;
     margin-right: 5px;
 }
 
